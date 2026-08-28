@@ -1,0 +1,1533 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>标记管理｜WGS84+GCJ02｜支持时间戳</title>
+    <script type="text/javascript">
+        window._AMapSecurityConfig = {
+            securityJsCode: "20379ff4e621b8c614c0f5916468c0ae"
+        };
+    </script>
+    <script type="text/javascript" src="https://webapi.amap.com/maps?v=2.0&key=cdd87705cafe7b06747f57dacc944e64&plugin=AMap.PlaceSearch,AMap.Geocoder,AMap.DistrictSearch,AMap.MarkerClusterer"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f5f7fa; color: #1e293b; height: 100vh; overflow: hidden; }
+        #wrap { display:flex; height:100vh; }
+        #sidebar {
+            width: 420px; min-width: 420px; background: #ffffff; padding: 8px 10px 14px;
+            overflow-y: auto; border-right: 1px solid #e9edf4; box-shadow: 2px 0 12px rgba(0,0,0,0.02);
+            display: flex; flex-direction: column; gap: 6px;
+        }
+        #sidebar::-webkit-scrollbar { width:4px; }
+        #sidebar::-webkit-scrollbar-track { background:#f1f5f9; }
+        #sidebar::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:4px; }
+        .card { background:#fff; border-radius:8px; padding:6px 8px; border:1px solid #f0f2f5; transition:box-shadow 0.15s; }
+        .card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+        .card-title { font-size:12px; font-weight:600; color:#475569; letter-spacing:0.3px; cursor:pointer; user-select:none; display:flex; justify-content:space-between; align-items:center; }
+        .card-title .arrow { transition:transform 0.2s; }
+        .card-title.open .arrow { transform:rotate(90deg); }
+        .card-body { margin-top:6px; display:flex; flex-direction:column; gap:5px; }
+        .card-body.hidden { display:none; }
+        .flex-row { display:flex; gap:4px; align-items:center; flex-wrap:wrap; }
+        .flex-col { display:flex; flex-direction:column; gap:4px; }
+        .text-sm { font-size:12px; color:#64748b; line-height:1.3; }
+        .text-xs { font-size:10px; color:#94a3b8; }
+        .badge { display:inline-block; background:#f1f5f9; padding:1px 8px; border-radius:20px; font-size:10px; color:#334155; }
+        .mt-1 { margin-top:3px; }
+        .mb-1 { margin-bottom:3px; }
+        button { font-family:inherit; font-size:11px; font-weight:500; padding:3px 8px; border:none; border-radius:5px; background:#f1f5f9; color:#1e293b; cursor:pointer; transition:all 0.15s; display:inline-flex; align-items:center; justify-content:center; gap:3px; white-space:nowrap; }
+        button:hover { background:#e2e8f0; }
+        button:active { transform:scale(0.96); }
+        button.primary { background:#2563eb; color:#fff; }
+        button.primary:hover { background:#1d4ed8; }
+        button.success { background:#16a34a; color:#fff; }
+        button.success:hover { background:#15803d; }
+        button.danger { background:#dc2626; color:#fff; }
+        button.danger:hover { background:#b91c1c; }
+        button.outline { background:transparent; border:1px solid #e2e8f0; }
+        button.outline:hover { background:#f8fafc; }
+        button.ghost { background:transparent; color:#475569; }
+        button.ghost:hover { background:#f1f5f9; }
+        button.small { padding:2px 6px; font-size:10px; }
+        button.block { width:100%; justify-content:center; }
+        button:disabled { opacity:0.5; pointer-events:none; }
+        input, textarea, select { font-family:inherit; font-size:11px; padding:3px 6px; border:1px solid #e2e8f0; border-radius:4px; background:#fafbfc; color:#1e293b; width:100%; outline:none; transition:border 0.15s, box-shadow 0.15s; }
+        input:focus, textarea:focus, select:focus { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,0.08); background:#fff; }
+        textarea { resize:vertical; min-height:24px; font-size:11px; }
+        .file-upload-wrapper { display:flex; gap:4px; align-items:center; flex-wrap:wrap; }
+        .file-upload-wrapper input[type="file"] { padding:2px 0; border:none; background:transparent; font-size:10px; color:#475569; flex:1; }
+        .file-upload-wrapper .file-name { background:#f1f5f9; padding:1px 8px; border-radius:20px; font-size:10px; color:#334155; flex:1; min-width:50px; word-break:break-all; }
+        .progress-area { background:#f8fafc; border-radius:5px; padding:4px 8px; border:1px solid #e9edf4; margin-top:3px; display:none; }
+        .progress-area .progress-text { font-size:11px; color:#334155; line-height:1.3; min-height:18px; }
+        .progress-area .progress-track { width:100%; height:3px; background:#e2e8f0; border-radius:2px; margin-top:3px; overflow:hidden; }
+        .progress-area .progress-bar { width:0%; height:100%; background:#2563eb; border-radius:2px; transition:width 0.25s; }
+        .progress-area .progress-bar.done { background:#16a34a; }
+        .result-item { padding:2px 6px; background:#f8fafc; margin:2px 0; border-radius:4px; cursor:pointer; font-size:11px; transition:background 0.1s; }
+        .result-item:hover { background:#e9edf4; }
+        .info-box { background:#f8fafc; padding:3px 6px; border-radius:4px; font-size:10px; white-space:pre-wrap; line-height:1.3; border:1px solid #e9edf4; color:#334155; margin-top:2px; }
+        #map { flex:1; background:#eef2f6; }
+        .modal-mask { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.35); display:none; align-items:center; justify-content:center; z-index:9999; backdrop-filter:blur(2px); }
+        .modal-box { width:420px; max-width:92vw; background:#fff; padding:24px; border-radius:16px; box-shadow:0 20px 60px rgba(0,0,0,0.15); }
+        .modal-box h4 { font-size:16px; font-weight:600; margin-bottom:16px; color:#0f172a; }
+        .modal-row { margin:10px 0; }
+        .modal-row label { font-size:13px; font-weight:500; color:#334155; display:block; margin-bottom:4px; }
+        .modal-btn-group { display:flex; gap:10px; margin-top:16px; justify-content:flex-end; }
+        .modal-btn-group button { min-width:80px; justify-content:center; }
+        #streetIdentifyBar { background:#eff6ff; border-radius:4px; padding:3px 8px; font-size:11px; color:#1e40af; border:1px solid #bfdbfe; display:none; margin-top:3px; align-items:center; gap:5px; flex-wrap:wrap; }
+        #streetIdentifyBar .badge-street { background:#2563eb; color:#fff; padding:1px 8px; border-radius:20px; font-size:10px; font-weight:500; }
+        #streetIdentifyBar .clear-filter-btn { background:transparent; color:#64748b; border:none; cursor:pointer; font-size:10px; padding:1px 5px; }
+        #streetIdentifyBar .clear-filter-btn:hover { background:#e2e8f0; }
+        .divider { border:none; border-top:1px solid #e9edf4; margin:3px 0; }
+        @media (max-width:768px) {
+            #sidebar { width:100%; min-width:unset; height:50vh; border-right:none; border-bottom:1px solid #e9edf4; }
+            #wrap { flex-direction:column; }
+            #map { height:50vh; }
+        }
+    </style>
+</head>
+<body>
+<div id="wrap">
+    <div id="sidebar">
+        <!-- 卡片1：地图控制 -->
+        <details class="card" open>
+            <summary class="card-title"><span>🗺️ 地图控制</span><span class="arrow">▶</span></summary>
+            <div class="card-body">
+                <div class="flex-row">
+                    <button onclick="setCityXiAn()" class="small ghost">📍 西安</button>
+                    <button id="toggleSimpleBtn" onclick="toggleSimpleMap()" class="outline small">极简</button>
+                    <button onclick="loadBigDistricts()" class="outline small">大区</button>
+                    <button onclick="loadAllStreetGeoJson()" class="outline small">街道</button>
+                    <button onclick="toggleAllOverlayVisible()" class="outline small">显隐</button>
+                    <button onclick="clearAllCustomOverlay()" class="outline small danger" style="color:#dc2626;border-color:#fecaca;">清除</button>
+                </div>
+                <div class="text-xs">搜索限定西安市范围，标记支持编辑、聚合、时间戳。</div>
+            </div>
+        </details>
+
+        <!-- 卡片2：导入 Excel -->
+        <details class="card" open>
+            <summary class="card-title"><span>📥 导入 Excel</span><span class="arrow">▶</span></summary>
+            <div class="card-body">
+                <div class="file-upload-wrapper">
+                    <input id="excelFileInput" type="file" accept=".xlsx,.xls" style="flex:1; min-width:80px;" />
+                </div>
+                <div id="fileStatusRow" class="flex-row" style="display:none; margin-top:3px;">
+                    <span class="file-name" id="selectedFileName">未选择文件</span>
+                    <button id="btnStartRecognize" onclick="startExcelRecognition()" class="success small">▶ 识别</button>
+                    <button onclick="cancelPendingFile()" class="outline small" style="color:#94a3b8;">✕</button>
+                </div>
+                <div class="progress-area" id="progressArea">
+                    <div class="progress-text" id="progressText">等待开始…</div>
+                    <div class="progress-track"><div class="progress-bar" id="progressBar"></div></div>
+                </div>
+                <div class="text-xs" style="margin-top:2px; color:#94a3b8;">
+                    表头：街道、品类、姓名1… 同街道同品类合并，多个师傅追加备注。
+                </div>
+            </div>
+        </details>
+
+        <!-- 卡片3：标记管理 -->
+        <details class="card" open>
+            <summary class="card-title"><span>📍 标记管理（<span id="markerCountBadge">0</span>）</span><span class="arrow">▶</span></summary>
+            <div class="card-body">
+                <div class="flex-row" style="gap:3px;">
+                    <input id="deleteStreetInput" placeholder="删除街道（如枣园街道）" style="flex:1; min-width:50px;" />
+                    <button onclick="deleteStreetMarkers()" class="danger small">删除</button>
+                    <button onclick="deleteAllMarkers()" class="danger small">全部清除</button>
+                </div>
+                <div class="flex-col" style="margin-top:3px;">
+                    <textarea id="noteInput" rows="1" placeholder="添加备注（多个关键词逗号分隔）" style="min-height:24px;"></textarea>
+                    <div class="flex-row" style="gap:3px;">
+                        <button onclick="addNoteMarker()" class="primary small" style="flex:1;">➕ 添加</button>
+                        <button onclick="loadFromCloud()" class="outline small" style="flex:1;">🔄 刷新</button>
+                    </div>
+                </div>
+            </div>
+        </details>
+
+        <!-- 卡片4：搜索与过滤 -->
+        <details class="card" open>
+            <summary class="card-title"><span>🔍 搜索 & 过滤</span><span class="arrow">▶</span></summary>
+            <div class="card-body">
+                <div class="flex-row" style="gap:3px;">
+                    <input id="addressInput" placeholder="地址 / 街道名" style="flex:1;" />
+                    <button onclick="universalSearch()" class="primary small" style="padding:4px 10px;">搜地址</button>
+                </div>
+                <div id="streetIdentifyBar">
+                    <span>📍 街道：</span>
+                    <span class="badge-street" id="identifiedStreetName">—</span>
+                    <span style="color:#64748b; font-size:10px;" id="identifiedStreetCount"></span>
+                    <button class="clear-filter-btn" onclick="clearFilter()">✕ 清除</button>
+                </div>
+                <div id="resultList" class="mt-1" style="max-height:50px; overflow-y:auto;"></div>
+                <div class="info-box" id="detailBox" style="font-size:10px; padding:3px 6px; margin-top:2px;">搜索详情</div>
+
+                <div style="margin-top:4px; border-top:1px dashed #dce3ed; padding-top:4px;">
+                    <div class="flex-row" style="gap:3px;">
+                        <input id="noteSearchInput" placeholder="品类 / 师傅名" style="flex:1;" />
+                        <button onclick="searchExistNoteMarker()" class="outline small">搜备注</button>
+                        <button onclick="clearFilter()" class="small ghost" style="font-size:10px; padding:1px 5px;">清除过滤</button>
+                    </div>
+                    <div id="filterInfo" style="font-size:10px; color:#64748b; margin-top:1px;"></div>
+                    <div id="noteSearchResultBox" class="info-box" style="font-size:10px; padding:3px 6px; margin-top:2px;"></div>
+                </div>
+            </div>
+        </details>
+    </div>
+    <div id="map"></div>
+</div>
+
+<!-- 编辑模态框 -->
+<div class="modal-mask" id="editModal">
+    <div class="modal-box">
+        <h4>编辑点位标记</h4>
+        <div class="modal-row">
+            <label>点位名称</label>
+            <input type="text" id="editNameInput" />
+        </div>
+        <div class="modal-row">
+            <label>备注内容</label>
+            <textarea id="editNoteInput" rows="3"></textarea>
+        </div>
+        <div class="modal-row">
+            <label>创建时间</label>
+            <span id="editCreatedAt" style="font-size:11px; color:#64748b;"></span>
+        </div>
+        <div class="modal-btn-group">
+            <button class="outline" onclick="closeEditModal()">取消</button>
+            <button class="danger" onclick="deleteCurrentMarker()">删除</button>
+            <button class="primary" onclick="saveMarkerEdit()">保存</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ===== Supabase 配置 =====
+    const SUPABASE_URL = "https://cvfaoficzbvzqjpuykre.supabase.co";
+    const SUPABASE_ANON_KEY =
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN2ZmFvZmljemJ2enFqcHV5a3JlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc1NjQ2NDMsImV4cCI6MjEwMzE0MDY0M30.0dAopa681BtJYQz_z8bMS94AyLAze7AgQYCie1iox00";
+
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const TABLE_NAME = 'markers';
+    const REQUEST_TIMEOUT = 15000;
+
+    // ===== 全局变量 =====
+    let map = null;
+    let currentGeo = null;
+    let markerList = [];
+    let tempSelectMarker = null;
+    let isSimpleMode = false;
+    let editingMarkerIndex = -1;
+    let streetCenterCache = {};
+    let lastHighlightMarker = null;
+    let filterStreet = '';
+    let pendingExcelData = null;
+    let isProcessing = false;
+    let clusterer = null;
+    let bigDistrictPolygons = [];
+    let bigDistrictTexts = [];
+    let streetPolygons = [];
+    let streetTextMarkers = [];
+    let allOverlayVisible = true;
+
+    const ICON_NORMAL = new AMap.Icon({
+        image: "https://webapi.amap.com/theme/v1.3/markers/n/mark_r.png",
+        size: new AMap.Size(25, 34),
+        imageSize: new AMap.Size(25, 34)
+    });
+    const ICON_HIGHLIGHT = new AMap.Icon({
+        image: "https://webapi.amap.com/theme/v1.3/markers/n/mark_b.png",
+        size: new AMap.Size(25, 34),
+        imageSize: new AMap.Size(25, 34)
+    });
+
+    // ===== 西安配置 =====
+    const districtFileToName = {
+        "beilin.geojson": "碑林区",
+        "lianhu.geojson": "莲湖区",
+        "changan.geojson": "长安区",
+        "weiyang.geojson": "未央区",
+        "yanta.geojson": "雁塔区"
+    };
+    const districtJsonFileList = Object.keys(districtFileToName);
+    const streetFileToName = {
+        "zaoyuan.geojson": "枣园街道",
+        "taoyuanlu.geojson": "桃园路街道",
+        "xiguan.geojson": "西关街道",
+        "tumen.geojson": "土门街道",
+        "beiguan.geojson": "北关街道",
+        "hongmiaopo.geojson": "红庙坡街道",
+        "huanchengxilu.geojson": "环城西路街道",
+        "qingnianlu.geojson": "青年路街道",
+        "beiyuanmen.geojson": "北院门街道",
+        "zhangbagou.geojson": "丈八沟街道",
+        "yuhuazhai.geojson": "鱼化寨街道",
+        "zhanghuzhai.geojson": "漳浒寨街道",
+        "sanqiao.geojson": "三桥街道",
+        "hancheng.geojson": "汉城街道",
+        "weiyanggong.geojson": "未央宫街道",
+        "liucunbao.geojson": "六村堡街道",
+        "jianzhanglu.geojson": "建章路街道",
+        "gaoqiao.geojson": "高桥街道",
+        "doumen.geojson": "斗门街道",
+        "wangsi.geojson": "王寺街道",
+        "mawang.geojson": "马王街道",
+        "zhangjiacun.geojson": "张家村街道",
+        "wenyilu.geojson": "文艺路街道",
+        "changanlu.geojson": "长安路街道",
+        "baishulin.geojson": "柏树林街道",
+        "nanyuanmen.geojson": "南院门街道"
+    };
+    const streetJsonFileList = Object.keys(streetFileToName);
+
+    // ★★★ 手动覆盖街道标签位置（新增“土门街道”） ★★★
+    const manualCenterOverride = {
+        "建章路街道": { lng: 108.8192, lat: 34.3369 },
+        "六村堡街道": { lng: 108.8532, lat: 34.3521 },
+        "土门街道": { lng: 108.8780, lat: 34.2628 }
+    };
+
+    // ===== 坐标转换 =====
+    const PI = 3.1415926535897932384626;
+    const a = 6378245.0;
+    const ee = 0.00669342162296594323;
+    function transformLat(x, y) {
+        let ret = -100.0 + 2.0 * x + 3.0 * y + 0.2 * y * y + 0.1 * x * y + 0.2 * Math.sqrt(Math.abs(x));
+        ret += (20.0 * Math.sin(6.0 * x * PI) + 20.0 * Math.sin(2.0 * x * PI)) * 2.0 / 3.0;
+        ret += (20.0 * Math.sin(y * PI) + 40.0 * Math.sin(y / 3.0 * PI)) * 2.0 / 3.0;
+        ret += (160.0 * Math.sin(y / 12.0 * PI) + 320 * Math.sin(y * PI / 30.0)) * 2.0 / 3.0;
+        return ret;
+    }
+    function transformLng(x, y) {
+        let ret = 300.0 + x + 2.0 * y + 0.1 * x * x + 0.1 * x * y + 0.1 * Math.sqrt(Math.abs(x));
+        ret += (20.0 * Math.sin(6.0 * x * PI) + 20.0 * Math.sin(2.0 * x * PI)) * 2.0 / 3.0;
+        ret += (20.0 * Math.sin(x * PI) + 40.0 * Math.sin(x / 3.0 * PI)) * 2.0 / 3.0;
+        ret += (150.0 * Math.sin(x / 12.0 * PI) + 300.0 * Math.sin(x / 30.0 * PI)) * 2.0 / 3.0;
+        return ret;
+    }
+    function wgs84ToGcj02(wgsLng, wgsLat) {
+        let dLat = transformLat(wgsLng - 105.0, wgsLat - 35.0);
+        let dLng = transformLng(wgsLng - 105.0, wgsLat - 35.0);
+        let radLat = wgsLat / 180.0 * PI;
+        let magic = Math.sin(radLat);
+        magic = 1 - ee * magic * magic;
+        let sqrtMagic = Math.sqrt(magic);
+        dLat = (dLat * 180.0) / ((a * (1 - ee)) / (magic * sqrtMagic) * PI);
+        dLng = (dLng * 180.0) / (a / sqrtMagic * Math.cos(radLat) * PI);
+        return [wgsLng + dLng, wgsLat + dLat];
+    }
+    function convertGeoCoordArray(coords) {
+        if (typeof coords[0] === 'number' && typeof coords[1] === 'number') {
+            return wgs84ToGcj02(coords[0], coords[1]);
+        }
+        const out = [];
+        for (let i = 0; i < coords.length; i++) {
+            out.push(convertGeoCoordArray(coords[i]));
+        }
+        return out;
+    }
+
+    // ===== 工具 =====
+    function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+    function getRandomStreetColor() {
+        const hue = Math.floor(Math.random() * 360);
+        return { strokeColor: `hsl(${hue},75%,40%)`, fillColor: `hsl(${hue},70%,60%)` };
+    }
+    function supabaseFetchWithTimeout(promiseFn, timeoutMs = REQUEST_TIMEOUT) {
+        return new Promise((resolve, reject) => {
+            const timer = setTimeout(() => {
+                reject(new Error(`请求超时（${timeoutMs/1000}秒），请检查网络或稍后重试`));
+            }, timeoutMs);
+            promiseFn()
+                .then(result => { clearTimeout(timer); resolve(result); })
+                .catch(err => { clearTimeout(timer); reject(err); });
+        });
+    }
+    function formatTimestamp(isoStr) {
+        if (!isoStr) return '无';
+        try {
+            const d = new Date(isoStr);
+            return d.toLocaleString('zh-CN', { hour12: false });
+        } catch { return isoStr; }
+    }
+
+    // ===== 更新计数 =====
+    function updateMarkerCountBadge() {
+        document.getElementById('markerCountBadge').textContent = markerList.length;
+        updateIdentifiedStreetCount();
+        applyFilterAndRenderMap();
+    }
+
+    // ===== 地图基础 =====
+    function setCityXiAn() {
+        map.setCity("西安市");
+        map.setCenter([108.95, 34.27]);
+        map.setZoom(11);
+    }
+    function toggleSimpleMap() {
+        isSimpleMode = !isSimpleMode;
+        map.setFeatures(isSimpleMode ? ['bg','road'] : ['bg','road','point','building']);
+        document.getElementById("toggleSimpleBtn").innerText = "极简";
+    }
+
+    // ===== 加载大区 =====
+    function renderDistrictGeoJson(geoData, distName) {
+        let features = [];
+        if (geoData.type === "Feature") features = [geoData];
+        else if (geoData.type === "FeatureCollection") features = geoData.features;
+        if (!features.length) return;
+        features.forEach(feat => {
+            if (!feat.geometry) return;
+            let gcjCoords = feat.geometry.coordinates;
+            let geoType = feat.geometry.type;
+            let paths = [];
+            if (geoType === "Polygon") paths.push(gcjCoords[0]);
+            else if (geoType === "MultiPolygon") gcjCoords.forEach(poly => paths.push(poly[0]));
+            paths.forEach(path => {
+                const poly = new AMap.Polygon({
+                    path: path,
+                    strokeColor: "#c82423",
+                    strokeWeight: 3,
+                    fillColor: "#ff7777",
+                    fillOpacity: 0.07,
+                    zIndex: 4
+                });
+                poly.setMap(map);
+                bigDistrictPolygons.push(poly);
+            });
+            let labelPositionArr;
+            if (distName === "长安区") {
+                labelPositionArr = [108.8762, 34.1452];
+            } else {
+                const tempPoly = new AMap.Polygon({ path: paths[0] });
+                const bounds = tempPoly.getBounds();
+                const bc = bounds.getCenter();
+                labelPositionArr = [bc.getLng(), bc.getLat()];
+            }
+            const textLabel = new AMap.Text({
+                text: distName,
+                position: labelPositionArr,
+                style: {
+                    fontSize: "13px",
+                    color: "#a01818",
+                    backgroundColor: "rgba(255,255,255,0.82)",
+                    padding: "2px 6px"
+                },
+                zIndex: 26
+            });
+            textLabel.setMap(map);
+            bigDistrictTexts.push(textLabel);
+        });
+    }
+
+    async function loadBigDistricts() {
+        clearBigDistrictLayer();
+        let successCount = 0;
+        for (let filename of districtJsonFileList) {
+            try {
+                const resp = await fetch("./geojson/" + filename);
+                if (!resp.ok) throw new Error("http错误 " + resp.status);
+                const geoData = await resp.json();
+                const distName = districtFileToName[filename];
+                renderDistrictGeoJson(geoData, distName);
+                successCount++;
+            } catch (err) {
+                console.error(`❌大区文件加载失败 ${filename}`, err);
+            }
+            await sleep(200);
+        }
+        alert(`大区加载完成，成功${successCount}/${districtJsonFileList.length}`);
+        if (bigDistrictPolygons.length > 0) map.setFitView(bigDistrictPolygons);
+    }
+
+    function clearBigDistrictLayer() {
+        bigDistrictPolygons.forEach(p => p.setMap(null));
+        bigDistrictTexts.forEach(t => t.setMap(null));
+        bigDistrictPolygons = [];
+        bigDistrictTexts = [];
+    }
+
+    // ===== 加载街道 =====
+    function renderPolygonOnly(pathArr, showName) {
+        const colorOpt = getRandomStreetColor();
+        const poly = new AMap.Polygon({
+            path: pathArr,
+            strokeColor: colorOpt.strokeColor,
+            strokeWeight: 2,
+            fillColor: colorOpt.fillColor,
+            fillOpacity: 0.14,
+            zIndex: 10
+        });
+        poly._streetName = showName;
+        poly.setMap(map);
+        streetPolygons.push(poly);
+    }
+
+    async function loadAllStreetGeoJson() {
+        clearStreetLayer();
+        streetCenterCache = {};
+        let successCount = 0;
+
+        for (let filename of streetJsonFileList) {
+            try {
+                const resp = await fetch("./geojson/" + filename);
+                if (!resp.ok) throw new Error("http错误 " + resp.status);
+                const geoData = await resp.json();
+                let features = [];
+                let showName = streetFileToName[filename] || filename.replace(".geojson", "");
+                if (geoData.type === "Feature") features = [geoData];
+                else if (geoData.type === "FeatureCollection") features = geoData.features;
+                else { console.warn(`${filename} 未知geojson类型，跳过`); continue; }
+                if (!Array.isArray(features) || features.length === 0) { console.warn(`${filename} 没有有效的features，跳过`); continue; }
+
+                const polyList = [];
+                features.forEach((feat, index) => {
+                    if (!feat.geometry) { console.warn(` ${filename} 第${index}个特征无geometry`); return; }
+                    if (feat.properties?.乡镇名) { showName = feat.properties.乡镇名; }
+                    const geoType = feat.geometry.type;
+                    const coords = feat.geometry.coordinates;
+                    if (geoType === "Polygon") {
+                        if (Array.isArray(coords) && Array.isArray(coords[0]) && coords[0].length > 2) {
+                            polyList.push(coords[0]);
+                        } else { console.warn(` ${filename} Polygon 外环格式异常`); }
+                    } else if (geoType === "MultiPolygon") {
+                        coords.forEach((polygonRings, idx) => {
+                            if (Array.isArray(polygonRings) && Array.isArray(polygonRings[0]) && polygonRings[0].length > 2) {
+                                polyList.push(polygonRings[0]);
+                            } else { console.warn(` ${filename} MultiPolygon 第${idx}个碎片外环格式异常`); }
+                        });
+                    } else { console.warn(` ${filename} 未知几何类型: ${geoType}`); }
+                });
+
+                const validPolyList = polyList.filter(p => Array.isArray(p) && p.length > 2);
+                if (validPolyList.length === 0) { console.warn(`⚠ 街道[${showName}] 没有有效多边形，跳过此街道`); continue; }
+
+                validPolyList.forEach(pathArr => renderPolygonOnly(pathArr, showName));
+
+                let sumLng = 0, sumLat = 0, totalPoints = 0;
+                validPolyList.forEach(path => {
+                    path.forEach(point => {
+                        if (Array.isArray(point) && point.length >= 2 && !isNaN(point[0]) && !isNaN(point[1])) {
+                            sumLng += point[0]; sumLat += point[1]; totalPoints++;
+                        }
+                    });
+                });
+                if (totalPoints === 0) { console.warn(`⚠ 街道[${showName}] 无有效顶点，跳过`); continue; }
+
+                let useLng = sumLng / totalPoints;
+                let useLat = sumLat / totalPoints;
+
+                // ★★★ 应用手动覆盖（包含土门街道） ★★★
+                const override = manualCenterOverride[showName];
+                if (override) {
+                    useLng = override.lng;
+                    useLat = override.lat;
+                } else {
+                    const inXiAn = (lng, lat) => lng > 108.5 && lng < 109.5 && lat > 33.8 && lat < 34.8;
+                    if (!inXiAn(useLng, useLat)) {
+                        let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
+                        validPolyList.forEach(path => {
+                            path.forEach(point => {
+                                if (Array.isArray(point) && point.length >= 2 && !isNaN(point[0]) && !isNaN(point[1])) {
+                                    const lng = point[0], lat = point[1];
+                                    if (lng < minLng) minLng = lng;
+                                    if (lng > maxLng) maxLng = lng;
+                                    if (lat < minLat) minLat = lat;
+                                    if (lat > maxLat) maxLat = lat;
+                                }
+                            });
+                        });
+                        if (isFinite(minLng) && isFinite(maxLng) && isFinite(minLat) && isFinite(maxLat)) {
+                            useLng = (minLng + maxLng) / 2;
+                            useLat = (minLat + maxLat) / 2;
+                        } else { console.warn(`⚠ 街道[${showName}] 包围盒计算失败，跳过`); continue; }
+                    }
+                }
+                if (isNaN(useLng) || isNaN(useLat) || !isFinite(useLng) || !isFinite(useLat)) {
+                    console.warn(`⚠ 街道[${showName}] 最终坐标无效，跳过`); continue;
+                }
+
+                const stdName = showName.trim();
+                streetCenterCache[stdName] = { lng: useLng, lat: useLat };
+
+                const streetMarkerLabel = new AMap.Marker({
+                    position: [useLng, useLat],
+                    icon: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMSIgaGVpZ2h0PSIxIj48L3N2Zz4=",
+                    offset: new AMap.Pixel(0, 0),
+                    zIndex: 25,
+                    label: {
+                        content: showName,
+                        direction: "center",
+                        offset: new AMap.Pixel(0, 0),
+                        style: {
+                            fontSize: "11px",
+                            color: "#002266",
+                            backgroundColor: "rgba(255,255,255,0.86)",
+                            padding: "1px 5px",
+                            border: "none",
+                            fontWeight: "bold"
+                        }
+                    }
+                });
+                streetMarkerLabel.setMap(map);
+                streetTextMarkers.push(streetMarkerLabel);
+                successCount++;
+            } catch (err) {
+                console.error(`❌加载文件失败：${filename}`, err);
+            }
+            await sleep(100);
+        }
+        alert(`街道加载完成：成功${successCount}/${streetJsonFileList.length}`);
+        if (streetPolygons.length > 0) map.setFitView(streetPolygons);
+    }
+
+    function clearStreetLayer() {
+        streetPolygons.forEach(p => p.setMap(null));
+        streetTextMarkers.forEach(t => t.setMap(null));
+        streetPolygons = [];
+        streetTextMarkers = [];
+    }
+
+    // ===== 图层显隐 & 清除 =====
+    function toggleAllOverlayVisible() {
+        allOverlayVisible = !allOverlayVisible;
+        bigDistrictPolygons.forEach(p => p.setMap(allOverlayVisible ? map : null));
+        bigDistrictTexts.forEach(t => t.setMap(allOverlayVisible ? map : null));
+        streetPolygons.forEach(p => p.setMap(allOverlayVisible ? map : null));
+        streetTextMarkers.forEach(t => t.setMap(allOverlayVisible ? map : null));
+    }
+    function clearAllCustomOverlay() {
+        clearBigDistrictLayer();
+        clearStreetLayer();
+    }
+
+    // ===== 街道识别 =====
+    function findStreetByLngLat(lng, lat) {
+        if (!streetPolygons || streetPolygons.length === 0) {
+            console.warn('⚠️ 街道数据未加载，请先点击「加载街道」');
+            return null;
+        }
+        const point = new AMap.LngLat(lng, lat);
+        for (let poly of streetPolygons) {
+            try {
+                if (poly.contains(point)) {
+                    return poly._streetName || null;
+                }
+            } catch (e) { continue; }
+        }
+        return null;
+    }
+
+    function updateIdentifiedStreetCount() {
+        const bar = document.getElementById('streetIdentifyBar');
+        if (!bar || bar.style.display === 'none') return;
+        const streetName = document.getElementById('identifiedStreetName').textContent;
+        if (!streetName || streetName === '—') return;
+        const count = markerList.filter(m => (m.geo.street || '').trim() === streetName).length;
+        document.getElementById('identifiedStreetCount').textContent = `（${count}）`;
+    }
+
+    // ===== 创建标记 =====
+    function createMarkerItem(geoObj, noteText, id = null, createdAt = null, updatedAt = null) {
+        const marker = new AMap.Marker({
+            position: [geoObj.lng, geoObj.lat],
+            icon: ICON_NORMAL,
+            map: map
+        });
+        const created = createdAt ? formatTimestamp(createdAt) : '无';
+        const updated = updatedAt ? formatTimestamp(updatedAt) : '无';
+        const content = `<div style="min-width:180px;">
+            <h4 style="font-size:13px;margin:3px 0;">点位信息</h4>
+            <p style="font-size:11px;margin:1px 0;">名称：${geoObj.name}</p>
+            <p style="font-size:11px;margin:1px 0;">区县：${geoObj.district||"无"}</p>
+            <p style="font-size:11px;margin:1px 0;">街道：${geoObj.street||"无"}</p>
+            <hr style="margin:3px 0;"/>
+            <p style="font-size:11px;margin:1px 0;"><b>备注：</b>${noteText || '无备注'}</p>
+            <p style="font-size:10px;color:#64748b;margin:1px 0;">创建：${created}</p>
+            <p style="font-size:10px;color:#64748b;margin:1px 0;">更新：${updated}</p>
+            <div style="margin-top:4px;">
+                <button class="edit-btn" style="font-size:11px;padding:2px 8px;" onclick="openEditModal(${markerList.length})">✏编辑</button>
+            </div>
+        </div>`;
+        const infoWin = new AMap.InfoWindow({
+            content: content,
+            offset: new AMap.Pixel(0, -30)
+        });
+        marker.on("click", () => {
+            infoWin.open(map, marker.getPosition());
+        });
+        const item = { marker, infoWin, geo: { ...geoObj }, note: noteText, id, created_at: createdAt, updated_at: updatedAt };
+        return item;
+    }
+
+    // ===== 应用过滤 & 聚合 =====
+    function applyFilterAndRenderMap() {
+        if (clusterer) {
+            clusterer.setMap(null);
+            clusterer = null;
+        }
+        markerList.forEach(item => item.marker.setMap(null));
+
+        let visibleItems = markerList;
+        if (filterStreet) {
+            visibleItems = markerList.filter(m => (m.geo.street || '').trim() === filterStreet);
+        }
+        visibleItems.forEach(item => item.marker.setMap(map));
+
+        if (!filterStreet && markerList.length > 10) {
+            const markers = markerList.map(item => item.marker);
+            AMap.plugin('AMap.MarkerClusterer', () => {
+                clusterer = new AMap.MarkerClusterer(map, markers, {
+                    gridSize: 60,
+                    renderClusterMarker: function(context) {
+                        const count = context.count;
+                        const marker = new AMap.Marker({
+                            position: context.latLng,
+                            label: {
+                                content: `<div style="background:#2563eb;color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;box-shadow:0 2px 6px rgba(0,0,0,0.3);">${count}</div>`,
+                                direction: 'center'
+                            }
+                        });
+                        return marker;
+                    }
+                });
+            });
+        }
+    }
+
+    // ===== Supabase 操作（含时间戳） =====
+    async function loadFromCloud() {
+        try {
+            const promise = supabaseClient.from(TABLE_NAME).select('*');
+            const { data, error } = await supabaseFetchWithTimeout(() => promise);
+            if (error) throw error;
+
+            markerList.forEach(item => { item.marker.setMap(null); item.infoWin.close(); });
+            markerList = [];
+
+            (data || []).forEach(doc => {
+                const item = createMarkerItem(doc.geo, doc.note, doc.id, doc.created_at, doc.updated_at);
+                markerList.push(item);
+            });
+            markerList.forEach((item, idx) => {
+                const created = item.created_at ? formatTimestamp(item.created_at) : '无';
+                const updated = item.updated_at ? formatTimestamp(item.updated_at) : '无';
+                const content = `<div style="min-width:180px;">
+                    <h4 style="font-size:13px;margin:3px 0;">点位信息</h4>
+                    <p style="font-size:11px;margin:1px 0;">名称：${item.geo.name}</p>
+                    <p style="font-size:11px;margin:1px 0;">区县：${item.geo.district||"无"}</p>
+                    <p style="font-size:11px;margin:1px 0;">街道：${item.geo.street||"无"}</p>
+                    <hr style="margin:3px 0;"/>
+                    <p style="font-size:11px;margin:1px 0;"><b>备注：</b>${item.note || '无备注'}</p>
+                    <p style="font-size:10px;color:#64748b;margin:1px 0;">创建：${created}</p>
+                    <p style="font-size:10px;color:#64748b;margin:1px 0;">更新：${updated}</p>
+                    <div style="margin-top:4px;">
+                        <button class="edit-btn" style="font-size:11px;padding:2px 8px;" onclick="openEditModal(${idx})">✏编辑</button>
+                    </div>
+                </div>`;
+                item.infoWin.setContent(content);
+            });
+            applyFilterAndRenderMap();
+            updateMarkerCountBadge();
+            console.log(`✅ 从 Supabase 加载了 ${markerList.length} 个标记`);
+        } catch (err) {
+            console.error('❌ 加载数据失败', err);
+            alert('加载数据失败：' + err.message);
+        }
+    }
+
+    async function addNoteMarker() {
+        if (!currentGeo) { alert("请先搜索地址/街道并选中位置"); return; }
+        const noteText = document.getElementById("noteInput").value.trim();
+        const geo = { ...currentGeo };
+        const now = new Date().toISOString();
+        try {
+            const promise = supabaseClient.from(TABLE_NAME).insert([{
+                geo,
+                note: noteText,
+                created_at: now,
+                updated_at: now
+            }]).select();
+            const { data, error } = await supabaseFetchWithTimeout(() => promise);
+            if (error) throw error;
+            if (data && data.length > 0) {
+                const newDoc = data[0];
+                const item = createMarkerItem(newDoc.geo, newDoc.note, newDoc.id, newDoc.created_at, newDoc.updated_at);
+                markerList.push(item);
+                const idx = markerList.length - 1;
+                const created = item.created_at ? formatTimestamp(item.created_at) : '无';
+                const updated = item.updated_at ? formatTimestamp(item.updated_at) : '无';
+                const content = `<div style="min-width:180px;">
+                    <h4 style="font-size:13px;margin:3px 0;">点位信息</h4>
+                    <p style="font-size:11px;margin:1px 0;">名称：${item.geo.name}</p>
+                    <p style="font-size:11px;margin:1px 0;">区县：${item.geo.district||"无"}</p>
+                    <p style="font-size:11px;margin:1px 0;">街道：${item.geo.street||"无"}</p>
+                    <hr style="margin:3px 0;"/>
+                    <p style="font-size:11px;margin:1px 0;"><b>备注：</b>${item.note || '无备注'}</p>
+                    <p style="font-size:10px;color:#64748b;margin:1px 0;">创建：${created}</p>
+                    <p style="font-size:10px;color:#64748b;margin:1px 0;">更新：${updated}</p>
+                    <div style="margin-top:4px;">
+                        <button class="edit-btn" style="font-size:11px;padding:2px 8px;" onclick="openEditModal(${idx})">✏编辑</button>
+                    </div>
+                </div>`;
+                item.infoWin.setContent(content);
+                applyFilterAndRenderMap();
+                updateMarkerCountBadge();
+            }
+        } catch (err) {
+            alert('添加标记失败：' + err.message);
+        }
+    }
+
+    async function saveMarkerEdit() {
+        if (editingMarkerIndex < 0 || editingMarkerIndex >= markerList.length) {
+            alert("没有选中任何标记");
+            return;
+        }
+        const item = markerList[editingMarkerIndex];
+        if (!item.id) { alert('该标记缺少云端ID，无法更新'); return; }
+        const newName = document.getElementById("editNameInput").value.trim();
+        const newNote = document.getElementById("editNoteInput").value.trim();
+        item.geo.name = newName || item.geo.name;
+        item.note = newNote;
+        const now = new Date().toISOString();
+        item.updated_at = now;
+
+        try {
+            const promise = supabaseClient.from(TABLE_NAME).update({
+                geo: item.geo,
+                note: item.note,
+                updated_at: now
+            }).match({ id: item.id });
+            const { error } = await supabaseFetchWithTimeout(() => promise);
+            if (error) throw error;
+            const created = item.created_at ? formatTimestamp(item.created_at) : '无';
+            const updated = item.updated_at ? formatTimestamp(item.updated_at) : '无';
+            const content = `<div style="min-width:180px;">
+                <h4 style="font-size:13px;margin:3px 0;">点位信息</h4>
+                <p style="font-size:11px;margin:1px 0;">名称：${item.geo.name}</p>
+                <p style="font-size:11px;margin:1px 0;">区县：${item.geo.district||"无"}</p>
+                <p style="font-size:11px;margin:1px 0;">街道：${item.geo.street||"无"}</p>
+                <hr style="margin:3px 0;"/>
+                <p style="font-size:11px;margin:1px 0;"><b>备注：</b>${item.note || '无备注'}</p>
+                <p style="font-size:10px;color:#64748b;margin:1px 0;">创建：${created}</p>
+                <p style="font-size:10px;color:#64748b;margin:1px 0;">更新：${updated}</p>
+                <div style="margin-top:4px;">
+                    <button class="edit-btn" style="font-size:11px;padding:2px 8px;" onclick="openEditModal(${editingMarkerIndex})">✏编辑</button>
+                </div>
+            </div>`;
+            item.infoWin.setContent(content);
+            closeEditModal();
+            applyFilterAndRenderMap();
+            updateMarkerCountBadge();
+        } catch (err) {
+            alert('更新失败：' + err.message);
+        }
+    }
+
+    async function deleteCurrentMarker() {
+        if (editingMarkerIndex < 0 || editingMarkerIndex >= markerList.length) {
+            alert("没有选中的标记");
+            return;
+        }
+        if (!confirm("确认删除该标记？")) return;
+        const item = markerList[editingMarkerIndex];
+        await deleteMarkerItem(item);
+        closeEditModal();
+        alert("标记已删除");
+        updateMarkerCountBadge();
+    }
+
+    async function deleteMarkerItem(item) {
+        if (!item) return;
+        try {
+            if (item.id) {
+                const promise = supabaseClient.from(TABLE_NAME).delete().match({ id: item.id });
+                const { error } = await supabaseFetchWithTimeout(() => promise);
+                if (error) throw error;
+            }
+            item.marker.setMap(null);
+            item.infoWin.close();
+            const idx = markerList.indexOf(item);
+            if (idx !== -1) markerList.splice(idx, 1);
+            if (lastHighlightMarker === item.marker) lastHighlightMarker = null;
+            applyFilterAndRenderMap();
+            updateMarkerCountBadge();
+        } catch (err) {
+            console.error('删除标记失败:', err);
+            alert('删除标记失败：' + err.message);
+        }
+    }
+
+    async function deleteAllMarkers() {
+        if (markerList.length === 0) { alert('当前没有标记可清除'); return; }
+        if (!confirm(`⚠️ 确定清除全部 ${markerList.length} 个标记？`)) return;
+        const ids = markerList.map(item => item.id).filter(id => id != null);
+        if (ids.length === 0) { alert('缺少云端ID，无法删除'); return; }
+        try {
+            const promise = supabaseClient.from(TABLE_NAME).delete().in('id', ids);
+            const { error } = await supabaseFetchWithTimeout(() => promise);
+            if (error) throw error;
+            markerList.forEach(item => { item.marker.setMap(null); item.infoWin.close(); });
+            markerList = [];
+            if (lastHighlightMarker) lastHighlightMarker = null;
+            applyFilterAndRenderMap();
+            updateMarkerCountBadge();
+            alert(`✅ 已清除 ${ids.length} 个标记`);
+            clearFilter();
+        } catch (err) {
+            alert('批量删除失败：' + err.message);
+        }
+    }
+
+    async function deleteStreetMarkers() {
+        const streetInput = document.getElementById('deleteStreetInput');
+        const streetName = streetInput.value.trim();
+        if (!streetName) { alert('请输入街道名称'); return; }
+        const matchedItems = markerList.filter(item => {
+            const s = (item.geo.street || '').trim();
+            return s === streetName || s.includes(streetName) || streetName.includes(s);
+        });
+        if (matchedItems.length === 0) { alert(`未找到街道「${streetName}」的标记`); return; }
+        if (!confirm(`确定删除「${streetName}」的 ${matchedItems.length} 个标记？`)) return;
+        const ids = matchedItems.map(item => item.id).filter(id => id != null);
+        if (ids.length === 0) { alert('匹配的标记缺少云端ID'); return; }
+        try {
+            const promise = supabaseClient.from(TABLE_NAME).delete().in('id', ids);
+            const { error } = await supabaseFetchWithTimeout(() => promise);
+            if (error) throw error;
+            const toRemove = new Set(matchedItems);
+            markerList = markerList.filter(item => !toRemove.has(item));
+            matchedItems.forEach(item => { item.marker.setMap(null); item.infoWin.close(); });
+            if (lastHighlightMarker && toRemove.has(lastHighlightMarker._item)) lastHighlightMarker = null;
+            applyFilterAndRenderMap();
+            updateMarkerCountBadge();
+            alert(`✅ 已删除「${streetName}」的 ${ids.length} 个标记`);
+            streetInput.value = '';
+            if (filterStreet === streetName) clearFilter();
+        } catch (err) {
+            alert('批量删除失败：' + err.message);
+        }
+    }
+
+    // ===== 编辑弹窗 =====
+    function openEditModal(index) {
+        if (index < 0 || index >= markerList.length) { console.warn("无效标记索引"); return; }
+        editingMarkerIndex = index;
+        const item = markerList[index];
+        document.getElementById("editNameInput").value = item.geo.name || "";
+        document.getElementById("editNoteInput").value = item.note || "";
+        document.getElementById("editCreatedAt").textContent = item.created_at ? formatTimestamp(item.created_at) : '无';
+        document.getElementById("editModal").style.display = "flex";
+    }
+    function closeEditModal() {
+        document.getElementById("editModal").style.display = "none";
+        editingMarkerIndex = -1;
+    }
+
+    // ===== 搜索 =====
+    function universalSearch() {
+        const keyword = document.getElementById("addressInput").value.trim();
+        const detailDom = document.getElementById("detailBox");
+        const listDom = document.getElementById("resultList");
+        listDom.innerHTML = "";
+        if (!keyword) { alert("请输入地点/街道名称"); return; }
+
+        const matchStreetName = Object.keys(streetCenterCache).find(name => name.includes(keyword) || keyword.includes(name));
+        if (matchStreetName) {
+            const center = streetCenterCache[matchStreetName];
+            currentGeo = {
+                type: "street",
+                name: matchStreetName,
+                address: matchStreetName,
+                lng: center.lng,
+                lat: center.lat,
+                province: "陕西省",
+                city: "西安市",
+                district: "",
+                street: matchStreetName
+            };
+            map.setCenter([center.lng, center.lat]);
+            map.setZoom(13);
+            if (tempSelectMarker) tempSelectMarker.remove();
+            tempSelectMarker = new AMap.Marker({
+                position: [center.lng, center.lat],
+                icon: ICON_HIGHLIGHT,
+                map: map
+            });
+            detailDom.innerText = `【街道定位】${matchStreetName}  (${center.lng.toFixed(4)},${center.lat.toFixed(4)})`;
+            setFilterStreet(matchStreetName);
+            return;
+        }
+
+        detailDom.innerText = "正在搜索...";
+        AMap.plugin(['AMap.PlaceSearch', 'AMap.Geocoder'], function() {
+            const placeSearch = new AMap.PlaceSearch({ city: "西安市", citylimit: true, pageSize: 6 });
+            const geocoder = new AMap.Geocoder();
+
+            placeSearch.search(keyword, function(statusPoi, resPoi) {
+                let allResult = [];
+                if (statusPoi === "complete" && resPoi.poiList && resPoi.poiList.pois.length > 0) {
+                    resPoi.poiList.pois.forEach(p => {
+                        allResult.push({
+                            type: "poi",
+                            name: p.name,
+                            address: p.address,
+                            lng: p.location.lng,
+                            lat: p.location.lat,
+                            province: p.pname,
+                            city: p.cityname,
+                            district: p.adname,
+                            street: p.address
+                        });
+                    });
+                }
+
+                geocoder.getLocation(keyword, function(statusGeo, resGeo) {
+                    if (statusGeo === "complete" && resGeo.geocodes.length > 0) {
+                        resGeo.geocodes.forEach(g => {
+                            allResult.push({
+                                type: "geo",
+                                name: g.formattedAddress,
+                                address: g.formattedAddress,
+                                lng: g.location.lng,
+                                lat: g.location.lat,
+                                province: g.province,
+                                city: g.city,
+                                district: g.district,
+                                street: g.street
+                            });
+                        });
+                    }
+
+                    const DIST_THRESHOLD_M = 150;
+                    function calcDistance(lng1, lat1, lng2, lat2) {
+                        const R = 6371000;
+                        const rad = Math.PI / 180;
+                        const dLat = (lat2 - lat1) * rad;
+                        const dLng = (lng2 - lng1) * rad;
+                        const a = Math.sin(dLat/2)**2 + Math.cos(lat1*rad) * Math.cos(lat2*rad) * Math.sin(dLng/2)**2;
+                        return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                    }
+
+                    const groups = [];
+                    allResult.forEach(item => {
+                        let findGroup = null;
+                        for (let g of groups) {
+                            const first = g[0];
+                            const dist = calcDistance(first.lng, first.lat, item.lng, item.lat);
+                            if ((first.name.includes(item.name) || item.name.includes(first.name)) && dist <= DIST_THRESHOLD_M) {
+                                findGroup = g; break;
+                            }
+                        }
+                        if (findGroup) findGroup.push(item);
+                        else groups.push([item]);
+                    });
+
+                    const unique = groups.map(group => {
+                        const poiItem = group.find(x => x.type === "poi");
+                        return poiItem ? poiItem : group[0];
+                    });
+
+                    if (unique.length === 0) {
+                        detailDom.innerText = "未找到位置，请输入更完整地址或先加载街道数据";
+                        return;
+                    }
+
+                    detailDom.innerText = `共找到${unique.length}条结果，点击选择`;
+                    unique.forEach((item, idx) => {
+                        const div = document.createElement("div");
+                        div.className = "result-item";
+                        const tag = item.type === "poi" ? "【POI】" : "【地址】";
+                        div.innerText = `${idx+1}.${tag}${item.name}`;
+                        div.onclick = () => {
+                            currentGeo = item;
+                            map.setCenter([item.lng, item.lat]);
+                            map.setZoom(16);
+                            if (tempSelectMarker) tempSelectMarker.remove();
+                            tempSelectMarker = new AMap.Marker({
+                                position: [item.lng, item.lat],
+                                icon: ICON_HIGHLIGHT,
+                                map: map
+                            });
+                            detailDom.innerText =
+                                `名称：${item.name}\n地址：${item.province||""}${item.city||""}${item.district||""}${item.street||""}\n经纬度：${item.lng.toFixed(4)},${item.lat.toFixed(4)}`;
+
+                            const streetName = findStreetByLngLat(item.lng, item.lat);
+                            if (streetName) {
+                                setFilterStreet(streetName);
+                            } else {
+                                if (item.street && item.street.trim()) {
+                                    const matched = Object.keys(streetCenterCache).find(
+                                        s => s.includes(item.street) || item.street.includes(s)
+                                    );
+                                    if (matched) setFilterStreet(matched);
+                                    else { clearFilter(); detailDom.innerText += '\n⚠️ 无法识别街道'; }
+                                } else {
+                                    clearFilter();
+                                    detailDom.innerText += '\n⚠️ 无法识别街道';
+                                }
+                            }
+                        };
+                        listDom.appendChild(div);
+                    });
+                });
+            });
+        });
+    }
+
+    function setFilterStreet(streetName) {
+        if (!streetName) { clearFilter(); return; }
+        filterStreet = streetName;
+        const bar = document.getElementById('streetIdentifyBar');
+        bar.style.display = 'flex';
+        document.getElementById('identifiedStreetName').textContent = streetName;
+        const count = markerList.filter(m => (m.geo.street || '').trim() === streetName).length;
+        document.getElementById('identifiedStreetCount').textContent = `（${count}）`;
+        document.getElementById('filterInfo').innerHTML = `🔍 当前过滤：${streetName}（${count}）`;
+        if (lastHighlightMarker) {
+            lastHighlightMarker.setIcon(ICON_NORMAL);
+            lastHighlightMarker = null;
+        }
+        document.getElementById('noteSearchResultBox').innerHTML = '';
+        applyFilterAndRenderMap();
+    }
+
+    function clearFilter() {
+        filterStreet = '';
+        document.getElementById('filterInfo').innerHTML = '';
+        document.getElementById('noteSearchResultBox').innerHTML = '';
+        document.getElementById('streetIdentifyBar').style.display = 'none';
+        document.getElementById('identifiedStreetName').textContent = '—';
+        document.getElementById('identifiedStreetCount').textContent = '';
+        if (lastHighlightMarker) {
+            lastHighlightMarker.setIcon(ICON_NORMAL);
+            lastHighlightMarker = null;
+        }
+        applyFilterAndRenderMap();
+    }
+
+    // ===== 备注搜索 =====
+    function searchExistNoteMarker() {
+        const keywordInput = document.getElementById("noteSearchInput").value.trim().toLowerCase();
+        const boxDom = document.getElementById("noteSearchResultBox");
+        if (!keywordInput) { boxDom.innerText = "请输入品类/师傅名"; return; }
+        if (lastHighlightMarker) {
+            lastHighlightMarker.setIcon(ICON_NORMAL);
+            lastHighlightMarker = null;
+        }
+        const hitList = [];
+        markerList.forEach((item, idx) => {
+            if (filterStreet) {
+                const itemStreet = (item.geo.street || '').trim();
+                if (itemStreet !== filterStreet) return;
+            }
+            const nameStr = (item.geo.name || "").toLowerCase();
+            const noteStr = (item.note || "").toLowerCase();
+            const noteKeys = noteStr.split(/[,，、\s]+/).map(k => k.trim()).filter(k => k.length > 0);
+            let isMatch = false;
+            if (nameStr.includes(keywordInput)) isMatch = true;
+            else {
+                for (let nk of noteKeys) {
+                    if (nk.includes(keywordInput) || keywordInput.includes(nk)) { isMatch = true; break; }
+                }
+            }
+            if (isMatch) hitList.push({ idx, item });
+        });
+        if (hitList.length === 0) {
+            const msg = filterStreet ?
+                `在“${filterStreet}”下未找到匹配「${keywordInput}」` :
+                `未找到匹配「${keywordInput}」`;
+            boxDom.innerText = msg;
+            return;
+        }
+        boxDom.innerHTML = `<div>共 ${hitList.length} 条，点击定位</div>`;
+        hitList.forEach(hit => {
+            const div = document.createElement("div");
+            div.className = "result-item";
+            div.innerText = `[${hit.idx+1}] ${hit.item.geo.name} ｜ ${hit.item.note || "无"}`;
+            div.dataset.index = hit.idx;
+            div.onclick = function() {
+                if (lastHighlightMarker) lastHighlightMarker.setIcon(ICON_NORMAL);
+                hit.item.marker.setIcon(ICON_HIGHLIGHT);
+                lastHighlightMarker = hit.item.marker;
+                const pos = hit.item.marker.getPosition();
+                map.setZoomAndCenter(16, pos);
+                setTimeout(() => hit.item.infoWin.open(map, pos), 350);
+            };
+            boxDom.appendChild(div);
+        });
+    }
+
+    // ===== Excel 导入 =====
+    function handleExcelImport(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        pendingExcelData = null;
+        document.getElementById('progressArea').style.display = 'none';
+        document.getElementById('progressBar').style.width = '0%';
+        document.getElementById('progressBar').className = 'progress-bar';
+        document.getElementById('progressText').textContent = '等待开始…';
+
+        const reader = new FileReader();
+        reader.onload = function(ev) {
+            try {
+                const binary = ev.target.result;
+                const workbook = XLSX.read(binary, { type: 'binary' });
+                const sheetName = workbook.SheetNames[0];
+                const sheet = workbook.Sheets[sheetName];
+                const jsonRows = XLSX.utils.sheet_to_json(sheet);
+                if (!jsonRows || jsonRows.length === 0) {
+                    alert('Excel为空');
+                    e.target.value = '';
+                    document.getElementById('fileStatusRow').style.display = 'none';
+                    return;
+                }
+                pendingExcelData = jsonRows;
+                document.getElementById('selectedFileName').textContent = `📄 ${file.name} (${jsonRows.length}行)`;
+                document.getElementById('fileStatusRow').style.display = 'flex';
+                document.getElementById('btnStartRecognize').disabled = false;
+                document.getElementById('btnStartRecognize').textContent = '▶ 识别';
+                document.getElementById('progressArea').style.display = 'none';
+            } catch (err) {
+                alert('解析Excel失败：' + err.message);
+                e.target.value = '';
+                document.getElementById('fileStatusRow').style.display = 'none';
+            }
+        };
+        reader.readAsBinaryString(file);
+    }
+
+    function cancelPendingFile() {
+        pendingExcelData = null;
+        document.getElementById('fileStatusRow').style.display = 'none';
+        document.getElementById('excelFileInput').value = '';
+        document.getElementById('progressArea').style.display = 'none';
+        document.getElementById('progressBar').style.width = '0%';
+        document.getElementById('progressBar').className = 'progress-bar';
+        document.getElementById('progressText').textContent = '已取消';
+    }
+
+    async function startExcelRecognition() {
+        if (isProcessing) {
+            alert('正在处理中，请稍候…');
+            return;
+        }
+        if (!pendingExcelData || pendingExcelData.length === 0) {
+            alert('请先上传Excel文件');
+            return;
+        }
+        if (Object.keys(streetCenterCache).length === 0) {
+            alert('请先加载街道数据（点击侧边栏“街道”按钮），否则无法准确识别位置。');
+            return;
+        }
+
+        const btn = document.getElementById('btnStartRecognize');
+        btn.disabled = true;
+        btn.textContent = '⏳ 处理中…';
+        isProcessing = true;
+
+        const progressArea = document.getElementById('progressArea');
+        progressArea.style.display = 'block';
+        const progressBar = document.getElementById('progressBar');
+        progressBar.style.width = '0%';
+        progressBar.className = 'progress-bar';
+        const progressText = document.getElementById('progressText');
+
+        try {
+            const totalRows = pendingExcelData.length;
+            progressText.textContent = `📊 共 ${totalRows} 行`;
+
+            const result = await processExcelRowsWithProgress(pendingExcelData, (progress) => {
+                const pct = Math.min(progress.percent || 0, 100);
+                progressBar.style.width = pct + '%';
+                let statusText = progress.status || '处理中…';
+                let detail = '';
+                if (progress.current !== undefined && progress.total !== undefined) {
+                    detail = ` (${progress.current}/${progress.total})`;
+                }
+                if (progress.street) {
+                    detail += ` 街道：${progress.street}`;
+                }
+                if (progress.count !== undefined) {
+                    detail += ` 已生成 ${progress.count} 个`;
+                }
+                progressText.textContent = `${statusText}${detail}`;
+                if (progress.done) {
+                    progressBar.className = 'progress-bar done';
+                    progressText.textContent = `✅ 完成！共 ${progress.count || 0} 个标记`;
+                }
+            });
+
+            progressBar.style.width = '100%';
+            progressBar.className = 'progress-bar done';
+            progressText.textContent = `✅ 完成！共 ${result?.count || 0} 个标记`;
+            updateMarkerCountBadge();
+            alert(`✅ Excel 识别完成！共生成 ${result?.count || 0} 个标记`);
+
+        } catch (err) {
+            console.error('识别失败:', err);
+            progressText.textContent = `❌ 失败：${err.message}`;
+            alert('识别失败：' + err.message);
+        } finally {
+            isProcessing = false;
+            btn.disabled = false;
+            btn.textContent = '▶ 识别';
+        }
+    }
+
+    async function processExcelRowsWithProgress(rows, onProgress) {
+        if (!rows || rows.length === 0) {
+            onProgress && onProgress({ status: '❌ 无数据', done: true, count: 0 });
+            return { count: 0 };
+        }
+
+        function cleanStreetName(name) {
+            if (!name) return '';
+            name = name.trim();
+            if (name.includes('街道') && !name.endsWith('街道')) name = name.replace(/街道/g, '').trim() + '街道';
+            if (!name.endsWith('街道') && !name.includes('街道')) name = name + '街道';
+            return name;
+        }
+
+        const groupMap = {};
+        for (let row of rows) {
+            let street = (row["街道"] || "").trim();
+            const category = (row["品类"] || "").trim();
+            if (!street || !category) continue;
+            const rawStreet = street;
+            street = cleanStreetName(street);
+
+            const nameList = [];
+            Object.keys(row).forEach(key => {
+                if (key.startsWith("姓名")) {
+                    const val = (row[key] || "").trim();
+                    if (val) nameList.push(val);
+                }
+            });
+            if (nameList.length === 0) continue;
+
+            const groupKey = `${street}||${category}`;
+            if (!groupMap[groupKey]) {
+                groupMap[groupKey] = { street, rawStreet, category, nameList: [] };
+            }
+            nameList.forEach(name => {
+                if (!groupMap[groupKey].nameList.includes(name)) groupMap[groupKey].nameList.push(name);
+            });
+        }
+
+        const groupKeys = Object.keys(groupMap);
+        if (groupKeys.length === 0) {
+            onProgress && onProgress({ status: '⚠️ 没有有效分组', done: true, count: 0 });
+            return { count: 0 };
+        }
+
+        onProgress && onProgress({
+            status: `📦 分组完成，共 ${groupKeys.length} 组`,
+            total: groupKeys.length,
+            current: 0,
+            percent: 0,
+            count: 0
+        });
+
+        const unmatchedStreets = new Set();
+        let geocodeSuccessCount = 0;
+        const totalGroups = groupKeys.length;
+
+        for (let i = 0; i < groupKeys.length; i++) {
+            const gk = groupKeys[i];
+            const gItem = groupMap[gk];
+            const pct = Math.round((i / totalGroups) * 30);
+
+            onProgress && onProgress({
+                status: `🌐 坐标解析 ${i+1}/${totalGroups}`,
+                total: totalGroups,
+                current: i + 1,
+                percent: pct,
+                street: gItem.street,
+                count: 0
+            });
+
+            if (streetCenterCache[gItem.street]) continue;
+            const fuzzyKey = Object.keys(streetCenterCache).find(key =>
+                key.includes(gItem.street.replace('街道', '')) || gItem.street.includes(key.replace('街道', ''))
+            );
+            if (fuzzyKey) {
+                console.log(`✅ 模糊匹配：${gItem.street} → ${fuzzyKey}`);
+                gItem.street = fuzzyKey;
+                continue;
+            }
+            console.log(`🔍 地理编码：${gItem.street}`);
+            const fullAddress = `西安市${gItem.street}`;
+            const geo = await geocodeAmap(fullAddress);
+            if (geo) {
+                streetCenterCache[gItem.street] = { lng: geo.lng, lat: geo.lat };
+                geocodeSuccessCount++;
+            } else {
+                unmatchedStreets.add(gItem.rawStreet || gItem.street);
+            }
+            await sleep(150);
+        }
+
+        if (unmatchedStreets.size > 0) {
+            const toRemove = [];
+            for (let gk of groupKeys) {
+                const street = groupMap[gk].street;
+                if (unmatchedStreets.has(street) || !streetCenterCache[street]) toRemove.push(gk);
+            }
+            toRemove.forEach(gk => delete groupMap[gk]);
+            const msg = `⚠️ 以下 ${unmatchedStreets.size} 个街道无法获取坐标，已跳过：${[...unmatchedStreets].join('、')}`;
+            onProgress && onProgress({
+                status: msg,
+                total: groupKeys.length,
+                current: groupKeys.length,
+                percent: 30,
+                count: 0
+            });
+        }
+
+        const validGroupKeys = Object.keys(groupMap);
+        if (validGroupKeys.length === 0) {
+            onProgress && onProgress({ status: '❌ 没有有效街道', done: true, count: 0 });
+            return { count: 0 };
+        }
+
+        onProgress && onProgress({
+            status: `✅ 坐标解析完成，有效 ${validGroupKeys.length} 组`,
+            total: validGroupKeys.length,
+            current: 0,
+            percent: 30,
+            count: 0
+        });
+
+        const streetTotalCount = {};
+        for (let gk of validGroupKeys) {
+            const street = groupMap[gk].street;
+            streetTotalCount[street] = (streetTotalCount[street] || 0) + 1;
+        }
+
+        const streetOffsetCounter = {};
+        let successCount = 0;
+        const totalValid = validGroupKeys.length;
+
+        for (let i = 0; i < validGroupKeys.length; i++) {
+            const gk = validGroupKeys[i];
+            const gItem = groupMap[gk];
+            const street = gItem.street;
+            const cat = gItem.category;
+            const masterNames = gItem.nameList.join("，");
+
+            const center = streetCenterCache[street];
+            if (!center) continue;
+
+            const total = streetTotalCount[street];
+            const idx = streetOffsetCounter[street] || 0;
+            streetOffsetCounter[street] = idx + 1;
+
+            const angle = (idx / total) * 2 * Math.PI;
+            const radius = 0.002 + Math.min(total * 0.0004, 0.0025);
+            const lngOffset = radius * Math.cos(angle);
+            const latOffset = radius * Math.sin(angle);
+
+            const baseGeo = {
+                name: `${street}｜${cat}`,
+                address: street,
+                lng: center.lng + lngOffset,
+                lat: center.lat + latOffset,
+                province: "陕西省",
+                city: "西安市",
+                district: "",
+                street: street
+            };
+            const note = masterNames;
+            const now = new Date().toISOString();
+
+            const pct = 30 + Math.round((i / totalValid) * 70);
+            onProgress && onProgress({
+                status: `💾 保存 ${i+1}/${totalValid}`,
+                total: totalValid,
+                current: i + 1,
+                percent: pct,
+                street: street,
+                count: successCount
+            });
+
+            try {
+                const promise = supabaseClient.from(TABLE_NAME).insert([{
+                    geo: baseGeo,
+                    note: note,
+                    created_at: now,
+                    updated_at: now
+                }]).select();
+                const { data, error } = await supabaseFetchWithTimeout(() => promise);
+                if (error) throw error;
+                if (data && data.length > 0) {
+                    const newDoc = data[0];
+                    const item = createMarkerItem(newDoc.geo, newDoc.note, newDoc.id, newDoc.created_at, newDoc.updated_at);
+                    markerList.push(item);
+                    successCount++;
+                }
+            } catch (err) {
+                console.error('导入标记失败：', err);
+            }
+            await sleep(30);
+        }
+
+        updateMarkerCountBadge();
+        onProgress && onProgress({
+            status: `✅ 完成`,
+            done: true,
+            count: successCount,
+            percent: 100
+        });
+
+        return { count: successCount };
+    }
+
+    function geocodeAmap(address) {
+        return new Promise(resolve => {
+            AMap.plugin("AMap.Geocoder", () => {
+                const geocoder = new AMap.Geocoder();
+                geocoder.getLocation(address, function(status, res) {
+                    if (status === "complete" && res.geocodes.length > 0) {
+                        const g = res.geocodes[0];
+                        resolve({ lng: g.location.lng, lat: g.location.lat });
+                    } else resolve(null);
+                });
+            });
+        });
+    }
+
+    // ===== Realtime 订阅 =====
+    let subscription = null;
+    function setupRealtimeSubscription() {
+        if (subscription) { subscription.unsubscribe(); subscription = null; }
+        subscription = supabaseClient
+            .channel('public:markers')
+            .on('postgres_changes', { event: '*', schema: 'public', table: TABLE_NAME }, payload => {
+                console.log('🔄 数据库变更，重新加载数据', payload);
+                loadFromCloud();
+            })
+            .subscribe((status) => { console.log('📡 Realtime 订阅状态:', status); });
+    }
+
+    // ===== 初始化 =====
+    window.onload = function() {
+        map = new AMap.Map("map", {
+            zoom: 10,
+            center: [108.85, 34.35],
+            features: ['bg','road','point','building']
+        });
+
+        document.getElementById("excelFileInput").addEventListener("change", handleExcelImport);
+
+        loadFromCloud().then(() => {
+            setupRealtimeSubscription();
+        });
+    };
+</script>
+</body>
+</html>
