@@ -182,20 +182,7 @@
                 <div id="resultList" class="mt-1" style="max-height:50px; overflow-y:auto;"></div>
                 <div class="info-box" id="detailBox" style="font-size:10px; padding:3px 6px; margin-top:2px;">搜索详情</div>
 
-                <!-- 过滤器：区县 + 品类 -->
-                <div style="margin-top:4px; border-top:1px dashed #dce3ed; padding-top:4px;">
-                    <div class="flex-row" style="gap:3px;">
-                        <select id="filterDistrict" class="filter-select" onchange="onFilterChange()">
-                            <option value="">全部区县</option>
-                        </select>
-                        <select id="filterCategory" class="filter-select" onchange="onFilterChange()">
-                            <option value="">全部品类</option>
-                        </select>
-                        <button onclick="clearFilter()" class="small ghost" style="font-size:10px; padding:1px 5px;">清除过滤</button>
-                    </div>
-                    <div id="filterInfo" style="font-size:10px; color:#64748b; margin-top:1px;"></div>
-                </div>
-
+                <!-- 备注搜索 -->
                 <div style="margin-top:4px; border-top:1px dashed #dce3ed; padding-top:4px;">
                     <div class="flex-row" style="gap:3px;">
                         <input id="noteSearchInput" placeholder="品类 / 师傅名" style="flex:1;" />
@@ -253,8 +240,6 @@
     let streetCenterCache = {};
     let lastHighlightMarker = null;
     let filterStreet = '';
-    let filterDistrict = '';
-    let filterCategory = '';
     let pendingExcelData = null;
     let isProcessing = false;
     let clusterer = null;
@@ -500,120 +485,10 @@
         item.marker.setContent(newContent);
     }
 
-    // ===== 更新计数 & 过滤器选项 =====
+    // ===== 更新计数 & 街道统计 =====
     function updateMarkerCountBadge() {
         document.getElementById('markerCountBadge').textContent = markerList.length;
         updateIdentifiedStreetCount();
-        updateFilterOptions();
-        applyFilterAndRenderMap();
-    }
-
-    // ★★★ 修改：区县下拉预设各大区 ★★★
-    function updateFilterOptions() {
-        const districtSet = new Set();
-        // 1. 预设区县（来自 districtFileToName）
-        Object.values(districtFileToName).forEach(d => districtSet.add(d));
-        // 2. 从标记数据中提取已有区县
-        markerList.forEach(item => {
-            const dist = getDistrictFromItem(item);
-            if (dist) districtSet.add(dist);
-        });
-
-        const categorySet = new Set();
-        markerList.forEach(item => {
-            const cat = getCategoryFromItem(item);
-            if (cat) categorySet.add(cat);
-        });
-
-        // 更新区县下拉
-        const distSelect = document.getElementById('filterDistrict');
-        const currentDist = distSelect.value;
-        distSelect.innerHTML = '<option value="">全部区县</option>';
-        Array.from(districtSet).sort().forEach(d => {
-            const opt = document.createElement('option');
-            opt.value = d;
-            opt.textContent = d;
-            distSelect.appendChild(opt);
-        });
-        if (currentDist && districtSet.has(currentDist)) distSelect.value = currentDist;
-        else distSelect.value = '';
-
-        // 更新品类下拉
-        const catSelect = document.getElementById('filterCategory');
-        const currentCat = catSelect.value;
-        catSelect.innerHTML = '<option value="">全部品类</option>';
-        Array.from(categorySet).sort().forEach(c => {
-            const opt = document.createElement('option');
-            opt.value = c;
-            opt.textContent = c;
-            catSelect.appendChild(opt);
-        });
-        if (currentCat && categorySet.has(currentCat)) catSelect.value = currentCat;
-        else catSelect.value = '';
-    }
-
-    function onFilterChange() {
-        filterDistrict = document.getElementById('filterDistrict').value;
-        filterCategory = document.getElementById('filterCategory').value;
-        applyFilterAndRenderMap();
-        updateFilterInfo();
-    }
-
-    function updateFilterInfo() {
-        const parts = [];
-        if (filterStreet) parts.push(`街道:${filterStreet}`);
-        if (filterDistrict) parts.push(`区县:${filterDistrict}`);
-        if (filterCategory) parts.push(`品类:${filterCategory}`);
-        document.getElementById('filterInfo').innerHTML = parts.length ? `🔍 当前过滤：${parts.join(' | ')}` : '';
-    }
-
-    // ===== 应用过滤 & 聚合 =====
-    function applyFilterAndRenderMap() {
-        if (clusterer) {
-            clusterer.setMap(null);
-            clusterer = null;
-        }
-        markerList.forEach(item => item.marker.setMap(null));
-
-        let visibleItems = markerList;
-        visibleItems = visibleItems.filter(item => {
-            if (filterStreet) {
-                const s = (item.geo.street || '').trim();
-                if (s !== filterStreet) return false;
-            }
-            if (filterDistrict) {
-                const d = getDistrictFromItem(item);
-                if (d !== filterDistrict) return false;
-            }
-            if (filterCategory) {
-                const c = getCategoryFromItem(item);
-                if (c !== filterCategory) return false;
-            }
-            return true;
-        });
-
-        visibleItems.forEach(item => item.marker.setMap(map));
-
-        if (!filterStreet && !filterDistrict && !filterCategory && markerList.length > 10) {
-            const markers = markerList.map(item => item.marker);
-            AMap.plugin('AMap.MarkerClusterer', () => {
-                clusterer = new AMap.MarkerClusterer(map, markers, {
-                    gridSize: 60,
-                    renderClusterMarker: function(context) {
-                        const count = context.count;
-                        const marker = new AMap.Marker({
-                            position: context.latLng,
-                            label: {
-                                content: `<div style="background:#2563eb;color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;box-shadow:0 2px 6px rgba(0,0,0,0.3);">${count}</div>`,
-                                direction: 'center'
-                            }
-                        });
-                        return marker;
-                    }
-                });
-            });
-        }
-        updateFilterInfo();
     }
 
     // ===== 街道识别 =====
@@ -847,6 +722,46 @@
         editingMarkerIndex = -1;
     }
 
+    // ===== 应用过滤 & 聚合 =====
+    function applyFilterAndRenderMap() {
+        if (clusterer) {
+            clusterer.setMap(null);
+            clusterer = null;
+        }
+        markerList.forEach(item => item.marker.setMap(null));
+
+        let visibleItems = markerList;
+        if (filterStreet) {
+            visibleItems = visibleItems.filter(item => {
+                const s = (item.geo.street || '').trim();
+                return s === filterStreet;
+            });
+        }
+
+        visibleItems.forEach(item => item.marker.setMap(map));
+
+        // 聚合：只有无街道过滤且标记数量大于10时才启用
+        if (!filterStreet && markerList.length > 10) {
+            const markers = markerList.map(item => item.marker);
+            AMap.plugin('AMap.MarkerClusterer', () => {
+                clusterer = new AMap.MarkerClusterer(map, markers, {
+                    gridSize: 60,
+                    renderClusterMarker: function(context) {
+                        const count = context.count;
+                        const marker = new AMap.Marker({
+                            position: context.latLng,
+                            label: {
+                                content: `<div style="background:#2563eb;color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;box-shadow:0 2px 6px rgba(0,0,0,0.3);">${count}</div>`,
+                                direction: 'center'
+                            }
+                        });
+                        return marker;
+                    }
+                });
+            });
+        }
+    }
+
     // ===== 搜索 =====
     function universalSearch() {
         const keyword = document.getElementById("addressInput").value.trim();
@@ -1014,38 +929,27 @@
         document.getElementById('identifiedStreetName').textContent = streetName;
         const count = markerList.filter(m => (m.geo.street || '').trim() === streetName).length;
         document.getElementById('identifiedStreetCount').textContent = `（${count}）`;
-        document.getElementById('filterDistrict').value = '';
-        document.getElementById('filterCategory').value = '';
-        filterDistrict = '';
-        filterCategory = '';
         if (lastHighlightMarker) {
             lastHighlightMarker.setIcon(ICON_NORMAL);
             lastHighlightMarker = null;
         }
         document.getElementById('noteSearchResultBox').innerHTML = '';
         applyFilterAndRenderMap();
-        updateFilterOptions();
-        updateFilterInfo();
+        updateMarkerCountBadge();
     }
 
     function clearFilter() {
         filterStreet = '';
-        filterDistrict = '';
-        filterCategory = '';
-        document.getElementById('filterInfo').innerHTML = '';
         document.getElementById('noteSearchResultBox').innerHTML = '';
         document.getElementById('streetIdentifyBar').style.display = 'none';
         document.getElementById('identifiedStreetName').textContent = '—';
         document.getElementById('identifiedStreetCount').textContent = '';
-        document.getElementById('filterDistrict').value = '';
-        document.getElementById('filterCategory').value = '';
         if (lastHighlightMarker) {
             lastHighlightMarker.setIcon(ICON_NORMAL);
             lastHighlightMarker = null;
         }
         applyFilterAndRenderMap();
-        updateFilterOptions();
-        updateFilterInfo();
+        updateMarkerCountBadge();
     }
 
     // ===== 备注搜索 =====
@@ -1063,14 +967,6 @@
                 const s = (item.geo.street || '').trim();
                 if (s !== filterStreet) return;
             }
-            if (filterDistrict) {
-                const d = getDistrictFromItem(item);
-                if (d !== filterDistrict) return;
-            }
-            if (filterCategory) {
-                const c = getCategoryFromItem(item);
-                if (c !== filterCategory) return;
-            }
             const nameStr = (item.geo.name || "").toLowerCase();
             const noteStr = (item.note || "").toLowerCase();
             const categoryStr = getCategoryFromItem(item).toLowerCase();
@@ -1087,8 +983,6 @@
         if (hitList.length === 0) {
             let msg = `未找到匹配「${keywordInput}」`;
             if (filterStreet) msg += `（街道：${filterStreet}）`;
-            if (filterDistrict) msg += `（区县：${filterDistrict}）`;
-            if (filterCategory) msg += `（品类：${filterCategory}）`;
             boxDom.innerText = msg;
             return;
         }
@@ -1201,8 +1095,6 @@
         }
         alert(`大区加载完成，成功${successCount}/${districtJsonFileList.length}`);
         if (bigDistrictPolygons.length > 0) map.setFitView(bigDistrictPolygons);
-        // 更新区县下拉选项（现在已有预设，但加载大区后可能增加新区县）
-        updateFilterOptions();
     }
 
     function clearBigDistrictLayer() {
@@ -1649,7 +1541,7 @@
                 lat: center.lat + latOffset,
                 province: "陕西省",
                 city: "西安市",
-                district: "",   // 可后续通过街道匹配区县，暂留空
+                district: "",
                 street: street,
                 category: cat
             };
