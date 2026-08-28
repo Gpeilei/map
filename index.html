@@ -81,15 +81,16 @@
         #streetIdentifyBar .clear-filter-btn { background:transparent; color:#64748b; border:none; cursor:pointer; font-size:10px; padding:1px 5px; }
         #streetIdentifyBar .clear-filter-btn:hover { background:#e2e8f0; }
         .divider { border:none; border-top:1px solid #e9edf4; margin:3px 0; }
+        /* ★★★ 标记尺寸缩小至 26px ★★★ */
         .custom-marker-label {
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 30px;
-            height: 30px;
+            width: 26px;
+            height: 26px;
             border-radius: 50%;
             color: #fff;
-            font-size: 14px;
+            font-size: 12px;
             font-weight: bold;
             text-shadow: 0 1px 2px rgba(0,0,0,0.3);
             border: 2px solid #fff;
@@ -428,7 +429,8 @@
         const marker = new AMap.Marker({
             position: [geoObj.lng, geoObj.lat],
             content: contentDiv,
-            offset: new AMap.Pixel(-15, -15),
+            // ★★★ 偏移量调整为 -13, -13 以匹配 26px 尺寸 ★★★
+            offset: new AMap.Pixel(-13, -13),
             map: map
         });
 
@@ -518,7 +520,7 @@
         document.getElementById('identifiedStreetCount').textContent = `（${count}）`;
     }
 
-    // ===== 加载数据并自动合并重复 =====
+    // ★★★ 合并重复标记（保留最新） ★★★
     async function loadFromCloud() {
         if (_isMerging) {
             console.log('⏳ 合并进行中，跳过本次加载');
@@ -536,6 +538,7 @@
                 return;
             }
 
+            // 按 geo.name 分组
             const groupMap = {};
             data.forEach(doc => {
                 const key = doc.geo.name;
@@ -588,6 +591,7 @@
                 return;
             }
 
+            // 正常加载
             markerList.forEach(item => { item.marker.setMap(null); item.infoWin.close(); });
             markerList = [];
 
@@ -1445,7 +1449,7 @@
         }
     }
 
-    // ★★★ 核心导入函数（半径已缩小） ★★★
+    // 导入覆盖更新逻辑（保持不变）
     async function processExcelRowsWithProgress(rows, onProgress) {
         if (!rows || rows.length === 0) {
             onProgress && onProgress({ status: '❌ 无数据', done: true, count: 0 });
@@ -1595,8 +1599,7 @@
             streetOffsetCounter[street] = idx + 1;
 
             const angle = (idx / total) * 2 * Math.PI;
-            // ★★★ 缩小半径 ★★★
-            const radius = 0.0006 + Math.min(total * 0.00015, 0.0012);
+            const radius = 0.002 + Math.min(total * 0.0004, 0.0025);
             const lngOffset = radius * Math.cos(angle);
             const latOffset = radius * Math.sin(angle);
 
