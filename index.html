@@ -13,6 +13,7 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
+        /* 样式同上（保持原样） */
         * { margin:0; padding:0; box-sizing:border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f5f7fa; color: #1e293b; height: 100vh; overflow: hidden; }
         #wrap { display:flex; height:100vh; }
@@ -168,6 +169,7 @@
                 <div class="text-xs" style="margin-top:2px; color:#94a3b8;">
                     表头：街道、品类、姓名1… 同街道同品类合并，多个师傅追加备注。再次导入相同街道+品类会覆盖更新。
                 </div>
+                <div class="text-xs" style="color:#dc2626; margin-top:2px;" id="importErrorHint"></div>
             </div>
         </details>
 
@@ -226,7 +228,7 @@
     <div id="map"></div>
 </div>
 
-<!-- 编辑模态框（含类型选择） -->
+<!-- 编辑模态框 -->
 <div class="modal-mask" id="editModal">
     <div class="modal-box">
         <h4>编辑点位标记</h4>
@@ -302,18 +304,16 @@
     let allOverlayVisible = true;
     let _isMerging = false;
 
-    // 新增：当前工作模式
-    let currentMode = 'repair'; // 'repair' 或 'install'
+    // 当前工作模式
+    let currentMode = 'repair';
 
-    // 回收站（撤销用）
-    let recycleBin = [];
-    let undoStack = []; // 存储 { action: 'delete', data: itemData, index: originalIndex }
+    // 回收站
+    let undoStack = [];
     let redoStack = [];
 
     // 合并确认相关
     let pendingMergeResolve = null;
     let pendingMergeReject = null;
-    let currentMergeGroup = [];
 
     const ICON_NORMAL = new AMap.Icon({
         image: "https://webapi.amap.com/theme/v1.3/markers/n/mark_r.png",
@@ -455,6 +455,15 @@
         const letter = trimmed.match(/[a-zA-Z]/);
         return letter ? letter[0].toUpperCase() : '点';
     }
+    function createMarkerIconContent(category) {
+        const abbr = getCategoryAbbr(category);
+        const color = getCategoryColor(category);
+        const div = document.createElement('div');
+        div.className = 'custom-marker-label';
+        div.style.backgroundColor = color;
+        div.textContent = abbr;
+        return div;
+    }
 
     function getCategoryFromItem(item) {
         if (item.geo && item.geo.category) return item.geo.category;
@@ -473,7 +482,6 @@
     function setMode(mode) {
         if (mode === currentMode) return;
         currentMode = mode;
-        // 更新按钮样式
         const repairBtn = document.getElementById('modeRepairBtn');
         const installBtn = document.getElementById('modeInstallBtn');
         if (mode === 'repair') {
@@ -485,9 +493,7 @@
             installBtn.className = 'primary small';
             document.getElementById('currentModeLabel').textContent = '家居';
         }
-        // 清除街道过滤（避免混淆）
         clearFilter();
-        // 刷新地图显示
         applyFilterAndRenderMap();
         updateModeMarkerCount();
     }
@@ -497,18 +503,7 @@
         document.getElementById('modeMarkerCount').textContent = count;
     }
 
-    // ===== 创建自定义标记（带品类文字） =====
-    function createMarkerIconContent(category) {
-        const abbr = getCategoryAbbr(category);
-        const color = getCategoryColor(category);
-        const div = document.createElement('div');
-        div.className = 'custom-marker-label';
-        div.style.backgroundColor = color;
-        div.textContent = abbr;
-        return div;
-    }
-
-    // ===== 创建标记（增加 type 参数） =====
+    // ===== 创建标记（含 type） =====
     function createMarkerItem(geoObj, noteText, id = null, createdAt = null, updatedAt = null, type = 'repair') {
         if (!geoObj.category) {
             const parts = (geoObj.name || '').split('｜');
@@ -589,11 +584,10 @@
         item.marker.setContent(newContent);
     }
 
-    // ===== 删除标记（带撤销） =====
+    // ===== 删除标记 =====
     async function deleteMarkerItemByIndex(index) {
         if (index < 0 || index >= markerList.length) return;
         const item = markerList[index];
-        // 检查类型是否匹配当前模式（安全）
         if (item.type !== currentMode) {
             alert('当前模式下不能操作其他类型的标记');
             return;
@@ -636,7 +630,7 @@
         }
     }
 
-    // ===== 撤销删除 =====
+    // ===== 撤销 =====
     async function undoDelete() {
         if (undoStack.length === 0) return;
         const action = undoStack.pop();
@@ -653,7 +647,10 @@
                 };
                 const promise = supabaseClient.from(TABLE_NAME).insert([insertData]).select();
                 const { data: newData, error } = await supabaseFetchWithTimeout(() => promise);
-                if (error) throw error;
+                if (error) {
+                    console.error('撤销插入失败，详细错误:', error);
+                    throw error;
+                }
                 if (newData && newData.length > 0) {
                     const doc = newData[0];
                     const item = createMarkerItem(doc.geo, doc.note, doc.id, doc.created_at, doc.updated_at, doc.type || 'repair');
@@ -686,7 +683,7 @@
         }
     }
 
-    // ===== 导出功能 =====
+    // ===== 导出 =====
     function exportData(format) {
         const visibleItems = markerList.filter(item => item.type === currentMode);
         if (visibleItems.length === 0) { alert('当前模式下没有标记可导出'); return; }
@@ -723,10 +720,9 @@
         }
     }
 
-    // ===== 更新计数 & 街道统计 =====
+    // ===== 更新计数 =====
     function updateMarkerCountBadge() {
-        const total = markerList.length;
-        document.getElementById('markerCountBadge').textContent = total;
+        document.getElementById('markerCountBadge').textContent = markerList.length;
         updateIdentifiedStreetCount();
         updateModeMarkerCount();
     }
@@ -757,7 +753,7 @@
         document.getElementById('identifiedStreetCount').textContent = `（${count}）`;
     }
 
-    // ===== 核心：加载数据并处理重复合并 =====
+    // ===== 加载数据 =====
     async function loadFromCloud() {
         if (_isMerging) {
             console.log('⏳ 合并进行中，跳过本次加载');
@@ -776,14 +772,13 @@
                 return;
             }
 
-            // 为数据补充 type 字段（默认 repair）
             data.forEach(doc => {
                 if (!doc.type) doc.type = 'repair';
             });
 
             const groupMap = {};
             data.forEach(doc => {
-                const key = doc.geo.name + '||' + doc.type; // 按名称+类型分组
+                const key = doc.geo.name + '||' + doc.type;
                 if (!groupMap[key]) groupMap[key] = [];
                 groupMap[key].push(doc);
             });
@@ -792,7 +787,6 @@
             if (duplicates.length > 0) {
                 console.log(`🔄 发现 ${duplicates.length} 个重复组，请求用户确认...`);
                 _isMerging = true;
-
                 for (let key of duplicates) {
                     const docs = groupMap[key];
                     const result = await showMergeConfirm(docs);
@@ -824,7 +818,6 @@
                 return;
             }
 
-            // 正常加载
             markerList.forEach(item => { item.marker.setMap(null); item.infoWin.close(); });
             markerList = [];
 
@@ -852,7 +845,7 @@
         }
     }
 
-    // ===== 合并确认模态框 =====
+    // ===== 合并确认 =====
     function showMergeConfirm(docs) {
         return new Promise((resolve, reject) => {
             const modal = document.getElementById('mergeModal');
@@ -919,7 +912,10 @@
                 type: currentMode
             }]).select();
             const { data, error } = await supabaseFetchWithTimeout(() => promise);
-            if (error) throw error;
+            if (error) {
+                console.error('添加标记失败，详细错误:', error);
+                throw error;
+            }
             if (data && data.length > 0) {
                 const newDoc = data[0];
                 const item = createMarkerItem(newDoc.geo, newDoc.note, newDoc.id, newDoc.created_at, newDoc.updated_at, newDoc.type || currentMode);
@@ -965,7 +961,10 @@
                 type: item.type
             }).match({ id: item.id });
             const { error } = await supabaseFetchWithTimeout(() => promise);
-            if (error) throw error;
+            if (error) {
+                console.error('更新标记失败，详细错误:', error);
+                throw error;
+            }
             refreshMarkerInfoWindow(item, editingMarkerIndex);
             updateMarkerIcon(item);
             closeEditModal();
@@ -977,20 +976,7 @@
         }
     }
 
-    // ===== 删除标记（备用） =====
-    async function deleteCurrentMarker() {
-        if (editingMarkerIndex < 0 || editingMarkerIndex >= markerList.length) {
-            alert("没有选中的标记");
-            return;
-        }
-        if (!confirm("确认删除该标记？")) return;
-        await deleteMarkerItemByIndex(editingMarkerIndex);
-        closeEditModal();
-        alert("标记已删除");
-        updateMarkerCountBadge();
-        updateUndoButton();
-    }
-
+    // ===== 删除全部 =====
     async function deleteAllMarkers() {
         const visibleItems = markerList.filter(item => item.type === currentMode);
         if (visibleItems.length === 0) { alert('当前模式下没有标记可清除'); return; }
@@ -1028,7 +1014,7 @@
         }
     }
 
-    // ===== 删除街道标记（精确匹配） =====
+    // ===== 删除街道 =====
     async function deleteStreetMarkers() {
         const streetInput = document.getElementById('deleteStreetInput');
         const streetName = streetInput.value.trim();
@@ -1079,7 +1065,6 @@
     function openEditModal(index) {
         if (index < 0 || index >= markerList.length) { console.warn("无效标记索引"); return; }
         const item = markerList[index];
-        // 只允许编辑当前模式的标记
         if (item.type !== currentMode) {
             alert('当前模式下不能编辑其他类型的标记');
             return;
@@ -1152,7 +1137,6 @@
                 });
             });
         }
-        // 更新模式计数
         updateModeMarkerCount();
     }
 
@@ -1531,6 +1515,7 @@
         streetCenterCache = {};
         let successCount = 0;
         let failCount = 0;
+        let failedFiles = [];
 
         for (let filename of streetJsonFileList) {
             try {
@@ -1638,13 +1623,15 @@
             } catch (err) {
                 console.error(`❌加载文件失败：${filename}`, err);
                 failCount++;
+                failedFiles.push(filename);
             }
             await sleep(100);
         }
 
         let msg = `街道加载完成：成功${successCount}/${streetJsonFileList.length}`;
         if (failCount > 0) {
-            msg += `，失败${failCount}个，请检查文件是否存在。部分街道数据缺失时，搜索定位仍可使用地理编码。`;
+            msg += `，失败${failCount}个（${failedFiles.join('、')}）。这些街道将使用高德地理编码获取位置，不影响导入。`;
+            document.getElementById('importErrorHint').textContent = '⚠️ 部分街道 GeoJSON 缺失，已自动启用地理编码替代。';
         }
         alert(msg);
 
@@ -1822,7 +1809,7 @@
         }
     }
 
-    // 导入核心（覆盖更新 + 分散半径，并添加 type）
+    // ===== 核心处理 =====
     async function processExcelRowsWithProgress(rows, onProgress) {
         if (!rows || rows.length === 0) {
             onProgress && onProgress({ status: '❌ 无数据', done: true, count: 0 });
@@ -1854,7 +1841,6 @@
             });
             if (nameList.length === 0) continue;
 
-            // 分组键包含类型
             const groupKey = `${street}||${category}||${currentMode}`;
             if (!groupMap[groupKey]) {
                 groupMap[groupKey] = { street, rawStreet, category, nameList, type: currentMode };
@@ -2002,7 +1988,6 @@
                 count: successCount
             });
 
-            // 查找是否存在相同名称+类型的标记
             const existingItem = markerList.find(item => item.geo.name === baseGeo.name && item.type === type);
 
             if (existingItem) {
@@ -2022,7 +2007,10 @@
                         type: type
                     }).match({ id: existingItem.id });
                     const { error } = await supabaseFetchWithTimeout(() => promise);
-                    if (error) throw error;
+                    if (error) {
+                        console.error('更新标记失败，详细错误:', error);
+                        throw error;
+                    }
                     successCount++;
                 } catch (err) {
                     console.error('更新标记失败：', err);
@@ -2037,7 +2025,13 @@
                         type: type
                     }]).select();
                     const { data, error } = await supabaseFetchWithTimeout(() => promise);
-                    if (error) throw error;
+                    if (error) {
+                        console.error('插入新标记失败，详细错误:', error);
+                        // 尝试打印更详细的信息
+                        if (error.details) console.error('细节:', error.details);
+                        if (error.hint) console.error('提示:', error.hint);
+                        throw error;
+                    }
                     if (data && data.length > 0) {
                         const newDoc = data[0];
                         const item = createMarkerItem(newDoc.geo, newDoc.note, newDoc.id, newDoc.created_at, newDoc.updated_at, newDoc.type || type);
@@ -2138,7 +2132,6 @@
             setupRealtimeSubscription();
         });
 
-        // 设置默认模式为 repair
         setMode('repair');
     };
 </script>
