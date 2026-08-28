@@ -81,6 +81,23 @@
         #streetIdentifyBar .clear-filter-btn { background:transparent; color:#64748b; border:none; cursor:pointer; font-size:10px; padding:1px 5px; }
         #streetIdentifyBar .clear-filter-btn:hover { background:#e2e8f0; }
         .divider { border:none; border-top:1px solid #e9edf4; margin:3px 0; }
+        .custom-marker-label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            color: #fff;
+            font-size: 14px;
+            font-weight: bold;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+            border: 2px solid #fff;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            pointer-events: none;
+            user-select: none;
+        }
+        .filter-select { flex:1; min-width:70px; }
         @media (max-width:768px) {
             #sidebar { width:100%; min-width:unset; height:50vh; border-right:none; border-bottom:1px solid #e9edf4; }
             #wrap { flex-direction:column; }
@@ -165,13 +182,25 @@
                 <div id="resultList" class="mt-1" style="max-height:50px; overflow-y:auto;"></div>
                 <div class="info-box" id="detailBox" style="font-size:10px; padding:3px 6px; margin-top:2px;">搜索详情</div>
 
+                <!-- 过滤器：区县 + 品类 -->
+                <div style="margin-top:4px; border-top:1px dashed #dce3ed; padding-top:4px;">
+                    <div class="flex-row" style="gap:3px;">
+                        <select id="filterDistrict" class="filter-select" onchange="onFilterChange()">
+                            <option value="">全部区县</option>
+                        </select>
+                        <select id="filterCategory" class="filter-select" onchange="onFilterChange()">
+                            <option value="">全部品类</option>
+                        </select>
+                        <button onclick="clearFilter()" class="small ghost" style="font-size:10px; padding:1px 5px;">清除过滤</button>
+                    </div>
+                    <div id="filterInfo" style="font-size:10px; color:#64748b; margin-top:1px;"></div>
+                </div>
+
                 <div style="margin-top:4px; border-top:1px dashed #dce3ed; padding-top:4px;">
                     <div class="flex-row" style="gap:3px;">
                         <input id="noteSearchInput" placeholder="品类 / 师傅名" style="flex:1;" />
                         <button onclick="searchExistNoteMarker()" class="outline small">搜备注</button>
-                        <button onclick="clearFilter()" class="small ghost" style="font-size:10px; padding:1px 5px;">清除过滤</button>
                     </div>
-                    <div id="filterInfo" style="font-size:10px; color:#64748b; margin-top:1px;"></div>
                     <div id="noteSearchResultBox" class="info-box" style="font-size:10px; padding:3px 6px; margin-top:2px;"></div>
                 </div>
             </div>
@@ -224,6 +253,8 @@
     let streetCenterCache = {};
     let lastHighlightMarker = null;
     let filterStreet = '';
+    let filterDistrict = '';
+    let filterCategory = '';
     let pendingExcelData = null;
     let isProcessing = false;
     let clusterer = null;
@@ -283,7 +314,6 @@
     };
     const streetJsonFileList = Object.keys(streetFileToName);
 
-    // ★★★ 手动覆盖街道标签位置（新增“土门街道”） ★★★
     const manualCenterOverride = {
         "建章路街道": { lng: 108.8192, lat: 34.3369 },
         "六村堡街道": { lng: 108.8532, lat: 34.3521 },
@@ -354,254 +384,236 @@
         } catch { return isoStr; }
     }
 
-    // ===== 更新计数 =====
+    // ===== 品类相关 =====
+    function getCategoryColor(category) {
+        if (!category) return '#3b82f6';
+        let hash = 0;
+        for (let i = 0; i < category.length; i++) {
+            hash = category.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const hue = Math.abs(hash % 360);
+        return `hsl(${hue}, 75%, 50%)`;
+    }
+
+    function getCategoryAbbr(category) {
+        if (!category) return '点';
+        const trimmed = category.trim();
+        if (trimmed.length === 0) return '点';
+        const match = trimmed.match(/[\u4e00-\u9fa5]/);
+        if (match) return match[0];
+        const letter = trimmed.match(/[a-zA-Z]/);
+        return letter ? letter[0].toUpperCase() : '点';
+    }
+
+    function getCategoryFromItem(item) {
+        if (item.geo && item.geo.category) return item.geo.category;
+        if (item.geo && item.geo.name) {
+            const parts = item.geo.name.split('｜');
+            if (parts.length === 2) return parts[1];
+        }
+        return '';
+    }
+
+    function getDistrictFromItem(item) {
+        return (item.geo && item.geo.district) || '';
+    }
+
+    // ===== 创建自定义标记（带品类文字） =====
+    function createMarkerIconContent(category) {
+        const abbr = getCategoryAbbr(category);
+        const color = getCategoryColor(category);
+        const div = document.createElement('div');
+        div.className = 'custom-marker-label';
+        div.style.backgroundColor = color;
+        div.textContent = abbr;
+        return div;
+    }
+
+    // ===== 创建标记 =====
+    function createMarkerItem(geoObj, noteText, id = null, createdAt = null, updatedAt = null) {
+        if (!geoObj.category) {
+            const parts = (geoObj.name || '').split('｜');
+            if (parts.length === 2) geoObj.category = parts[1];
+            else geoObj.category = '';
+        }
+        const category = geoObj.category || '';
+
+        const contentDiv = createMarkerIconContent(category);
+        const marker = new AMap.Marker({
+            position: [geoObj.lng, geoObj.lat],
+            content: contentDiv,
+            offset: new AMap.Pixel(-15, -15),
+            map: map
+        });
+
+        const created = createdAt ? formatTimestamp(createdAt) : '无';
+        const updated = updatedAt ? formatTimestamp(updatedAt) : '无';
+        const content = `<div style="min-width:180px;">
+            <h4 style="font-size:13px;margin:3px 0;">点位信息</h4>
+            <p style="font-size:11px;margin:1px 0;">名称：${geoObj.name}</p>
+            <p style="font-size:11px;margin:1px 0;">区县：${geoObj.district||"无"}</p>
+            <p style="font-size:11px;margin:1px 0;">街道：${geoObj.street||"无"}</p>
+            <p style="font-size:11px;margin:1px 0;">品类：${category||"无"}</p>
+            <hr style="margin:3px 0;"/>
+            <p style="font-size:11px;margin:1px 0;"><b>备注：</b>${noteText || '无备注'}</p>
+            <p style="font-size:10px;color:#64748b;margin:1px 0;">创建：${created}</p>
+            <p style="font-size:10px;color:#64748b;margin:1px 0;">更新：${updated}</p>
+            <div style="margin-top:4px;">
+                <button class="edit-btn" style="font-size:11px;padding:2px 8px;" onclick="openEditModal(${markerList.length})">✏编辑</button>
+            </div>
+        </div>`;
+        const infoWin = new AMap.InfoWindow({
+            content: content,
+            offset: new AMap.Pixel(0, -30)
+        });
+        marker.on("click", () => {
+            infoWin.open(map, marker.getPosition());
+        });
+        const item = { marker, infoWin, geo: { ...geoObj }, note: noteText, id, created_at: createdAt, updated_at: updatedAt };
+        return item;
+    }
+
+    function refreshMarkerInfoWindow(item, index) {
+        const created = item.created_at ? formatTimestamp(item.created_at) : '无';
+        const updated = item.updated_at ? formatTimestamp(item.updated_at) : '无';
+        const category = getCategoryFromItem(item);
+        const content = `<div style="min-width:180px;">
+            <h4 style="font-size:13px;margin:3px 0;">点位信息</h4>
+            <p style="font-size:11px;margin:1px 0;">名称：${item.geo.name}</p>
+            <p style="font-size:11px;margin:1px 0;">区县：${item.geo.district||"无"}</p>
+            <p style="font-size:11px;margin:1px 0;">街道：${item.geo.street||"无"}</p>
+            <p style="font-size:11px;margin:1px 0;">品类：${category||"无"}</p>
+            <hr style="margin:3px 0;"/>
+            <p style="font-size:11px;margin:1px 0;"><b>备注：</b>${item.note || '无备注'}</p>
+            <p style="font-size:10px;color:#64748b;margin:1px 0;">创建：${created}</p>
+            <p style="font-size:10px;color:#64748b;margin:1px 0;">更新：${updated}</p>
+            <div style="margin-top:4px;">
+                <button class="edit-btn" style="font-size:11px;padding:2px 8px;" onclick="openEditModal(${index})">✏编辑</button>
+            </div>
+        </div>`;
+        item.infoWin.setContent(content);
+    }
+
+    function updateMarkerIcon(item) {
+        const category = getCategoryFromItem(item);
+        const newContent = createMarkerIconContent(category);
+        item.marker.setContent(newContent);
+    }
+
+    // ===== 更新计数 & 过滤器选项 =====
     function updateMarkerCountBadge() {
         document.getElementById('markerCountBadge').textContent = markerList.length;
         updateIdentifiedStreetCount();
+        updateFilterOptions();
         applyFilterAndRenderMap();
     }
 
-    // ===== 地图基础 =====
-    function setCityXiAn() {
-        map.setCity("西安市");
-        map.setCenter([108.95, 34.27]);
-        map.setZoom(11);
-    }
-    function toggleSimpleMap() {
-        isSimpleMode = !isSimpleMode;
-        map.setFeatures(isSimpleMode ? ['bg','road'] : ['bg','road','point','building']);
-        document.getElementById("toggleSimpleBtn").innerText = "极简";
-    }
-
-    // ===== 加载大区 =====
-    function renderDistrictGeoJson(geoData, distName) {
-        let features = [];
-        if (geoData.type === "Feature") features = [geoData];
-        else if (geoData.type === "FeatureCollection") features = geoData.features;
-        if (!features.length) return;
-        features.forEach(feat => {
-            if (!feat.geometry) return;
-            let gcjCoords = feat.geometry.coordinates;
-            let geoType = feat.geometry.type;
-            let paths = [];
-            if (geoType === "Polygon") paths.push(gcjCoords[0]);
-            else if (geoType === "MultiPolygon") gcjCoords.forEach(poly => paths.push(poly[0]));
-            paths.forEach(path => {
-                const poly = new AMap.Polygon({
-                    path: path,
-                    strokeColor: "#c82423",
-                    strokeWeight: 3,
-                    fillColor: "#ff7777",
-                    fillOpacity: 0.07,
-                    zIndex: 4
-                });
-                poly.setMap(map);
-                bigDistrictPolygons.push(poly);
-            });
-            let labelPositionArr;
-            if (distName === "长安区") {
-                labelPositionArr = [108.8762, 34.1452];
-            } else {
-                const tempPoly = new AMap.Polygon({ path: paths[0] });
-                const bounds = tempPoly.getBounds();
-                const bc = bounds.getCenter();
-                labelPositionArr = [bc.getLng(), bc.getLat()];
-            }
-            const textLabel = new AMap.Text({
-                text: distName,
-                position: labelPositionArr,
-                style: {
-                    fontSize: "13px",
-                    color: "#a01818",
-                    backgroundColor: "rgba(255,255,255,0.82)",
-                    padding: "2px 6px"
-                },
-                zIndex: 26
-            });
-            textLabel.setMap(map);
-            bigDistrictTexts.push(textLabel);
+    // ★★★ 修改：区县下拉预设各大区 ★★★
+    function updateFilterOptions() {
+        const districtSet = new Set();
+        // 1. 预设区县（来自 districtFileToName）
+        Object.values(districtFileToName).forEach(d => districtSet.add(d));
+        // 2. 从标记数据中提取已有区县
+        markerList.forEach(item => {
+            const dist = getDistrictFromItem(item);
+            if (dist) districtSet.add(dist);
         });
+
+        const categorySet = new Set();
+        markerList.forEach(item => {
+            const cat = getCategoryFromItem(item);
+            if (cat) categorySet.add(cat);
+        });
+
+        // 更新区县下拉
+        const distSelect = document.getElementById('filterDistrict');
+        const currentDist = distSelect.value;
+        distSelect.innerHTML = '<option value="">全部区县</option>';
+        Array.from(districtSet).sort().forEach(d => {
+            const opt = document.createElement('option');
+            opt.value = d;
+            opt.textContent = d;
+            distSelect.appendChild(opt);
+        });
+        if (currentDist && districtSet.has(currentDist)) distSelect.value = currentDist;
+        else distSelect.value = '';
+
+        // 更新品类下拉
+        const catSelect = document.getElementById('filterCategory');
+        const currentCat = catSelect.value;
+        catSelect.innerHTML = '<option value="">全部品类</option>';
+        Array.from(categorySet).sort().forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c;
+            opt.textContent = c;
+            catSelect.appendChild(opt);
+        });
+        if (currentCat && categorySet.has(currentCat)) catSelect.value = currentCat;
+        else catSelect.value = '';
     }
 
-    async function loadBigDistricts() {
-        clearBigDistrictLayer();
-        let successCount = 0;
-        for (let filename of districtJsonFileList) {
-            try {
-                const resp = await fetch("./geojson/" + filename);
-                if (!resp.ok) throw new Error("http错误 " + resp.status);
-                const geoData = await resp.json();
-                const distName = districtFileToName[filename];
-                renderDistrictGeoJson(geoData, distName);
-                successCount++;
-            } catch (err) {
-                console.error(`❌大区文件加载失败 ${filename}`, err);
-            }
-            await sleep(200);
+    function onFilterChange() {
+        filterDistrict = document.getElementById('filterDistrict').value;
+        filterCategory = document.getElementById('filterCategory').value;
+        applyFilterAndRenderMap();
+        updateFilterInfo();
+    }
+
+    function updateFilterInfo() {
+        const parts = [];
+        if (filterStreet) parts.push(`街道:${filterStreet}`);
+        if (filterDistrict) parts.push(`区县:${filterDistrict}`);
+        if (filterCategory) parts.push(`品类:${filterCategory}`);
+        document.getElementById('filterInfo').innerHTML = parts.length ? `🔍 当前过滤：${parts.join(' | ')}` : '';
+    }
+
+    // ===== 应用过滤 & 聚合 =====
+    function applyFilterAndRenderMap() {
+        if (clusterer) {
+            clusterer.setMap(null);
+            clusterer = null;
         }
-        alert(`大区加载完成，成功${successCount}/${districtJsonFileList.length}`);
-        if (bigDistrictPolygons.length > 0) map.setFitView(bigDistrictPolygons);
-    }
+        markerList.forEach(item => item.marker.setMap(null));
 
-    function clearBigDistrictLayer() {
-        bigDistrictPolygons.forEach(p => p.setMap(null));
-        bigDistrictTexts.forEach(t => t.setMap(null));
-        bigDistrictPolygons = [];
-        bigDistrictTexts = [];
-    }
-
-    // ===== 加载街道 =====
-    function renderPolygonOnly(pathArr, showName) {
-        const colorOpt = getRandomStreetColor();
-        const poly = new AMap.Polygon({
-            path: pathArr,
-            strokeColor: colorOpt.strokeColor,
-            strokeWeight: 2,
-            fillColor: colorOpt.fillColor,
-            fillOpacity: 0.14,
-            zIndex: 10
+        let visibleItems = markerList;
+        visibleItems = visibleItems.filter(item => {
+            if (filterStreet) {
+                const s = (item.geo.street || '').trim();
+                if (s !== filterStreet) return false;
+            }
+            if (filterDistrict) {
+                const d = getDistrictFromItem(item);
+                if (d !== filterDistrict) return false;
+            }
+            if (filterCategory) {
+                const c = getCategoryFromItem(item);
+                if (c !== filterCategory) return false;
+            }
+            return true;
         });
-        poly._streetName = showName;
-        poly.setMap(map);
-        streetPolygons.push(poly);
-    }
 
-    async function loadAllStreetGeoJson() {
-        clearStreetLayer();
-        streetCenterCache = {};
-        let successCount = 0;
+        visibleItems.forEach(item => item.marker.setMap(map));
 
-        for (let filename of streetJsonFileList) {
-            try {
-                const resp = await fetch("./geojson/" + filename);
-                if (!resp.ok) throw new Error("http错误 " + resp.status);
-                const geoData = await resp.json();
-                let features = [];
-                let showName = streetFileToName[filename] || filename.replace(".geojson", "");
-                if (geoData.type === "Feature") features = [geoData];
-                else if (geoData.type === "FeatureCollection") features = geoData.features;
-                else { console.warn(`${filename} 未知geojson类型，跳过`); continue; }
-                if (!Array.isArray(features) || features.length === 0) { console.warn(`${filename} 没有有效的features，跳过`); continue; }
-
-                const polyList = [];
-                features.forEach((feat, index) => {
-                    if (!feat.geometry) { console.warn(` ${filename} 第${index}个特征无geometry`); return; }
-                    if (feat.properties?.乡镇名) { showName = feat.properties.乡镇名; }
-                    const geoType = feat.geometry.type;
-                    const coords = feat.geometry.coordinates;
-                    if (geoType === "Polygon") {
-                        if (Array.isArray(coords) && Array.isArray(coords[0]) && coords[0].length > 2) {
-                            polyList.push(coords[0]);
-                        } else { console.warn(` ${filename} Polygon 外环格式异常`); }
-                    } else if (geoType === "MultiPolygon") {
-                        coords.forEach((polygonRings, idx) => {
-                            if (Array.isArray(polygonRings) && Array.isArray(polygonRings[0]) && polygonRings[0].length > 2) {
-                                polyList.push(polygonRings[0]);
-                            } else { console.warn(` ${filename} MultiPolygon 第${idx}个碎片外环格式异常`); }
+        if (!filterStreet && !filterDistrict && !filterCategory && markerList.length > 10) {
+            const markers = markerList.map(item => item.marker);
+            AMap.plugin('AMap.MarkerClusterer', () => {
+                clusterer = new AMap.MarkerClusterer(map, markers, {
+                    gridSize: 60,
+                    renderClusterMarker: function(context) {
+                        const count = context.count;
+                        const marker = new AMap.Marker({
+                            position: context.latLng,
+                            label: {
+                                content: `<div style="background:#2563eb;color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;box-shadow:0 2px 6px rgba(0,0,0,0.3);">${count}</div>`,
+                                direction: 'center'
+                            }
                         });
-                    } else { console.warn(` ${filename} 未知几何类型: ${geoType}`); }
-                });
-
-                const validPolyList = polyList.filter(p => Array.isArray(p) && p.length > 2);
-                if (validPolyList.length === 0) { console.warn(`⚠ 街道[${showName}] 没有有效多边形，跳过此街道`); continue; }
-
-                validPolyList.forEach(pathArr => renderPolygonOnly(pathArr, showName));
-
-                let sumLng = 0, sumLat = 0, totalPoints = 0;
-                validPolyList.forEach(path => {
-                    path.forEach(point => {
-                        if (Array.isArray(point) && point.length >= 2 && !isNaN(point[0]) && !isNaN(point[1])) {
-                            sumLng += point[0]; sumLat += point[1]; totalPoints++;
-                        }
-                    });
-                });
-                if (totalPoints === 0) { console.warn(`⚠ 街道[${showName}] 无有效顶点，跳过`); continue; }
-
-                let useLng = sumLng / totalPoints;
-                let useLat = sumLat / totalPoints;
-
-                // ★★★ 应用手动覆盖（包含土门街道） ★★★
-                const override = manualCenterOverride[showName];
-                if (override) {
-                    useLng = override.lng;
-                    useLat = override.lat;
-                } else {
-                    const inXiAn = (lng, lat) => lng > 108.5 && lng < 109.5 && lat > 33.8 && lat < 34.8;
-                    if (!inXiAn(useLng, useLat)) {
-                        let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
-                        validPolyList.forEach(path => {
-                            path.forEach(point => {
-                                if (Array.isArray(point) && point.length >= 2 && !isNaN(point[0]) && !isNaN(point[1])) {
-                                    const lng = point[0], lat = point[1];
-                                    if (lng < minLng) minLng = lng;
-                                    if (lng > maxLng) maxLng = lng;
-                                    if (lat < minLat) minLat = lat;
-                                    if (lat > maxLat) maxLat = lat;
-                                }
-                            });
-                        });
-                        if (isFinite(minLng) && isFinite(maxLng) && isFinite(minLat) && isFinite(maxLat)) {
-                            useLng = (minLng + maxLng) / 2;
-                            useLat = (minLat + maxLat) / 2;
-                        } else { console.warn(`⚠ 街道[${showName}] 包围盒计算失败，跳过`); continue; }
-                    }
-                }
-                if (isNaN(useLng) || isNaN(useLat) || !isFinite(useLng) || !isFinite(useLat)) {
-                    console.warn(`⚠ 街道[${showName}] 最终坐标无效，跳过`); continue;
-                }
-
-                const stdName = showName.trim();
-                streetCenterCache[stdName] = { lng: useLng, lat: useLat };
-
-                const streetMarkerLabel = new AMap.Marker({
-                    position: [useLng, useLat],
-                    icon: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMSIgaGVpZ2h0PSIxIj48L3N2Zz4=",
-                    offset: new AMap.Pixel(0, 0),
-                    zIndex: 25,
-                    label: {
-                        content: showName,
-                        direction: "center",
-                        offset: new AMap.Pixel(0, 0),
-                        style: {
-                            fontSize: "11px",
-                            color: "#002266",
-                            backgroundColor: "rgba(255,255,255,0.86)",
-                            padding: "1px 5px",
-                            border: "none",
-                            fontWeight: "bold"
-                        }
+                        return marker;
                     }
                 });
-                streetMarkerLabel.setMap(map);
-                streetTextMarkers.push(streetMarkerLabel);
-                successCount++;
-            } catch (err) {
-                console.error(`❌加载文件失败：${filename}`, err);
-            }
-            await sleep(100);
+            });
         }
-        alert(`街道加载完成：成功${successCount}/${streetJsonFileList.length}`);
-        if (streetPolygons.length > 0) map.setFitView(streetPolygons);
-    }
-
-    function clearStreetLayer() {
-        streetPolygons.forEach(p => p.setMap(null));
-        streetTextMarkers.forEach(t => t.setMap(null));
-        streetPolygons = [];
-        streetTextMarkers = [];
-    }
-
-    // ===== 图层显隐 & 清除 =====
-    function toggleAllOverlayVisible() {
-        allOverlayVisible = !allOverlayVisible;
-        bigDistrictPolygons.forEach(p => p.setMap(allOverlayVisible ? map : null));
-        bigDistrictTexts.forEach(t => t.setMap(allOverlayVisible ? map : null));
-        streetPolygons.forEach(p => p.setMap(allOverlayVisible ? map : null));
-        streetTextMarkers.forEach(t => t.setMap(allOverlayVisible ? map : null));
-    }
-    function clearAllCustomOverlay() {
-        clearBigDistrictLayer();
-        clearStreetLayer();
+        updateFilterInfo();
     }
 
     // ===== 街道识别 =====
@@ -630,75 +642,7 @@
         document.getElementById('identifiedStreetCount').textContent = `（${count}）`;
     }
 
-    // ===== 创建标记 =====
-    function createMarkerItem(geoObj, noteText, id = null, createdAt = null, updatedAt = null) {
-        const marker = new AMap.Marker({
-            position: [geoObj.lng, geoObj.lat],
-            icon: ICON_NORMAL,
-            map: map
-        });
-        const created = createdAt ? formatTimestamp(createdAt) : '无';
-        const updated = updatedAt ? formatTimestamp(updatedAt) : '无';
-        const content = `<div style="min-width:180px;">
-            <h4 style="font-size:13px;margin:3px 0;">点位信息</h4>
-            <p style="font-size:11px;margin:1px 0;">名称：${geoObj.name}</p>
-            <p style="font-size:11px;margin:1px 0;">区县：${geoObj.district||"无"}</p>
-            <p style="font-size:11px;margin:1px 0;">街道：${geoObj.street||"无"}</p>
-            <hr style="margin:3px 0;"/>
-            <p style="font-size:11px;margin:1px 0;"><b>备注：</b>${noteText || '无备注'}</p>
-            <p style="font-size:10px;color:#64748b;margin:1px 0;">创建：${created}</p>
-            <p style="font-size:10px;color:#64748b;margin:1px 0;">更新：${updated}</p>
-            <div style="margin-top:4px;">
-                <button class="edit-btn" style="font-size:11px;padding:2px 8px;" onclick="openEditModal(${markerList.length})">✏编辑</button>
-            </div>
-        </div>`;
-        const infoWin = new AMap.InfoWindow({
-            content: content,
-            offset: new AMap.Pixel(0, -30)
-        });
-        marker.on("click", () => {
-            infoWin.open(map, marker.getPosition());
-        });
-        const item = { marker, infoWin, geo: { ...geoObj }, note: noteText, id, created_at: createdAt, updated_at: updatedAt };
-        return item;
-    }
-
-    // ===== 应用过滤 & 聚合 =====
-    function applyFilterAndRenderMap() {
-        if (clusterer) {
-            clusterer.setMap(null);
-            clusterer = null;
-        }
-        markerList.forEach(item => item.marker.setMap(null));
-
-        let visibleItems = markerList;
-        if (filterStreet) {
-            visibleItems = markerList.filter(m => (m.geo.street || '').trim() === filterStreet);
-        }
-        visibleItems.forEach(item => item.marker.setMap(map));
-
-        if (!filterStreet && markerList.length > 10) {
-            const markers = markerList.map(item => item.marker);
-            AMap.plugin('AMap.MarkerClusterer', () => {
-                clusterer = new AMap.MarkerClusterer(map, markers, {
-                    gridSize: 60,
-                    renderClusterMarker: function(context) {
-                        const count = context.count;
-                        const marker = new AMap.Marker({
-                            position: context.latLng,
-                            label: {
-                                content: `<div style="background:#2563eb;color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;box-shadow:0 2px 6px rgba(0,0,0,0.3);">${count}</div>`,
-                                direction: 'center'
-                            }
-                        });
-                        return marker;
-                    }
-                });
-            });
-        }
-    }
-
-    // ===== Supabase 操作（含时间戳） =====
+    // ===== 加载数据 & 刷新 =====
     async function loadFromCloud() {
         try {
             const promise = supabaseClient.from(TABLE_NAME).select('*');
@@ -709,26 +653,17 @@
             markerList = [];
 
             (data || []).forEach(doc => {
+                if (!doc.geo.category) {
+                    const parts = (doc.geo.name || '').split('｜');
+                    if (parts.length === 2) doc.geo.category = parts[1];
+                    else doc.geo.category = '';
+                }
                 const item = createMarkerItem(doc.geo, doc.note, doc.id, doc.created_at, doc.updated_at);
                 markerList.push(item);
             });
             markerList.forEach((item, idx) => {
-                const created = item.created_at ? formatTimestamp(item.created_at) : '无';
-                const updated = item.updated_at ? formatTimestamp(item.updated_at) : '无';
-                const content = `<div style="min-width:180px;">
-                    <h4 style="font-size:13px;margin:3px 0;">点位信息</h4>
-                    <p style="font-size:11px;margin:1px 0;">名称：${item.geo.name}</p>
-                    <p style="font-size:11px;margin:1px 0;">区县：${item.geo.district||"无"}</p>
-                    <p style="font-size:11px;margin:1px 0;">街道：${item.geo.street||"无"}</p>
-                    <hr style="margin:3px 0;"/>
-                    <p style="font-size:11px;margin:1px 0;"><b>备注：</b>${item.note || '无备注'}</p>
-                    <p style="font-size:10px;color:#64748b;margin:1px 0;">创建：${created}</p>
-                    <p style="font-size:10px;color:#64748b;margin:1px 0;">更新：${updated}</p>
-                    <div style="margin-top:4px;">
-                        <button class="edit-btn" style="font-size:11px;padding:2px 8px;" onclick="openEditModal(${idx})">✏编辑</button>
-                    </div>
-                </div>`;
-                item.infoWin.setContent(content);
+                refreshMarkerInfoWindow(item, idx);
+                updateMarkerIcon(item);
             });
             applyFilterAndRenderMap();
             updateMarkerCountBadge();
@@ -739,10 +674,16 @@
         }
     }
 
+    // ===== 添加标记 =====
     async function addNoteMarker() {
         if (!currentGeo) { alert("请先搜索地址/街道并选中位置"); return; }
         const noteText = document.getElementById("noteInput").value.trim();
         const geo = { ...currentGeo };
+        if (!geo.category) {
+            const parts = (geo.name || '').split('｜');
+            if (parts.length === 2) geo.category = parts[1];
+            else geo.category = '';
+        }
         const now = new Date().toISOString();
         try {
             const promise = supabaseClient.from(TABLE_NAME).insert([{
@@ -758,22 +699,8 @@
                 const item = createMarkerItem(newDoc.geo, newDoc.note, newDoc.id, newDoc.created_at, newDoc.updated_at);
                 markerList.push(item);
                 const idx = markerList.length - 1;
-                const created = item.created_at ? formatTimestamp(item.created_at) : '无';
-                const updated = item.updated_at ? formatTimestamp(item.updated_at) : '无';
-                const content = `<div style="min-width:180px;">
-                    <h4 style="font-size:13px;margin:3px 0;">点位信息</h4>
-                    <p style="font-size:11px;margin:1px 0;">名称：${item.geo.name}</p>
-                    <p style="font-size:11px;margin:1px 0;">区县：${item.geo.district||"无"}</p>
-                    <p style="font-size:11px;margin:1px 0;">街道：${item.geo.street||"无"}</p>
-                    <hr style="margin:3px 0;"/>
-                    <p style="font-size:11px;margin:1px 0;"><b>备注：</b>${item.note || '无备注'}</p>
-                    <p style="font-size:10px;color:#64748b;margin:1px 0;">创建：${created}</p>
-                    <p style="font-size:10px;color:#64748b;margin:1px 0;">更新：${updated}</p>
-                    <div style="margin-top:4px;">
-                        <button class="edit-btn" style="font-size:11px;padding:2px 8px;" onclick="openEditModal(${idx})">✏编辑</button>
-                    </div>
-                </div>`;
-                item.infoWin.setContent(content);
+                refreshMarkerInfoWindow(item, idx);
+                updateMarkerIcon(item);
                 applyFilterAndRenderMap();
                 updateMarkerCountBadge();
             }
@@ -782,6 +709,7 @@
         }
     }
 
+    // ===== 编辑保存 =====
     async function saveMarkerEdit() {
         if (editingMarkerIndex < 0 || editingMarkerIndex >= markerList.length) {
             alert("没有选中任何标记");
@@ -792,6 +720,10 @@
         const newName = document.getElementById("editNameInput").value.trim();
         const newNote = document.getElementById("editNoteInput").value.trim();
         item.geo.name = newName || item.geo.name;
+        const parts = item.geo.name.split('｜');
+        if (parts.length === 2) {
+            item.geo.category = parts[1];
+        }
         item.note = newNote;
         const now = new Date().toISOString();
         item.updated_at = now;
@@ -804,22 +736,8 @@
             }).match({ id: item.id });
             const { error } = await supabaseFetchWithTimeout(() => promise);
             if (error) throw error;
-            const created = item.created_at ? formatTimestamp(item.created_at) : '无';
-            const updated = item.updated_at ? formatTimestamp(item.updated_at) : '无';
-            const content = `<div style="min-width:180px;">
-                <h4 style="font-size:13px;margin:3px 0;">点位信息</h4>
-                <p style="font-size:11px;margin:1px 0;">名称：${item.geo.name}</p>
-                <p style="font-size:11px;margin:1px 0;">区县：${item.geo.district||"无"}</p>
-                <p style="font-size:11px;margin:1px 0;">街道：${item.geo.street||"无"}</p>
-                <hr style="margin:3px 0;"/>
-                <p style="font-size:11px;margin:1px 0;"><b>备注：</b>${item.note || '无备注'}</p>
-                <p style="font-size:10px;color:#64748b;margin:1px 0;">创建：${created}</p>
-                <p style="font-size:10px;color:#64748b;margin:1px 0;">更新：${updated}</p>
-                <div style="margin-top:4px;">
-                    <button class="edit-btn" style="font-size:11px;padding:2px 8px;" onclick="openEditModal(${editingMarkerIndex})">✏编辑</button>
-                </div>
-            </div>`;
-            item.infoWin.setContent(content);
+            refreshMarkerInfoWindow(item, editingMarkerIndex);
+            updateMarkerIcon(item);
             closeEditModal();
             applyFilterAndRenderMap();
             updateMarkerCountBadge();
@@ -828,6 +746,7 @@
         }
     }
 
+    // ===== 删除标记 =====
     async function deleteCurrentMarker() {
         if (editingMarkerIndex < 0 || editingMarkerIndex >= markerList.length) {
             alert("没有选中的标记");
@@ -948,7 +867,8 @@
                 province: "陕西省",
                 city: "西安市",
                 district: "",
-                street: matchStreetName
+                street: matchStreetName,
+                category: ""
             };
             map.setCenter([center.lng, center.lat]);
             map.setZoom(13);
@@ -981,7 +901,8 @@
                             province: p.pname,
                             city: p.cityname,
                             district: p.adname,
-                            street: p.address
+                            street: p.address,
+                            category: p.type || ""
                         });
                     });
                 }
@@ -998,7 +919,8 @@
                                 province: g.province,
                                 city: g.city,
                                 district: g.district,
-                                street: g.street
+                                street: g.street,
+                                category: ""
                             });
                         });
                     }
@@ -1045,6 +967,11 @@
                         div.innerText = `${idx+1}.${tag}${item.name}`;
                         div.onclick = () => {
                             currentGeo = item;
+                            if (!currentGeo.category) {
+                                const parts = (currentGeo.name || '').split('｜');
+                                if (parts.length === 2) currentGeo.category = parts[1];
+                                else currentGeo.category = '';
+                            }
                             map.setCenter([item.lng, item.lat]);
                             map.setZoom(16);
                             if (tempSelectMarker) tempSelectMarker.remove();
@@ -1087,27 +1014,38 @@
         document.getElementById('identifiedStreetName').textContent = streetName;
         const count = markerList.filter(m => (m.geo.street || '').trim() === streetName).length;
         document.getElementById('identifiedStreetCount').textContent = `（${count}）`;
-        document.getElementById('filterInfo').innerHTML = `🔍 当前过滤：${streetName}（${count}）`;
+        document.getElementById('filterDistrict').value = '';
+        document.getElementById('filterCategory').value = '';
+        filterDistrict = '';
+        filterCategory = '';
         if (lastHighlightMarker) {
             lastHighlightMarker.setIcon(ICON_NORMAL);
             lastHighlightMarker = null;
         }
         document.getElementById('noteSearchResultBox').innerHTML = '';
         applyFilterAndRenderMap();
+        updateFilterOptions();
+        updateFilterInfo();
     }
 
     function clearFilter() {
         filterStreet = '';
+        filterDistrict = '';
+        filterCategory = '';
         document.getElementById('filterInfo').innerHTML = '';
         document.getElementById('noteSearchResultBox').innerHTML = '';
         document.getElementById('streetIdentifyBar').style.display = 'none';
         document.getElementById('identifiedStreetName').textContent = '—';
         document.getElementById('identifiedStreetCount').textContent = '';
+        document.getElementById('filterDistrict').value = '';
+        document.getElementById('filterCategory').value = '';
         if (lastHighlightMarker) {
             lastHighlightMarker.setIcon(ICON_NORMAL);
             lastHighlightMarker = null;
         }
         applyFilterAndRenderMap();
+        updateFilterOptions();
+        updateFilterInfo();
     }
 
     // ===== 备注搜索 =====
@@ -1122,14 +1060,23 @@
         const hitList = [];
         markerList.forEach((item, idx) => {
             if (filterStreet) {
-                const itemStreet = (item.geo.street || '').trim();
-                if (itemStreet !== filterStreet) return;
+                const s = (item.geo.street || '').trim();
+                if (s !== filterStreet) return;
+            }
+            if (filterDistrict) {
+                const d = getDistrictFromItem(item);
+                if (d !== filterDistrict) return;
+            }
+            if (filterCategory) {
+                const c = getCategoryFromItem(item);
+                if (c !== filterCategory) return;
             }
             const nameStr = (item.geo.name || "").toLowerCase();
             const noteStr = (item.note || "").toLowerCase();
+            const categoryStr = getCategoryFromItem(item).toLowerCase();
             const noteKeys = noteStr.split(/[,，、\s]+/).map(k => k.trim()).filter(k => k.length > 0);
             let isMatch = false;
-            if (nameStr.includes(keywordInput)) isMatch = true;
+            if (nameStr.includes(keywordInput) || categoryStr.includes(keywordInput)) isMatch = true;
             else {
                 for (let nk of noteKeys) {
                     if (nk.includes(keywordInput) || keywordInput.includes(nk)) { isMatch = true; break; }
@@ -1138,9 +1085,10 @@
             if (isMatch) hitList.push({ idx, item });
         });
         if (hitList.length === 0) {
-            const msg = filterStreet ?
-                `在“${filterStreet}”下未找到匹配「${keywordInput}」` :
-                `未找到匹配「${keywordInput}」`;
+            let msg = `未找到匹配「${keywordInput}」`;
+            if (filterStreet) msg += `（街道：${filterStreet}）`;
+            if (filterDistrict) msg += `（区县：${filterDistrict}）`;
+            if (filterCategory) msg += `（品类：${filterCategory}）`;
             boxDom.innerText = msg;
             return;
         }
@@ -1152,7 +1100,18 @@
             div.dataset.index = hit.idx;
             div.onclick = function() {
                 if (lastHighlightMarker) lastHighlightMarker.setIcon(ICON_NORMAL);
-                hit.item.marker.setIcon(ICON_HIGHLIGHT);
+                const contentDiv = hit.item.marker.getContent();
+                if (contentDiv) {
+                    contentDiv.style.border = '3px solid #ffaa00';
+                    contentDiv.style.boxShadow = '0 0 12px rgba(255,170,0,0.8)';
+                }
+                if (lastHighlightMarker && lastHighlightMarker !== hit.item.marker) {
+                    const oldDiv = lastHighlightMarker.getContent();
+                    if (oldDiv) {
+                        oldDiv.style.border = '2px solid #fff';
+                        oldDiv.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
+                    }
+                }
                 lastHighlightMarker = hit.item.marker;
                 const pos = hit.item.marker.getPosition();
                 map.setZoomAndCenter(16, pos);
@@ -1160,6 +1119,257 @@
             };
             boxDom.appendChild(div);
         });
+    }
+
+    // ===== 地图控制 =====
+    function setCityXiAn() {
+        map.setCity("西安市");
+        map.setCenter([108.95, 34.27]);
+        map.setZoom(11);
+    }
+    function toggleSimpleMap() {
+        isSimpleMode = !isSimpleMode;
+        map.setFeatures(isSimpleMode ? ['bg','road'] : ['bg','road','point','building']);
+        document.getElementById("toggleSimpleBtn").innerText = "极简";
+    }
+
+    // ===== 加载大区 =====
+    function renderDistrictGeoJson(geoData, distName) {
+        let features = [];
+        if (geoData.type === "Feature") features = [geoData];
+        else if (geoData.type === "FeatureCollection") features = geoData.features;
+        if (!features.length) return;
+        features.forEach(feat => {
+            if (!feat.geometry) return;
+            let gcjCoords = feat.geometry.coordinates;
+            let geoType = feat.geometry.type;
+            let paths = [];
+            if (geoType === "Polygon") paths.push(gcjCoords[0]);
+            else if (geoType === "MultiPolygon") gcjCoords.forEach(poly => paths.push(poly[0]));
+            paths.forEach(path => {
+                const poly = new AMap.Polygon({
+                    path: path,
+                    strokeColor: "#c82423",
+                    strokeWeight: 3,
+                    fillColor: "#ff7777",
+                    fillOpacity: 0.07,
+                    zIndex: 4
+                });
+                poly.setMap(map);
+                bigDistrictPolygons.push(poly);
+            });
+            let labelPositionArr;
+            if (distName === "长安区") {
+                labelPositionArr = [108.8762, 34.1452];
+            } else {
+                const tempPoly = new AMap.Polygon({ path: paths[0] });
+                const bounds = tempPoly.getBounds();
+                const bc = bounds.getCenter();
+                labelPositionArr = [bc.getLng(), bc.getLat()];
+            }
+            const textLabel = new AMap.Text({
+                text: distName,
+                position: labelPositionArr,
+                style: {
+                    fontSize: "13px",
+                    color: "#a01818",
+                    backgroundColor: "rgba(255,255,255,0.82)",
+                    padding: "2px 6px"
+                },
+                zIndex: 26
+            });
+            textLabel.setMap(map);
+            bigDistrictTexts.push(textLabel);
+        });
+    }
+
+    async function loadBigDistricts() {
+        clearBigDistrictLayer();
+        let successCount = 0;
+        for (let filename of districtJsonFileList) {
+            try {
+                const resp = await fetch("./geojson/" + filename);
+                if (!resp.ok) throw new Error("http错误 " + resp.status);
+                const geoData = await resp.json();
+                const distName = districtFileToName[filename];
+                renderDistrictGeoJson(geoData, distName);
+                successCount++;
+            } catch (err) {
+                console.error(`❌大区文件加载失败 ${filename}`, err);
+            }
+            await sleep(200);
+        }
+        alert(`大区加载完成，成功${successCount}/${districtJsonFileList.length}`);
+        if (bigDistrictPolygons.length > 0) map.setFitView(bigDistrictPolygons);
+        // 更新区县下拉选项（现在已有预设，但加载大区后可能增加新区县）
+        updateFilterOptions();
+    }
+
+    function clearBigDistrictLayer() {
+        bigDistrictPolygons.forEach(p => p.setMap(null));
+        bigDistrictTexts.forEach(t => t.setMap(null));
+        bigDistrictPolygons = [];
+        bigDistrictTexts = [];
+    }
+
+    // ===== 加载街道 =====
+    function renderPolygonOnly(pathArr, showName) {
+        const colorOpt = getRandomStreetColor();
+        const poly = new AMap.Polygon({
+            path: pathArr,
+            strokeColor: colorOpt.strokeColor,
+            strokeWeight: 2,
+            fillColor: colorOpt.fillColor,
+            fillOpacity: 0.14,
+            zIndex: 10
+        });
+        poly._streetName = showName;
+        poly.on('click', function(e) {
+            setFilterStreet(poly._streetName);
+            poly.setOptions({ fillOpacity: 0.3, strokeWeight: 4 });
+            setTimeout(() => {
+                poly.setOptions({ fillOpacity: 0.14, strokeWeight: 2 });
+            }, 500);
+        });
+        poly.setMap(map);
+        streetPolygons.push(poly);
+    }
+
+    async function loadAllStreetGeoJson() {
+        clearStreetLayer();
+        streetCenterCache = {};
+        let successCount = 0;
+
+        for (let filename of streetJsonFileList) {
+            try {
+                const resp = await fetch("./geojson/" + filename);
+                if (!resp.ok) throw new Error("http错误 " + resp.status);
+                const geoData = await resp.json();
+                let features = [];
+                let showName = streetFileToName[filename] || filename.replace(".geojson", "");
+                if (geoData.type === "Feature") features = [geoData];
+                else if (geoData.type === "FeatureCollection") features = geoData.features;
+                else { console.warn(`${filename} 未知geojson类型，跳过`); continue; }
+                if (!Array.isArray(features) || features.length === 0) { console.warn(`${filename} 没有有效的features，跳过`); continue; }
+
+                const polyList = [];
+                features.forEach((feat, index) => {
+                    if (!feat.geometry) { console.warn(` ${filename} 第${index}个特征无geometry`); return; }
+                    if (feat.properties?.乡镇名) { showName = feat.properties.乡镇名; }
+                    const geoType = feat.geometry.type;
+                    const coords = feat.geometry.coordinates;
+                    if (geoType === "Polygon") {
+                        if (Array.isArray(coords) && Array.isArray(coords[0]) && coords[0].length > 2) {
+                            polyList.push(coords[0]);
+                        } else { console.warn(` ${filename} Polygon 外环格式异常`); }
+                    } else if (geoType === "MultiPolygon") {
+                        coords.forEach((polygonRings, idx) => {
+                            if (Array.isArray(polygonRings) && Array.isArray(polygonRings[0]) && polygonRings[0].length > 2) {
+                                polyList.push(polygonRings[0]);
+                            } else { console.warn(` ${filename} MultiPolygon 第${idx}个碎片外环格式异常`); }
+                        });
+                    } else { console.warn(` ${filename} 未知几何类型: ${geoType}`); }
+                });
+
+                const validPolyList = polyList.filter(p => Array.isArray(p) && p.length > 2);
+                if (validPolyList.length === 0) { console.warn(`⚠ 街道[${showName}] 没有有效多边形，跳过此街道`); continue; }
+
+                validPolyList.forEach(pathArr => renderPolygonOnly(pathArr, showName));
+
+                let sumLng = 0, sumLat = 0, totalPoints = 0;
+                validPolyList.forEach(path => {
+                    path.forEach(point => {
+                        if (Array.isArray(point) && point.length >= 2 && !isNaN(point[0]) && !isNaN(point[1])) {
+                            sumLng += point[0]; sumLat += point[1]; totalPoints++;
+                        }
+                    });
+                });
+                if (totalPoints === 0) { console.warn(`⚠ 街道[${showName}] 无有效顶点，跳过`); continue; }
+
+                let useLng = sumLng / totalPoints;
+                let useLat = sumLat / totalPoints;
+
+                const override = manualCenterOverride[showName];
+                if (override) {
+                    useLng = override.lng;
+                    useLat = override.lat;
+                } else {
+                    const inXiAn = (lng, lat) => lng > 108.5 && lng < 109.5 && lat > 33.8 && lat < 34.8;
+                    if (!inXiAn(useLng, useLat)) {
+                        let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
+                        validPolyList.forEach(path => {
+                            path.forEach(point => {
+                                if (Array.isArray(point) && point.length >= 2 && !isNaN(point[0]) && !isNaN(point[1])) {
+                                    const lng = point[0], lat = point[1];
+                                    if (lng < minLng) minLng = lng;
+                                    if (lng > maxLng) maxLng = lng;
+                                    if (lat < minLat) minLat = lat;
+                                    if (lat > maxLat) maxLat = lat;
+                                }
+                            });
+                        });
+                        if (isFinite(minLng) && isFinite(maxLng) && isFinite(minLat) && isFinite(maxLat)) {
+                            useLng = (minLng + maxLng) / 2;
+                            useLat = (minLat + maxLat) / 2;
+                        } else { console.warn(`⚠ 街道[${showName}] 包围盒计算失败，跳过`); continue; }
+                    }
+                }
+                if (isNaN(useLng) || isNaN(useLat) || !isFinite(useLng) || !isFinite(useLat)) {
+                    console.warn(`⚠ 街道[${showName}] 最终坐标无效，跳过`); continue;
+                }
+
+                const stdName = showName.trim();
+                streetCenterCache[stdName] = { lng: useLng, lat: useLat };
+
+                const streetMarkerLabel = new AMap.Marker({
+                    position: [useLng, useLat],
+                    icon: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMSIgaGVpZ2h0PSIxIj48L3N2Zz4=",
+                    offset: new AMap.Pixel(0, 0),
+                    zIndex: 25,
+                    label: {
+                        content: showName,
+                        direction: "center",
+                        offset: new AMap.Pixel(0, 0),
+                        style: {
+                            fontSize: "11px",
+                            color: "#002266",
+                            backgroundColor: "rgba(255,255,255,0.86)",
+                            padding: "1px 5px",
+                            border: "none",
+                            fontWeight: "bold"
+                        }
+                    }
+                });
+                streetMarkerLabel.setMap(map);
+                streetTextMarkers.push(streetMarkerLabel);
+                successCount++;
+            } catch (err) {
+                console.error(`❌加载文件失败：${filename}`, err);
+            }
+            await sleep(100);
+        }
+        alert(`街道加载完成：成功${successCount}/${streetJsonFileList.length}`);
+        if (streetPolygons.length > 0) map.setFitView(streetPolygons);
+    }
+
+    function clearStreetLayer() {
+        streetPolygons.forEach(p => p.setMap(null));
+        streetTextMarkers.forEach(t => t.setMap(null));
+        streetPolygons = [];
+        streetTextMarkers = [];
+    }
+
+    // ===== 图层显隐 & 清除 =====
+    function toggleAllOverlayVisible() {
+        allOverlayVisible = !allOverlayVisible;
+        bigDistrictPolygons.forEach(p => p.setMap(allOverlayVisible ? map : null));
+        bigDistrictTexts.forEach(t => t.setMap(allOverlayVisible ? map : null));
+        streetPolygons.forEach(p => p.setMap(allOverlayVisible ? map : null));
+        streetTextMarkers.forEach(t => t.setMap(allOverlayVisible ? map : null));
+    }
+    function clearAllCustomOverlay() {
+        clearBigDistrictLayer();
+        clearStreetLayer();
     }
 
     // ===== Excel 导入 =====
@@ -1439,8 +1649,9 @@
                 lat: center.lat + latOffset,
                 province: "陕西省",
                 city: "西安市",
-                district: "",
-                street: street
+                district: "",   // 可后续通过街道匹配区县，暂留空
+                street: street,
+                category: cat
             };
             const note = masterNames;
             const now = new Date().toISOString();
@@ -1476,6 +1687,10 @@
             await sleep(30);
         }
 
+        markerList.forEach((item, idx) => {
+            refreshMarkerInfoWindow(item, idx);
+            updateMarkerIcon(item);
+        });
         updateMarkerCountBadge();
         onProgress && onProgress({
             status: `✅ 完成`,
