@@ -54,6 +54,8 @@
         button.small { padding:2px 6px; font-size:10px; }
         button.block { width:100%; justify-content:center; }
         button:disabled { opacity:0.5; pointer-events:none; }
+        button.mode-active { background:#2563eb; color:#fff; border-color:#2563eb; }
+        button.mode-inactive { background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; }
         input, textarea, select { font-family:inherit; font-size:11px; padding:3px 6px; border:1px solid #e2e8f0; border-radius:4px; background:#fafbfc; color:#1e293b; width:100%; outline:none; transition:border 0.15s, box-shadow 0.15s; }
         input:focus, textarea:focus, select:focus { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,0.08); background:#fff; }
         textarea { resize:vertical; min-height:24px; font-size:11px; }
@@ -103,6 +105,9 @@
         .merge-option input[type="radio"] { margin:0; width:auto; }
         .shortcut-hint { font-size:10px; color:#94a3b8; margin-top:2px; }
         #recycleCount { background:#f1f5f9; padding:1px 6px; border-radius:12px; font-size:10px; }
+        .mode-selector { display:flex; gap:6px; align-items:center; }
+        .mode-selector button { flex:1; justify-content:center; padding:3px 6px; }
+        .mode-badge { font-size:10px; background:#dbeafe; color:#1e40af; padding:0 6px; border-radius:10px; margin-left:4px; }
         @media (max-width:768px) {
             #sidebar { width:100%; min-width:unset; height:50vh; border-right:none; border-bottom:1px solid #e9edf4; }
             #wrap { flex-direction:column; }
@@ -113,6 +118,20 @@
 <body>
 <div id="wrap">
     <div id="sidebar">
+        <!-- 卡片0：模式切换 -->
+        <details class="card" open>
+            <summary class="card-title"><span>📂 工作模式</span><span class="arrow">▶</span></summary>
+            <div class="card-body">
+                <div class="mode-selector">
+                    <button id="modeRepairBtn" class="primary small" onclick="setMode('repair')">🔧 家修</button>
+                    <button id="modeInstallBtn" class="outline small" onclick="setMode('install')">🛠️ 家居</button>
+                </div>
+                <div class="text-xs" style="margin-top:2px; color:#64748b;">
+                    当前模式：<span id="currentModeLabel">家修</span> ｜ 标记数：<span id="modeMarkerCount">0</span>
+                </div>
+            </div>
+        </details>
+
         <!-- 卡片1：地图控制 -->
         <details class="card" open>
             <summary class="card-title"><span>🗺️ 地图控制</span><span class="arrow">▶</span></summary>
@@ -207,7 +226,7 @@
     <div id="map"></div>
 </div>
 
-<!-- 编辑模态框（已移除删除按钮） -->
+<!-- 编辑模态框（含类型选择） -->
 <div class="modal-mask" id="editModal">
     <div class="modal-box">
         <h4>编辑点位标记</h4>
@@ -218,6 +237,13 @@
         <div class="modal-row">
             <label>备注内容</label>
             <textarea id="editNoteInput" rows="3"></textarea>
+        </div>
+        <div class="modal-row">
+            <label>类型</label>
+            <select id="editTypeSelect">
+                <option value="repair">家修</option>
+                <option value="install">家居</option>
+            </select>
         </div>
         <div class="modal-row">
             <label>创建时间</label>
@@ -275,6 +301,9 @@
     let streetTextMarkers = [];
     let allOverlayVisible = true;
     let _isMerging = false;
+
+    // 新增：当前工作模式
+    let currentMode = 'repair'; // 'repair' 或 'install'
 
     // 回收站（撤销用）
     let recycleBin = [];
@@ -440,6 +469,34 @@
         return (item.geo && item.geo.district) || '';
     }
 
+    // ===== 模式切换 =====
+    function setMode(mode) {
+        if (mode === currentMode) return;
+        currentMode = mode;
+        // 更新按钮样式
+        const repairBtn = document.getElementById('modeRepairBtn');
+        const installBtn = document.getElementById('modeInstallBtn');
+        if (mode === 'repair') {
+            repairBtn.className = 'primary small';
+            installBtn.className = 'outline small';
+            document.getElementById('currentModeLabel').textContent = '家修';
+        } else {
+            repairBtn.className = 'outline small';
+            installBtn.className = 'primary small';
+            document.getElementById('currentModeLabel').textContent = '家居';
+        }
+        // 清除街道过滤（避免混淆）
+        clearFilter();
+        // 刷新地图显示
+        applyFilterAndRenderMap();
+        updateModeMarkerCount();
+    }
+
+    function updateModeMarkerCount() {
+        const count = markerList.filter(item => item.type === currentMode).length;
+        document.getElementById('modeMarkerCount').textContent = count;
+    }
+
     // ===== 创建自定义标记（带品类文字） =====
     function createMarkerIconContent(category) {
         const abbr = getCategoryAbbr(category);
@@ -451,8 +508,8 @@
         return div;
     }
 
-    // ===== 创建标记 =====
-    function createMarkerItem(geoObj, noteText, id = null, createdAt = null, updatedAt = null) {
+    // ===== 创建标记（增加 type 参数） =====
+    function createMarkerItem(geoObj, noteText, id = null, createdAt = null, updatedAt = null, type = 'repair') {
         if (!geoObj.category) {
             const parts = (geoObj.name || '').split('｜');
             if (parts.length === 2) geoObj.category = parts[1];
@@ -470,12 +527,14 @@
 
         const created = createdAt ? formatTimestamp(createdAt) : '无';
         const updated = updatedAt ? formatTimestamp(updatedAt) : '无';
+        const typeLabel = type === 'repair' ? '家修' : '家居';
         const content = `<div style="min-width:180px;">
             <h4 style="font-size:13px;margin:3px 0;">点位信息</h4>
             <p style="font-size:11px;margin:1px 0;">名称：${geoObj.name}</p>
             <p style="font-size:11px;margin:1px 0;">区县：${geoObj.district||"无"}</p>
             <p style="font-size:11px;margin:1px 0;">街道：${geoObj.street||"无"}</p>
             <p style="font-size:11px;margin:1px 0;">品类：${category||"无"}</p>
+            <p style="font-size:11px;margin:1px 0;">类型：${typeLabel}</p>
             <hr style="margin:3px 0;"/>
             <p style="font-size:11px;margin:1px 0;"><b>备注：</b>${noteText || '无备注'}</p>
             <p style="font-size:10px;color:#64748b;margin:1px 0;">创建：${created}</p>
@@ -492,12 +551,11 @@
         marker.on("click", () => {
             infoWin.open(map, marker.getPosition());
         });
-        // 右键菜单事件（需求20）
         marker.on("rightclick", (e) => {
             const idx = markerList.findIndex(item => item.marker === marker);
             if (idx !== -1) openEditModal(idx);
         });
-        const item = { marker, infoWin, geo: { ...geoObj }, note: noteText, id, created_at: createdAt, updated_at: updatedAt };
+        const item = { marker, infoWin, geo: { ...geoObj }, note: noteText, id, created_at: createdAt, updated_at: updatedAt, type: type };
         return item;
     }
 
@@ -505,12 +563,14 @@
         const created = item.created_at ? formatTimestamp(item.created_at) : '无';
         const updated = item.updated_at ? formatTimestamp(item.updated_at) : '无';
         const category = getCategoryFromItem(item);
+        const typeLabel = item.type === 'repair' ? '家修' : '家居';
         const content = `<div style="min-width:180px;">
             <h4 style="font-size:13px;margin:3px 0;">点位信息</h4>
             <p style="font-size:11px;margin:1px 0;">名称：${item.geo.name}</p>
             <p style="font-size:11px;margin:1px 0;">区县：${item.geo.district||"无"}</p>
             <p style="font-size:11px;margin:1px 0;">街道：${item.geo.street||"无"}</p>
             <p style="font-size:11px;margin:1px 0;">品类：${category||"无"}</p>
+            <p style="font-size:11px;margin:1px 0;">类型：${typeLabel}</p>
             <hr style="margin:3px 0;"/>
             <p style="font-size:11px;margin:1px 0;"><b>备注：</b>${item.note || '无备注'}</p>
             <p style="font-size:10px;color:#64748b;margin:1px 0;">创建：${created}</p>
@@ -532,19 +592,23 @@
     // ===== 删除标记（带撤销） =====
     async function deleteMarkerItemByIndex(index) {
         if (index < 0 || index >= markerList.length) return;
-        if (!confirm('确认删除此标记？')) return;
         const item = markerList[index];
-        // 保存到回收站（撤销）
+        // 检查类型是否匹配当前模式（安全）
+        if (item.type !== currentMode) {
+            alert('当前模式下不能操作其他类型的标记');
+            return;
+        }
+        if (!confirm('确认删除此标记？')) return;
         const backup = {
             id: item.id,
             geo: { ...item.geo },
             note: item.note,
             created_at: item.created_at,
             updated_at: item.updated_at,
+            type: item.type,
             markerIndex: index
         };
         await deleteMarkerItem(item);
-        // 记录撤销操作
         undoStack.push({ action: 'delete', data: backup });
         redoStack = [];
         updateUndoButton();
@@ -565,6 +629,7 @@
             if (lastHighlightMarker === item.marker) lastHighlightMarker = null;
             applyFilterAndRenderMap();
             updateMarkerCountBadge();
+            updateModeMarkerCount();
         } catch (err) {
             console.error('删除标记失败:', err);
             alert('删除标记失败：' + err.message);
@@ -578,33 +643,33 @@
         if (action.action === 'delete') {
             const data = action.data;
             try {
-                // 重新插入数据库
                 const now = new Date().toISOString();
                 const insertData = {
                     geo: data.geo,
                     note: data.note,
                     created_at: data.created_at || now,
-                    updated_at: now
+                    updated_at: now,
+                    type: data.type || 'repair'
                 };
                 const promise = supabaseClient.from(TABLE_NAME).insert([insertData]).select();
                 const { data: newData, error } = await supabaseFetchWithTimeout(() => promise);
                 if (error) throw error;
                 if (newData && newData.length > 0) {
                     const doc = newData[0];
-                    const item = createMarkerItem(doc.geo, doc.note, doc.id, doc.created_at, doc.updated_at);
+                    const item = createMarkerItem(doc.geo, doc.note, doc.id, doc.created_at, doc.updated_at, doc.type || 'repair');
                     markerList.push(item);
                     const idx = markerList.length - 1;
                     refreshMarkerInfoWindow(item, idx);
                     updateMarkerIcon(item);
                     applyFilterAndRenderMap();
                     updateMarkerCountBadge();
-                    // 记录到重做栈（可选）
+                    updateModeMarkerCount();
                     redoStack.push({ action: 'restore', data: { id: doc.id, index: idx } });
                     updateUndoButton();
                 }
             } catch (err) {
                 alert('撤销失败：' + err.message);
-                undoStack.push(action); // 放回
+                undoStack.push(action);
             }
         }
     }
@@ -621,14 +686,16 @@
         }
     }
 
-    // ===== 导出功能（需求7） =====
+    // ===== 导出功能 =====
     function exportData(format) {
-        if (markerList.length === 0) { alert('没有标记可导出'); return; }
-        const data = markerList.map(item => ({
+        const visibleItems = markerList.filter(item => item.type === currentMode);
+        if (visibleItems.length === 0) { alert('当前模式下没有标记可导出'); return; }
+        const data = visibleItems.map(item => ({
             '名称': item.geo.name || '',
             '区县': item.geo.district || '',
             '街道': item.geo.street || '',
             '品类': getCategoryFromItem(item),
+            '类型': item.type === 'repair' ? '家修' : '家居',
             '备注': item.note || '',
             '经度': item.geo.lng || '',
             '纬度': item.geo.lat || '',
@@ -658,8 +725,10 @@
 
     // ===== 更新计数 & 街道统计 =====
     function updateMarkerCountBadge() {
-        document.getElementById('markerCountBadge').textContent = markerList.length;
+        const total = markerList.length;
+        document.getElementById('markerCountBadge').textContent = total;
         updateIdentifiedStreetCount();
+        updateModeMarkerCount();
     }
 
     // ===== 街道识别 =====
@@ -684,11 +753,11 @@
         if (!bar || bar.style.display === 'none') return;
         const streetName = document.getElementById('identifiedStreetName').textContent;
         if (!streetName || streetName === '—') return;
-        const count = markerList.filter(m => (m.geo.street || '').trim() === streetName).length;
+        const count = markerList.filter(m => (m.geo.street || '').trim() === streetName && m.type === currentMode).length;
         document.getElementById('identifiedStreetCount').textContent = `（${count}）`;
     }
 
-    // ===== 核心：加载数据并处理重复合并（需求1） =====
+    // ===== 核心：加载数据并处理重复合并 =====
     async function loadFromCloud() {
         if (_isMerging) {
             console.log('⏳ 合并进行中，跳过本次加载');
@@ -707,9 +776,14 @@
                 return;
             }
 
+            // 为数据补充 type 字段（默认 repair）
+            data.forEach(doc => {
+                if (!doc.type) doc.type = 'repair';
+            });
+
             const groupMap = {};
             data.forEach(doc => {
-                const key = doc.geo.name;
+                const key = doc.geo.name + '||' + doc.type; // 按名称+类型分组
                 if (!groupMap[key]) groupMap[key] = [];
                 groupMap[key].push(doc);
             });
@@ -719,17 +793,13 @@
                 console.log(`🔄 发现 ${duplicates.length} 个重复组，请求用户确认...`);
                 _isMerging = true;
 
-                // 处理每个重复组
                 for (let key of duplicates) {
                     const docs = groupMap[key];
-                    // 使用合并确认模态框
                     const result = await showMergeConfirm(docs);
                     if (result === 'skip') continue;
-                    // result 为选中的保留记录的索引（0-based）
                     const keepIndex = result;
                     const keep = docs[keepIndex];
                     const toDelete = docs.filter((_, i) => i !== keepIndex);
-                    // 合并备注
                     let allNotes = [keep.note || ''];
                     toDelete.forEach(d => { if (d.note) allNotes.push(d.note); });
                     const mergedNote = allNotes.filter(n => n.trim() !== '').join('；');
@@ -737,13 +807,11 @@
                         keep.note = mergedNote;
                     }
                     keep.updated_at = new Date().toISOString();
-                    // 更新数据库
                     const updatePromise = supabaseClient.from(TABLE_NAME).update({
                         note: keep.note,
                         updated_at: keep.updated_at
                     }).match({ id: keep.id });
                     await supabaseFetchWithTimeout(() => updatePromise);
-                    // 删除其他
                     const deleteIds = toDelete.map(d => d.id).filter(id => id != null);
                     if (deleteIds.length > 0) {
                         const deletePromise = supabaseClient.from(TABLE_NAME).delete().in('id', deleteIds);
@@ -752,7 +820,7 @@
                 }
                 console.log(`✅ 合并完成，共处理 ${duplicates.length} 组重复数据`);
                 _isMerging = false;
-                await loadFromCloud(); // 重新加载
+                await loadFromCloud();
                 return;
             }
 
@@ -760,13 +828,13 @@
             markerList.forEach(item => { item.marker.setMap(null); item.infoWin.close(); });
             markerList = [];
 
-            (data || []).forEach(doc => {
+            data.forEach(doc => {
                 if (!doc.geo.category) {
                     const parts = (doc.geo.name || '').split('｜');
                     if (parts.length === 2) doc.geo.category = parts[1];
                     else doc.geo.category = '';
                 }
-                const item = createMarkerItem(doc.geo, doc.note, doc.id, doc.created_at, doc.updated_at);
+                const item = createMarkerItem(doc.geo, doc.note, doc.id, doc.created_at, doc.updated_at, doc.type || 'repair');
                 markerList.push(item);
             });
             markerList.forEach((item, idx) => {
@@ -784,29 +852,26 @@
         }
     }
 
-    // ===== 合并确认模态框（需求1） =====
+    // ===== 合并确认模态框 =====
     function showMergeConfirm(docs) {
         return new Promise((resolve, reject) => {
             const modal = document.getElementById('mergeModal');
             const listDiv = document.getElementById('mergeList');
             const notePreview = document.getElementById('mergeNotePreview');
-            // 渲染列表
             listDiv.innerHTML = '';
             let html = '';
             docs.forEach((doc, idx) => {
                 const note = doc.note || '无';
                 const created = formatTimestamp(doc.created_at);
+                const typeLabel = doc.type === 'repair' ? '家修' : '家居';
                 html += `<div class="merge-option">
                     <input type="radio" name="mergeSelect" value="${idx}" ${idx===0?'checked':''}>
-                    <div><strong>${doc.geo.name}</strong><br><span style="font-size:10px;">备注：${note}</span><br><span style="font-size:10px;color:#64748b;">创建：${created}</span></div>
+                    <div><strong>${doc.geo.name}</strong> <span style="font-size:10px;color:#64748b;">${typeLabel}</span><br><span style="font-size:10px;">备注：${note}</span><br><span style="font-size:10px;color:#64748b;">创建：${created}</span></div>
                 </div>`;
             });
             listDiv.innerHTML = html;
-
-            // 预览合并备注
             const allNotes = docs.map(d => d.note || '').filter(n => n.trim() !== '');
             notePreview.value = allNotes.join('；');
-
             pendingMergeResolve = resolve;
             pendingMergeReject = reject;
             modal.style.display = 'flex';
@@ -850,13 +915,14 @@
                 geo,
                 note: noteText,
                 created_at: now,
-                updated_at: now
+                updated_at: now,
+                type: currentMode
             }]).select();
             const { data, error } = await supabaseFetchWithTimeout(() => promise);
             if (error) throw error;
             if (data && data.length > 0) {
                 const newDoc = data[0];
-                const item = createMarkerItem(newDoc.geo, newDoc.note, newDoc.id, newDoc.created_at, newDoc.updated_at);
+                const item = createMarkerItem(newDoc.geo, newDoc.note, newDoc.id, newDoc.created_at, newDoc.updated_at, newDoc.type || currentMode);
                 markerList.push(item);
                 const idx = markerList.length - 1;
                 refreshMarkerInfoWindow(item, idx);
@@ -880,12 +946,14 @@
         if (!item.id) { alert('该标记缺少云端ID，无法更新'); return; }
         const newName = document.getElementById("editNameInput").value.trim();
         const newNote = document.getElementById("editNoteInput").value.trim();
+        const newType = document.getElementById("editTypeSelect").value;
         item.geo.name = newName || item.geo.name;
         const parts = item.geo.name.split('｜');
         if (parts.length === 2) {
             item.geo.category = parts[1];
         }
         item.note = newNote;
+        item.type = newType;
         const now = new Date().toISOString();
         item.updated_at = now;
 
@@ -893,7 +961,8 @@
             const promise = supabaseClient.from(TABLE_NAME).update({
                 geo: item.geo,
                 note: item.note,
-                updated_at: now
+                updated_at: now,
+                type: item.type
             }).match({ id: item.id });
             const { error } = await supabaseFetchWithTimeout(() => promise);
             if (error) throw error;
@@ -908,8 +977,7 @@
         }
     }
 
-    // ===== 删除标记（已用 deleteMarkerItemByIndex 替代） =====
-    // 保留 deleteCurrentMarker 以防其他地方调用，但编辑模态框中已无此按钮
+    // ===== 删除标记（备用） =====
     async function deleteCurrentMarker() {
         if (editingMarkerIndex < 0 || editingMarkerIndex >= markerList.length) {
             alert("没有选中的标记");
@@ -924,29 +992,30 @@
     }
 
     async function deleteAllMarkers() {
-        if (markerList.length === 0) { alert('当前没有标记可清除'); return; }
-        if (!confirm(`⚠️ 确定清除全部 ${markerList.length} 个标记？`)) return;
-        // 备份所有标记到撤销栈
-        const backups = markerList.map((item, idx) => ({
+        const visibleItems = markerList.filter(item => item.type === currentMode);
+        if (visibleItems.length === 0) { alert('当前模式下没有标记可清除'); return; }
+        if (!confirm(`⚠️ 确定清除当前模式下所有 ${visibleItems.length} 个标记？`)) return;
+        const backups = visibleItems.map((item, idx) => ({
             id: item.id,
             geo: { ...item.geo },
             note: item.note,
             created_at: item.created_at,
             updated_at: item.updated_at,
-            markerIndex: idx
+            type: item.type,
+            markerIndex: markerList.indexOf(item)
         }));
-        const ids = markerList.map(item => item.id).filter(id => id != null);
+        const ids = visibleItems.map(item => item.id).filter(id => id != null);
         if (ids.length === 0) { alert('缺少云端ID，无法删除'); return; }
         try {
             const promise = supabaseClient.from(TABLE_NAME).delete().in('id', ids);
             const { error } = await supabaseFetchWithTimeout(() => promise);
             if (error) throw error;
-            markerList.forEach(item => { item.marker.setMap(null); item.infoWin.close(); });
-            markerList = [];
-            if (lastHighlightMarker) lastHighlightMarker = null;
+            const toRemove = new Set(visibleItems);
+            markerList = markerList.filter(item => !toRemove.has(item));
+            visibleItems.forEach(item => { item.marker.setMap(null); item.infoWin.close(); });
+            if (lastHighlightMarker && toRemove.has(lastHighlightMarker._item)) lastHighlightMarker = null;
             applyFilterAndRenderMap();
             updateMarkerCountBadge();
-            // 记录撤销
             for (let backup of backups) {
                 undoStack.push({ action: 'delete', data: backup });
             }
@@ -959,27 +1028,26 @@
         }
     }
 
-    // ===== 删除街道标记（精确匹配，需求11） =====
+    // ===== 删除街道标记（精确匹配） =====
     async function deleteStreetMarkers() {
         const streetInput = document.getElementById('deleteStreetInput');
         const streetName = streetInput.value.trim();
         if (!streetName) { alert('请输入街道名称'); return; }
-        // 精确匹配：去除“街道”后缀后比较
         const normalize = (s) => s.replace(/街道$/, '').trim();
         const target = normalize(streetName);
         const matchedItems = markerList.filter(item => {
             const s = normalize(item.geo.street || '');
-            return s === target;
+            return s === target && item.type === currentMode;
         });
-        if (matchedItems.length === 0) { alert(`未找到精确匹配「${streetName}」的标记`); return; }
+        if (matchedItems.length === 0) { alert(`当前模式下未找到精确匹配「${streetName}」的标记`); return; }
         if (!confirm(`确定删除「${streetName}」的 ${matchedItems.length} 个标记？`)) return;
-        // 备份
         const backups = matchedItems.map((item, idx) => ({
             id: item.id,
             geo: { ...item.geo },
             note: item.note,
             created_at: item.created_at,
             updated_at: item.updated_at,
+            type: item.type,
             markerIndex: markerList.indexOf(item)
         }));
         const ids = matchedItems.map(item => item.id).filter(id => id != null);
@@ -994,7 +1062,6 @@
             if (lastHighlightMarker && toRemove.has(lastHighlightMarker._item)) lastHighlightMarker = null;
             applyFilterAndRenderMap();
             updateMarkerCountBadge();
-            // 记录撤销
             for (let backup of backups) {
                 undoStack.push({ action: 'delete', data: backup });
             }
@@ -1011,10 +1078,16 @@
     // ===== 编辑弹窗 =====
     function openEditModal(index) {
         if (index < 0 || index >= markerList.length) { console.warn("无效标记索引"); return; }
-        editingMarkerIndex = index;
         const item = markerList[index];
+        // 只允许编辑当前模式的标记
+        if (item.type !== currentMode) {
+            alert('当前模式下不能编辑其他类型的标记');
+            return;
+        }
+        editingMarkerIndex = index;
         document.getElementById("editNameInput").value = item.geo.name || "";
         document.getElementById("editNoteInput").value = item.note || "";
+        document.getElementById("editTypeSelect").value = item.type || 'repair';
         document.getElementById("editCreatedAt").textContent = item.created_at ? formatTimestamp(item.created_at) : '无';
         document.getElementById("editModal").style.display = "flex";
     }
@@ -1031,7 +1104,7 @@
         }
         markerList.forEach(item => item.marker.setMap(null));
 
-        let visibleItems = markerList;
+        let visibleItems = markerList.filter(item => item.type === currentMode);
         if (filterStreet) {
             visibleItems = visibleItems.filter(item => {
                 const s = (item.geo.street || '').trim();
@@ -1041,8 +1114,8 @@
 
         visibleItems.forEach(item => item.marker.setMap(map));
 
-        if (!filterStreet && markerList.length > 10) {
-            const markers = markerList.map(item => item.marker);
+        if (!filterStreet && visibleItems.length > 10) {
+            const markers = visibleItems.map(item => item.marker);
             AMap.plugin('AMap.MarkerClusterer', () => {
                 clusterer = new AMap.MarkerClusterer(map, markers, {
                     gridSize: 60,
@@ -1058,7 +1131,6 @@
                         return marker;
                     }
                 });
-                // 聚合点击显示列表（需求10）
                 clusterer.on('click', function(e) {
                     const cluster = e.cluster;
                     if (!cluster) return;
@@ -1068,7 +1140,6 @@
                         return markerList.find(item => item.marker === m);
                     }).filter(Boolean);
                     if (items.length === 0) return;
-                    // 弹出信息窗口
                     const content = `<div style="max-height:200px;overflow-y:auto;">
                         <b>聚合内 ${items.length} 个标记：</b><br>
                         ${items.map((item, idx) => `<div style="padding:2px 0;border-bottom:1px solid #eee;">${idx+1}. ${item.geo.name}（${getCategoryFromItem(item)}）</div>`).join('')}
@@ -1081,6 +1152,8 @@
                 });
             });
         }
+        // 更新模式计数
+        updateModeMarkerCount();
     }
 
     // ===== 搜索 =====
@@ -1248,7 +1321,7 @@
         const bar = document.getElementById('streetIdentifyBar');
         bar.style.display = 'flex';
         document.getElementById('identifiedStreetName').textContent = streetName;
-        const count = markerList.filter(m => (m.geo.street || '').trim() === streetName).length;
+        const count = markerList.filter(m => (m.geo.street || '').trim() === streetName && m.type === currentMode).length;
         document.getElementById('identifiedStreetCount').textContent = `（${count}）`;
         if (lastHighlightMarker) {
             lastHighlightMarker.setIcon(ICON_NORMAL);
@@ -1273,7 +1346,7 @@
         updateMarkerCountBadge();
     }
 
-    // ===== 备注搜索（需求9：高亮+联动） =====
+    // ===== 备注搜索 =====
     function searchExistNoteMarker() {
         const keywordInput = document.getElementById("noteSearchInput").value.trim().toLowerCase();
         const boxDom = document.getElementById("noteSearchResultBox");
@@ -1284,6 +1357,7 @@
         }
         const hitList = [];
         markerList.forEach((item, idx) => {
+            if (item.type !== currentMode) return;
             if (filterStreet) {
                 const s = (item.geo.street || '').trim();
                 if (s !== filterStreet) return;
@@ -1314,10 +1388,8 @@
             div.innerText = `[${hit.idx+1}] ${hit.item.geo.name} ｜ ${hit.item.note || "无"}`;
             div.dataset.index = hit.idx;
             div.onclick = function() {
-                // 清除所有高亮
                 document.querySelectorAll('#noteSearchResultBox .result-item').forEach(el => el.classList.remove('active'));
                 this.classList.add('active');
-                // 滚动到可见
                 this.scrollIntoView({ block: 'center', behavior: 'smooth' });
 
                 if (lastHighlightMarker) lastHighlightMarker.setIcon(ICON_NORMAL);
@@ -1431,7 +1503,7 @@
         bigDistrictTexts = [];
     }
 
-    // ===== 加载街道（需求8：友好提示 + 降级；需求18：自动补全） =====
+    // ===== 加载街道 =====
     function renderPolygonOnly(pathArr, showName) {
         const colorOpt = getRandomStreetColor();
         const poly = new AMap.Polygon({
@@ -1578,13 +1650,12 @@
 
         if (streetPolygons.length > 0) map.setFitView(streetPolygons);
 
-        // 需求18：自动补全已有标记的街道
         if (successCount > 0) {
             await autoFillStreetForMarkers();
         }
     }
 
-    // ===== 自动补全街道（需求18） =====
+    // ===== 自动补全街道 =====
     async function autoFillStreetForMarkers() {
         let updatedCount = 0;
         for (let item of markerList) {
@@ -1593,7 +1664,6 @@
                 const streetName = findStreetByLngLat(pos.getLng(), pos.getLat());
                 if (streetName) {
                     item.geo.street = streetName;
-                    // 更新数据库
                     if (item.id) {
                         try {
                             const promise = supabaseClient.from(TABLE_NAME).update({
@@ -1635,7 +1705,7 @@
         clearStreetLayer();
     }
 
-    // ===== Excel 导入（保持不变，但已支持合并确认） =====
+    // ===== Excel 导入 =====
     function handleExcelImport(e) {
         const file = e.target.files[0];
         if (!file) return;
@@ -1752,7 +1822,7 @@
         }
     }
 
-    // 导入核心（覆盖更新 + 缩小分散半径）
+    // 导入核心（覆盖更新 + 分散半径，并添加 type）
     async function processExcelRowsWithProgress(rows, onProgress) {
         if (!rows || rows.length === 0) {
             onProgress && onProgress({ status: '❌ 无数据', done: true, count: 0 });
@@ -1784,9 +1854,10 @@
             });
             if (nameList.length === 0) continue;
 
-            const groupKey = `${street}||${category}`;
+            // 分组键包含类型
+            const groupKey = `${street}||${category}||${currentMode}`;
             if (!groupMap[groupKey]) {
-                groupMap[groupKey] = { street, rawStreet, category, nameList: [] };
+                groupMap[groupKey] = { street, rawStreet, category, nameList, type: currentMode };
             }
             nameList.forEach(name => {
                 if (!groupMap[groupKey].nameList.includes(name)) groupMap[groupKey].nameList.push(name);
@@ -1893,6 +1964,7 @@
             const street = gItem.street;
             const cat = gItem.category;
             const masterNames = gItem.nameList.join("，");
+            const type = gItem.type || currentMode;
 
             const center = streetCenterCache[street];
             if (!center) continue;
@@ -1930,7 +2002,8 @@
                 count: successCount
             });
 
-            const existingItem = markerList.find(item => item.geo.name === baseGeo.name);
+            // 查找是否存在相同名称+类型的标记
+            const existingItem = markerList.find(item => item.geo.name === baseGeo.name && item.type === type);
 
             if (existingItem) {
                 try {
@@ -1945,7 +2018,8 @@
                     const promise = supabaseClient.from(TABLE_NAME).update({
                         geo: existingItem.geo,
                         note: existingItem.note,
-                        updated_at: now
+                        updated_at: now,
+                        type: type
                     }).match({ id: existingItem.id });
                     const { error } = await supabaseFetchWithTimeout(() => promise);
                     if (error) throw error;
@@ -1959,13 +2033,14 @@
                         geo: baseGeo,
                         note: note,
                         created_at: now,
-                        updated_at: now
+                        updated_at: now,
+                        type: type
                     }]).select();
                     const { data, error } = await supabaseFetchWithTimeout(() => promise);
                     if (error) throw error;
                     if (data && data.length > 0) {
                         const newDoc = data[0];
-                        const item = createMarkerItem(newDoc.geo, newDoc.note, newDoc.id, newDoc.created_at, newDoc.updated_at);
+                        const item = createMarkerItem(newDoc.geo, newDoc.note, newDoc.id, newDoc.created_at, newDoc.updated_at, newDoc.type || type);
                         markerList.push(item);
                         successCount++;
                     }
@@ -2021,19 +2096,16 @@
             .subscribe((status) => { console.log('📡 Realtime 订阅状态:', status); });
     }
 
-    // ===== 快捷键（需求20） =====
+    // ===== 快捷键 =====
     document.addEventListener('keydown', function(e) {
-        // Ctrl+Z 撤销
         if (e.ctrlKey && !e.shiftKey && e.key === 'z') {
             e.preventDefault();
             undoDelete();
         }
-        // Ctrl+Shift+Z 重做（简化：重新加载）
         if (e.ctrlKey && e.shiftKey && e.key === 'Z') {
             e.preventDefault();
             loadFromCloud();
         }
-        // Esc 关闭弹窗
         if (e.key === 'Escape') {
             if (document.getElementById('editModal').style.display === 'flex') {
                 closeEditModal();
@@ -2044,7 +2116,6 @@
                 pendingMergeResolve = null;
             }
         }
-        // Ctrl+S 保存编辑（在编辑模态框打开时）
         if (e.ctrlKey && e.key === 's') {
             e.preventDefault();
             if (document.getElementById('editModal').style.display === 'flex') {
@@ -2066,6 +2137,9 @@
         loadFromCloud().then(() => {
             setupRealtimeSubscription();
         });
+
+        // 设置默认模式为 repair
+        setMode('repair');
     };
 </script>
 </body>
