@@ -141,7 +141,7 @@
                     <div class="progress-track"><div class="progress-bar" id="progressBar"></div></div>
                 </div>
                 <div class="text-xs" style="margin-top:2px; color:#94a3b8;">
-                    表头：街道、品类、姓名1… 同街道同品类合并，多个师傅追加备注。
+                    表头：街道、品类、姓名1… 同街道同品类合并，多个师傅追加备注。再次导入相同街道+品类会覆盖更新。
                 </div>
             </div>
         </details>
@@ -1355,7 +1355,7 @@
                     detail += ` 街道：${progress.street}`;
                 }
                 if (progress.count !== undefined) {
-                    detail += ` 已生成 ${progress.count} 个`;
+                    detail += ` 已生成/更新 ${progress.count} 个`;
                 }
                 progressText.textContent = `${statusText}${detail}`;
                 if (progress.done) {
@@ -1368,7 +1368,7 @@
             progressBar.className = 'progress-bar done';
             progressText.textContent = `✅ 完成！共 ${result?.count || 0} 个标记`;
             updateMarkerCountBadge();
-            alert(`✅ Excel 识别完成！共生成 ${result?.count || 0} 个标记`);
+            alert(`✅ Excel 识别完成！共生成/更新 ${result?.count || 0} 个标记`);
 
         } catch (err) {
             console.error('识别失败:', err);
@@ -1381,6 +1381,7 @@
         }
     }
 
+    // ★★★ 修改后的核心导入函数：支持覆盖更新 ★★★
     async function processExcelRowsWithProgress(rows, onProgress) {
         if (!rows || rows.length === 0) {
             onProgress && onProgress({ status: '❌ 无数据', done: true, count: 0 });
@@ -1395,6 +1396,7 @@
             return name;
         }
 
+        // 1. 分组（同街道同品类合并师傅列表）
         const groupMap = {};
         for (let row of rows) {
             let street = (row["街道"] || "").trim();
@@ -1435,6 +1437,7 @@
             count: 0
         });
 
+        // 2. 地理编码（获取街道中心坐标）
         const unmatchedStreets = new Set();
         let geocodeSuccessCount = 0;
         const totalGroups = groupKeys.length;
@@ -1474,6 +1477,7 @@
             await sleep(150);
         }
 
+        // 移除无法获取坐标的组
         if (unmatchedStreets.size > 0) {
             const toRemove = [];
             for (let gk of groupKeys) {
@@ -1505,6 +1509,7 @@
             count: 0
         });
 
+        // 3. 计算偏移量（同街道多个点位分散）
         const streetTotalCount = {};
         for (let gk of validGroupKeys) {
             const street = groupMap[gk].street;
@@ -1515,6 +1520,7 @@
         let successCount = 0;
         const totalValid = validGroupKeys.length;
 
+        // ★★★ 开始保存/更新 ★★★
         for (let i = 0; i < validGroupKeys.length; i++) {
             const gk = validGroupKeys[i];
             const gItem = groupMap[gk];
@@ -1548,9 +1554,10 @@
             const note = masterNames;
             const now = new Date().toISOString();
 
+            // 更新进度
             const pct = 30 + Math.round((i / totalValid) * 70);
             onProgress && onProgress({
-                status: `💾 保存 ${i+1}/${totalValid}`,
+                status: `💾 保存/更新 ${i+1}/${totalValid}`,
                 total: totalValid,
                 current: i + 1,
                 percent: pct,
@@ -1558,32 +1565,70 @@
                 count: successCount
             });
 
-            try {
-                const promise = supabaseClient.from(TABLE_NAME).insert([{
-                    geo: baseGeo,
-                    note: note,
-                    created_at: now,
-                    updated_at: now
-                }]).select();
-                const { data, error } = await supabaseFetchWithTimeout(() => promise);
-                if (error) throw error;
-                if (data && data.length > 0) {
-                    const newDoc = data[0];
-                    const item = createMarkerItem(newDoc.geo, newDoc.note, newDoc.id, newDoc.created_at, newDoc.updated_at);
-                    markerList.push(item);
-                    successCount++;
+            // ===== 关键：查找是否已存在相同街道+品类的标记 =====
+            const existingItem = markerList.find(item => item.geo.name === baseGeo.name);
+
+            if (existingItem) {
+                // ---- 更新已有标记 ----
+                try {
+                    // 更新本地数据
+                    existingItem.geo = { ...baseGeo };
+                    existingItem.note = note;
+                    existingItem.updated_at = now;
+
+                    // 更新地图标记位置
+                    existingItem.marker.setPosition([baseGeo.lng, baseGeo.lat]);
+                    // 更新图标（可能品类变化，但一般不变，可调用）
+                    updateMarkerIcon(existingItem);
+                    // 更新 InfoWindow
+                    const idx = markerList.indexOf(existingItem);
+                    refreshMarkerInfoWindow(existingItem, idx);
+
+                    // 更新数据库
+                    const promise = supabaseClient.from(TABLE_NAME).update({
+                        geo: existingItem.geo,
+                        note: existingItem.note,
+                        updated_at: now
+                    }).match({ id: existingItem.id });
+                    const { error } = await supabaseFetchWithTimeout(() => promise);
+                    if (error) throw error;
+
+                    successCount++; // 记录更新数
+                } catch (err) {
+                    console.error('更新标记失败：', err);
                 }
-            } catch (err) {
-                console.error('导入标记失败：', err);
+            } else {
+                // ---- 插入新标记 ----
+                try {
+                    const promise = supabaseClient.from(TABLE_NAME).insert([{
+                        geo: baseGeo,
+                        note: note,
+                        created_at: now,
+                        updated_at: now
+                    }]).select();
+                    const { data, error } = await supabaseFetchWithTimeout(() => promise);
+                    if (error) throw error;
+                    if (data && data.length > 0) {
+                        const newDoc = data[0];
+                        const item = createMarkerItem(newDoc.geo, newDoc.note, newDoc.id, newDoc.created_at, newDoc.updated_at);
+                        markerList.push(item);
+                        successCount++;
+                    }
+                } catch (err) {
+                    console.error('插入新标记失败：', err);
+                }
             }
             await sleep(30);
         }
 
+        // 4. 全部刷新界面
         markerList.forEach((item, idx) => {
             refreshMarkerInfoWindow(item, idx);
             updateMarkerIcon(item);
         });
+        applyFilterAndRenderMap();
         updateMarkerCountBadge();
+
         onProgress && onProgress({
             status: `✅ 完成`,
             done: true,
