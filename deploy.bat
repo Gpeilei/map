@@ -1,0 +1,9 @@
+@echo off
+echo 正在添加所有更改...
+git add .
+echo 正在提交...
+git commit -m "自动部署 %date% %time%"
+echo 正在推送到远程仓库...
+git push
+echo 部署完成！
+pause
