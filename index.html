@@ -248,6 +248,7 @@
     let streetPolygons = [];
     let streetTextMarkers = [];
     let allOverlayVisible = true;
+    let _isMerging = false;  // 防止合并时循环
 
     const ICON_NORMAL = new AMap.Icon({
         image: "https://webapi.amap.com/theme/v1.3/markers/n/mark_r.png",
@@ -517,13 +518,90 @@
         document.getElementById('identifiedStreetCount').textContent = `（${count}）`;
     }
 
-    // ===== 加载数据 & 刷新 =====
+    // ★★★ 核心：加载数据并自动合并重复标记 ★★★
     async function loadFromCloud() {
+        // 防止合并操作导致的循环
+        if (_isMerging) {
+            console.log('⏳ 合并进行中，跳过本次加载');
+            return;
+        }
         try {
             const promise = supabaseClient.from(TABLE_NAME).select('*');
             const { data, error } = await supabaseFetchWithTimeout(() => promise);
             if (error) throw error;
 
+            // 如果数据为空直接返回
+            if (!data || data.length === 0) {
+                markerList = [];
+                applyFilterAndRenderMap();
+                updateMarkerCountBadge();
+                return;
+            }
+
+            // 1. 按 geo.name 分组，检测重复
+            const groupMap = {};
+            data.forEach(doc => {
+                const key = doc.geo.name; // "街道｜品类"
+                if (!groupMap[key]) groupMap[key] = [];
+                groupMap[key].push(doc);
+            });
+
+            const duplicates = Object.keys(groupMap).filter(k => groupMap[k].length > 1);
+            if (duplicates.length > 0) {
+                console.log(`🔄 发现 ${duplicates.length} 个重复组，开始合并...`);
+                _isMerging = true;
+
+                // 逐组合并
+                for (let key of duplicates) {
+                    const docs = groupMap[key];
+                    // 按 updated_at 降序（最新的在前）
+                    docs.sort((a, b) => {
+                        const tA = a.updated_at || a.created_at || '';
+                        const tB = b.updated_at || b.created_at || '';
+                        return tB.localeCompare(tA);
+                    });
+                    const keep = docs[0];  // 保留最新的
+                    const toDelete = docs.slice(1);
+
+                    // 合并备注（用；分隔去重）
+                    let allNotes = [keep.note || ''];
+                    toDelete.forEach(d => {
+                        if (d.note) allNotes.push(d.note);
+                    });
+                    const mergedNote = allNotes.filter(n => n.trim() !== '')
+                                              .join('；');
+
+                    // 更新保留的备注
+                    if (mergedNote !== keep.note) {
+                        keep.note = mergedNote;
+                    }
+                    // 更新时间戳为当前
+                    keep.updated_at = new Date().toISOString();
+
+                    // 更新数据库保留的记录
+                    const updatePromise = supabaseClient.from(TABLE_NAME).update({
+                        note: keep.note,
+                        updated_at: keep.updated_at
+                    }).match({ id: keep.id });
+                    await supabaseFetchWithTimeout(() => updatePromise);
+
+                    // 删除多余记录
+                    const deleteIds = toDelete.map(d => d.id).filter(id => id != null);
+                    if (deleteIds.length > 0) {
+                        const deletePromise = supabaseClient.from(TABLE_NAME).delete().in('id', deleteIds);
+                        await supabaseFetchWithTimeout(() => deletePromise);
+                    }
+                }
+
+                console.log(`✅ 合并完成，共处理 ${duplicates.length} 组重复数据`);
+                // 合并完成后，重新加载（递归调用自身，但此时 _isMerging 为 true 会跳过，需重置并重新调用）
+                _isMerging = false;
+                // 重新加载最新数据
+                await loadFromCloud();
+                return;
+            }
+
+            // 2. 无重复或合并完成后，正常加载
             markerList.forEach(item => { item.marker.setMap(null); item.infoWin.close(); });
             markerList = [];
 
@@ -546,6 +624,7 @@
         } catch (err) {
             console.error('❌ 加载数据失败', err);
             alert('加载数据失败：' + err.message);
+            _isMerging = false;
         }
     }
 
@@ -1381,7 +1460,7 @@
         }
     }
 
-    // ★★★ 修改后的核心导入函数：支持覆盖更新 ★★★
+    // 导入核心（覆盖更新逻辑）
     async function processExcelRowsWithProgress(rows, onProgress) {
         if (!rows || rows.length === 0) {
             onProgress && onProgress({ status: '❌ 无数据', done: true, count: 0 });
@@ -1396,7 +1475,6 @@
             return name;
         }
 
-        // 1. 分组（同街道同品类合并师傅列表）
         const groupMap = {};
         for (let row of rows) {
             let street = (row["街道"] || "").trim();
@@ -1437,7 +1515,7 @@
             count: 0
         });
 
-        // 2. 地理编码（获取街道中心坐标）
+        // 地理编码
         const unmatchedStreets = new Set();
         let geocodeSuccessCount = 0;
         const totalGroups = groupKeys.length;
@@ -1477,7 +1555,6 @@
             await sleep(150);
         }
 
-        // 移除无法获取坐标的组
         if (unmatchedStreets.size > 0) {
             const toRemove = [];
             for (let gk of groupKeys) {
@@ -1509,7 +1586,6 @@
             count: 0
         });
 
-        // 3. 计算偏移量（同街道多个点位分散）
         const streetTotalCount = {};
         for (let gk of validGroupKeys) {
             const street = groupMap[gk].street;
@@ -1520,7 +1596,6 @@
         let successCount = 0;
         const totalValid = validGroupKeys.length;
 
-        // ★★★ 开始保存/更新 ★★★
         for (let i = 0; i < validGroupKeys.length; i++) {
             const gk = validGroupKeys[i];
             const gItem = groupMap[gk];
@@ -1554,7 +1629,6 @@
             const note = masterNames;
             const now = new Date().toISOString();
 
-            // 更新进度
             const pct = 30 + Math.round((i / totalValid) * 70);
             onProgress && onProgress({
                 status: `💾 保存/更新 ${i+1}/${totalValid}`,
@@ -1565,26 +1639,20 @@
                 count: successCount
             });
 
-            // ===== 关键：查找是否已存在相同街道+品类的标记 =====
+            // 查找是否已存在
             const existingItem = markerList.find(item => item.geo.name === baseGeo.name);
 
             if (existingItem) {
-                // ---- 更新已有标记 ----
+                // 更新
                 try {
-                    // 更新本地数据
                     existingItem.geo = { ...baseGeo };
                     existingItem.note = note;
                     existingItem.updated_at = now;
-
-                    // 更新地图标记位置
                     existingItem.marker.setPosition([baseGeo.lng, baseGeo.lat]);
-                    // 更新图标（可能品类变化，但一般不变，可调用）
                     updateMarkerIcon(existingItem);
-                    // 更新 InfoWindow
                     const idx = markerList.indexOf(existingItem);
                     refreshMarkerInfoWindow(existingItem, idx);
 
-                    // 更新数据库
                     const promise = supabaseClient.from(TABLE_NAME).update({
                         geo: existingItem.geo,
                         note: existingItem.note,
@@ -1592,13 +1660,12 @@
                     }).match({ id: existingItem.id });
                     const { error } = await supabaseFetchWithTimeout(() => promise);
                     if (error) throw error;
-
-                    successCount++; // 记录更新数
+                    successCount++;
                 } catch (err) {
                     console.error('更新标记失败：', err);
                 }
             } else {
-                // ---- 插入新标记 ----
+                // 插入新
                 try {
                     const promise = supabaseClient.from(TABLE_NAME).insert([{
                         geo: baseGeo,
@@ -1621,7 +1688,6 @@
             await sleep(30);
         }
 
-        // 4. 全部刷新界面
         markerList.forEach((item, idx) => {
             refreshMarkerInfoWindow(item, idx);
             updateMarkerIcon(item);
