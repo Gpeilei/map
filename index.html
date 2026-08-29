@@ -720,13 +720,19 @@
                 return;
             }
 
-            const concurrency = 5;
+            const concurrency = 8; // 提高并发数
+            let loadedCount = 0;
+            const total = fileList.length;
             const results = [];
+
             for (let i = 0; i < fileList.length; i += concurrency) {
                 const chunk = fileList.slice(i, i + concurrency);
                 const chunkPromises = chunk.map(filename => loadSingleStreet(filename, version));
                 const chunkResults = await Promise.allSettled(chunkPromises);
                 results.push(...chunkResults);
+                loadedCount += chunk.length;
+                // 显示进度
+                statusEl.textContent = `⏳ 加载街道中... (${loadedCount}/${total})`;
                 if (version !== loadVersion) {
                     console.log('🔄 加载被取消（版本号不匹配）');
                     statusEl.textContent = '⏹️ 加载已取消（切换站点）';
@@ -734,6 +740,7 @@
                 }
             }
 
+            // 统计成功/失败
             let successCount = 0, failCount = 0;
             const failedFiles = [];
             results.forEach((res, idx) => {
@@ -768,11 +775,12 @@
 
     // ===== 加载单个街道文件 =====
     async function loadSingleStreet(filename, version) {
-        try {
-            const resp = await fetch("./geojson/" + filename);
-            if (!resp.ok) throw new Error("HTTP " + resp.status);
-            const geoData = await resp.json();
-            if (version !== loadVersion) return false;
+    try {
+        // 启用强缓存，第二次加载极快
+        const resp = await fetch("./geojson/" + filename, { cache: 'force-cache' });
+        if (!resp.ok) throw new Error("HTTP " + resp.status);
+        const geoData = await resp.json();
+        if (version !== loadVersion) return false;
 
             let features = [];
             let showName = streetFileToName[filename] || filename.replace(".geojson", "");
@@ -874,7 +882,7 @@
             streetTextMarkers.push(streetMarkerLabel);
 
             return true;
-        } catch (err) {
+            } catch (err) {
             console.error(`❌加载文件失败：${filename}`, err);
             return false;
         }
