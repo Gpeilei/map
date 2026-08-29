@@ -4,9 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Map Search</title>
-    <!-- 网站图标：使用主标，如需更换为家修或家居，将 href 改为 jiaxiu.svg 或 jiaju.svg -->
+    <!-- 网站图标：使用主标 -->
     <link rel="icon" type="image/svg+xml" href="zhubiao.svg" />
-    <!-- 兼容旧版浏览器（可选） -->
     <link rel="icon" type="image/x-icon" href="favicon.ico" />
     <script type="text/javascript">
         window._AMapSecurityConfig = {
@@ -60,6 +59,7 @@
         button:disabled { opacity:0.5; pointer-events:none; }
         button.mode-active { background:#2563eb; color:#fff; border-color:#2563eb; }
         button.mode-inactive { background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; }
+        button .mode-icon { width:16px; height:16px; vertical-align:middle; flex-shrink:0; }
         input, textarea, select { font-family:inherit; font-size:11px; padding:3px 6px; border:1px solid #e2e8f0; border-radius:4px; background:#fafbfc; color:#1e293b; width:100%; outline:none; transition:border 0.15s, box-shadow 0.15s; }
         input:focus, textarea:focus, select:focus { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,0.08); background:#fff; }
         textarea { resize:vertical; min-height:24px; font-size:11px; }
@@ -111,9 +111,13 @@
         .shortcut-hint { font-size:10px; color:#94a3b8; margin-top:2px; }
         #recycleCount { background:#f1f5f9; padding:1px 6px; border-radius:12px; font-size:10px; }
         .mode-selector { display:flex; gap:6px; align-items:center; }
-        .mode-selector button { flex:1; justify-content:center; padding:3px 6px; }
+        .mode-selector button { flex:1; justify-content:center; padding:3px 6px; gap:4px; }
         .mode-badge { font-size:10px; background:#dbeafe; color:#1e40af; padding:0 6px; border-radius:10px; margin-left:4px; }
         .dragging-hint { font-size:10px; color:#64748b; background:#f1f5f9; padding:2px 6px; border-radius:10px; display:inline-block; }
+        .mode-selector button img { width:16px; height:16px; display:inline-block; vertical-align:middle; flex-shrink:0; }
+        /* 激活状态下图标颜色保持不变，无需特殊处理 */
+        .mode-selector button.primary img { filter: brightness(0) invert(1); }
+        .mode-selector button.outline img { filter: none; }
         @media (max-width:768px) {
             #sidebar { width:100%; min-width:unset; height:50vh; border-right:none; border-bottom:1px solid #e9edf4; }
             #wrap { flex-direction:column; }
@@ -129,8 +133,12 @@
             <summary class="card-title"><span>📂 工作模式</span><span class="arrow">▶</span></summary>
             <div class="card-body">
                 <div class="mode-selector">
-                    <button id="modeRepairBtn" class="primary small" onclick="setMode('repair')">🔧 家修</button>
-                    <button id="modeInstallBtn" class="outline small" onclick="setMode('install')">🛠️ 家居</button>
+                    <button id="modeRepairBtn" class="primary small" onclick="setMode('repair')">
+                        <img src="jiaxiu.svg" alt="家修" /> 家修
+                    </button>
+                    <button id="modeInstallBtn" class="outline small" onclick="setMode('install')">
+                        <img src="jiaju.svg" alt="家居" /> 家居
+                    </button>
                 </div>
                 <div class="text-xs" style="margin-top:2px; color:#64748b;">
                     当前模式：<span id="currentModeLabel">家修</span> ｜ 标记数：<span id="modeMarkerCount">0</span>
@@ -486,7 +494,7 @@
         return (item.geo && item.geo.district) || '';
     }
 
-    // ===== 模式切换 =====
+    // ===== 模式切换（按钮图标自动跟随） =====
     function setMode(mode) {
         if (mode === currentMode) return;
         currentMode = mode;
