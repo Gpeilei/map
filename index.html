@@ -363,7 +363,7 @@
         imageSize: new AMap.Size(25, 34)
     });
 
-    // ===== 街道文件映射（全部 54 个：莲湖26 + 未央28） =====
+    // ===== 街道文件映射（莲湖26 + 未央28 + 雁塔14） =====
     const streetFileToName = {
         // 莲湖 26 个
         "zaoyuan.geojson": "枣园街道",
@@ -420,10 +420,25 @@
         "hansenzhai.geojson": "韩森寨街道",
         "changlefang.geojson": "长乐坊街道",
         "dongguannanjie.geojson": "东关南街街道",
-        "taiyilu.geojson": "太乙路街道"
+        "taiyilu.geojson": "太乙路街道",
+        // 雁塔 14 个（含用户指定的长安区街道）
+        "dianzicheng.geojson": "电子城街道",
+        "ducheng.geojson": "杜城街道",
+        "xiaozhailu.geojson": "小寨路街道",
+        "chanyanbao.geojson": "长延堡街道",
+        "dayanta.geojson": "大雁塔街道",
+        "qujiang.geojson": "曲江街道",
+        "dengjiapo.geojson": "等驾坡街道",
+        "paoli.geojson": "炮里街道",
+        "mingdu.geojson": "鸣犊街道",
+        "dazhao.geojson": "大兆街道",
+        "weiqu.geojson": "韦曲街道",
+        "xiliu.geojson": "细柳街道",
+        "guodu.geojson": "郭杜街道",
+        "lingzhao.geojson": "灵沼街道"
     };
 
-    // ===== 站点配置（莲湖包含全部 26 个街道，未央 28 个，雁塔为空） =====
+    // ===== 站点配置 =====
     const SITE_CONFIG = {
         lianhu: {
             label: '莲湖',
@@ -467,7 +482,22 @@
         yanta: {
             label: '雁塔',
             center: [108.948, 34.218],
-            streetFiles: []  // 待添加
+            streetFiles: [
+                "dianzicheng.geojson",
+                "ducheng.geojson",
+                "xiaozhailu.geojson",
+                "chanyanbao.geojson",
+                "dayanta.geojson",
+                "qujiang.geojson",
+                "dengjiapo.geojson",
+                "paoli.geojson",
+                "mingdu.geojson",
+                "dazhao.geojson",
+                "weiqu.geojson",
+                "xiliu.geojson",
+                "guodu.geojson",
+                "lingzhao.geojson"
+            ]
         }
     };
 
