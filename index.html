@@ -338,7 +338,7 @@
     let streetTextMarkers = [];
     let allOverlayVisible = true;
     let _isMerging = false;
-    let isLoadingStreets = false;
+    let loadVersion = 0; // 用于取消旧加载
 
     // 当前模式
     let currentMode = 'repair';
@@ -653,23 +653,28 @@
         document.getElementById('modeMarkerCount').textContent = count;
     }
 
-    // ===== 站点切换 =====
+    // ===== 站点切换（优化版） =====
     function setSite(site) {
-        if (site === currentSite && streetPolygons.length > 0) return;
-        currentSite = site;
+        if (site === currentSite) return; // 相同站点不重复加载
 
-        // 更新按钮样式
+        // 立即清除旧街道图层和缓存
+        clearStreetLayer();
+        streetCenterCache = {};
+        filterStreet = ''; // 同时清除街道过滤
+        document.getElementById('streetIdentifyBar').style.display = 'none';
+
+        // 更新 UI 按钮样式
         const allBtn = document.getElementById('siteAllBtn');
         const lianhuBtn = document.getElementById('siteLianhuBtn');
         const weiyangBtn = document.getElementById('siteWeiyangBtn');
         const yantaBtn = document.getElementById('siteYantaBtn');
-        const btns = [allBtn, lianhuBtn, weiyangBtn, yantaBtn];
-        btns.forEach(b => b.className = 'outline small');
+        [allBtn, lianhuBtn, weiyangBtn, yantaBtn].forEach(b => b.className = 'outline small');
         if (site === 'all') allBtn.className = 'primary small';
         else if (site === 'lianhu') lianhuBtn.className = 'primary small';
         else if (site === 'weiyang') weiyangBtn.className = 'primary small';
         else if (site === 'yanta') yantaBtn.className = 'primary small';
 
+        currentSite = site;
         const siteLabel = site === 'all' ? '全部' : (SITE_CONFIG[site]?.label || site);
         document.getElementById('currentSiteLabel').textContent = siteLabel;
 
@@ -679,164 +684,69 @@
             map.setZoom(10);
         } else {
             const center = SITE_CONFIG[site]?.center;
-            if (center) {
-                map.setCenter(center);
-                map.setZoom(13);
-            }
+            if (center) { map.setCenter(center); map.setZoom(13); }
         }
 
-        clearFilter();
-        loadStreetsForCurrentSite();
+        // 重新加载街道（版本号递增，取消旧加载）
+        loadVersion++;
+        loadStreetsForCurrentSite(site, loadVersion);
         applyFilterAndRenderMap();
         updateModeMarkerCount();
     }
 
-    // ===== 加载当前站点对应的街道 =====
-    async function loadStreetsForCurrentSite() {
-        if (isLoadingStreets) return;
-        isLoadingStreets = true;
+    // ===== 加载当前站点对应的街道（并行优化 + 版本控制） =====
+    async function loadStreetsForCurrentSite(site, version) {
         const statusEl = document.getElementById('streetLoadStatus');
-
         try {
-            clearStreetLayer();
-            streetCenterCache = {};
-
             let fileList = [];
-            if (currentSite === 'all') {
+            if (site === 'all') {
                 fileList = getAllStreetFiles();
                 statusEl.textContent = '🌐 加载全部街道...';
             } else {
-                fileList = SITE_CONFIG[currentSite]?.streetFiles || [];
-                const label = SITE_CONFIG[currentSite]?.label || currentSite;
+                fileList = SITE_CONFIG[site]?.streetFiles || [];
+                const label = SITE_CONFIG[site]?.label || site;
                 statusEl.textContent = `🏘️ 加载 ${label} 街道... (${fileList.length} 个文件)`;
             }
 
             if (fileList.length === 0) {
                 statusEl.textContent = '⚠️ 当前站点暂无街道数据';
-                isLoadingStreets = false;
                 return;
             }
 
-            let successCount = 0;
-            let failCount = 0;
-            let failedFiles = [];
-
-            for (let filename of fileList) {
-                try {
-                    const resp = await fetch("./geojson/" + filename);
-                    if (!resp.ok) throw new Error("HTTP " + resp.status);
-                    const geoData = await resp.json();
-                    let features = [];
-                    let showName = streetFileToName[filename] || filename.replace(".geojson", "");
-
-                    if (geoData.type === "Feature") features = [geoData];
-                    else if (geoData.type === "FeatureCollection") features = geoData.features;
-                    else { console.warn(`${filename} 未知geojson类型，跳过`); continue; }
-                    if (!Array.isArray(features) || features.length === 0) { console.warn(`${filename} 没有有效的features，跳过`); continue; }
-
-                    const polyList = [];
-                    features.forEach((feat, index) => {
-                        if (!feat.geometry) { console.warn(` ${filename} 第${index}个特征无geometry`); return; }
-                        if (feat.properties?.乡镇名) { showName = feat.properties.乡镇名; }
-                        const geoType = feat.geometry.type;
-                        const coords = feat.geometry.coordinates;
-                        if (geoType === "Polygon") {
-                            if (Array.isArray(coords) && Array.isArray(coords[0]) && coords[0].length > 2) {
-                                polyList.push(coords[0]);
-                            } else { console.warn(` ${filename} Polygon 外环格式异常`); }
-                        } else if (geoType === "MultiPolygon") {
-                            coords.forEach((polygonRings, idx) => {
-                                if (Array.isArray(polygonRings) && Array.isArray(polygonRings[0]) && polygonRings[0].length > 2) {
-                                    polyList.push(polygonRings[0]);
-                                } else { console.warn(` ${filename} MultiPolygon 第${idx}个碎片外环格式异常`); }
-                            });
-                        } else { console.warn(` ${filename} 未知几何类型: ${geoType}`); }
-                    });
-
-                    const validPolyList = polyList.filter(p => Array.isArray(p) && p.length > 2);
-                    if (validPolyList.length === 0) { console.warn(`⚠ 街道[${showName}] 没有有效多边形，跳过此街道`); continue; }
-
-                    validPolyList.forEach(pathArr => renderPolygonOnly(pathArr, showName));
-
-                    let sumLng = 0, sumLat = 0, totalPoints = 0;
-                    validPolyList.forEach(path => {
-                        path.forEach(point => {
-                            if (Array.isArray(point) && point.length >= 2 && !isNaN(point[0]) && !isNaN(point[1])) {
-                                sumLng += point[0]; sumLat += point[1]; totalPoints++;
-                            }
-                        });
-                    });
-                    if (totalPoints === 0) { console.warn(`⚠ 街道[${showName}] 无有效顶点，跳过`); continue; }
-
-                    let useLng = sumLng / totalPoints;
-                    let useLat = sumLat / totalPoints;
-
-                    const override = manualCenterOverride[showName];
-                    if (override) {
-                        useLng = override.lng;
-                        useLat = override.lat;
-                    } else {
-                        const inXiAn = (lng, lat) => lng > 108.5 && lng < 109.5 && lat > 33.8 && lat < 34.8;
-                        if (!inXiAn(useLng, useLat)) {
-                            let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
-                            validPolyList.forEach(path => {
-                                path.forEach(point => {
-                                    if (Array.isArray(point) && point.length >= 2 && !isNaN(point[0]) && !isNaN(point[1])) {
-                                        const lng = point[0], lat = point[1];
-                                        if (lng < minLng) minLng = lng;
-                                        if (lng > maxLng) maxLng = lng;
-                                        if (lat < minLat) minLat = lat;
-                                        if (lat > maxLat) maxLat = lat;
-                                    }
-                                });
-                            });
-                            if (isFinite(minLng) && isFinite(maxLng) && isFinite(minLat) && isFinite(maxLat)) {
-                                useLng = (minLng + maxLng) / 2;
-                                useLat = (minLat + maxLat) / 2;
-                            } else { console.warn(`⚠ 街道[${showName}] 包围盒计算失败，跳过`); continue; }
-                        }
-                    }
-                    if (isNaN(useLng) || isNaN(useLat) || !isFinite(useLng) || !isFinite(useLat)) {
-                        console.warn(`⚠ 街道[${showName}] 最终坐标无效，跳过`); continue;
-                    }
-
-                    const stdName = showName.trim();
-                    streetCenterCache[stdName] = { lng: useLng, lat: useLat };
-
-                    const streetMarkerLabel = new AMap.Marker({
-                        position: [useLng, useLat],
-                        icon: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMSIgaGVpZ2h0PSIxIj48L3N2Zz4=",
-                        offset: new AMap.Pixel(0, 0),
-                        zIndex: 25,
-                        label: {
-                            content: showName,
-                            direction: "center",
-                            offset: new AMap.Pixel(0, 0),
-                            style: {
-                                fontSize: "11px",
-                                color: "#002266",
-                                backgroundColor: "rgba(255,255,255,0.86)",
-                                padding: "1px 5px",
-                                border: "none",
-                                fontWeight: "bold"
-                            }
-                        }
-                    });
-                    streetMarkerLabel.setMap(map);
-                    streetTextMarkers.push(streetMarkerLabel);
-                    successCount++;
-                } catch (err) {
-                    console.error(`❌加载文件失败：${filename}`, err);
-                    failCount++;
-                    failedFiles.push(filename);
+            // 并发控制：每次最多 5 个请求
+            const concurrency = 5;
+            const results = [];
+            for (let i = 0; i < fileList.length; i += concurrency) {
+                const chunk = fileList.slice(i, i + concurrency);
+                const chunkPromises = chunk.map(filename => loadSingleStreet(filename, version));
+                const chunkResults = await Promise.allSettled(chunkPromises);
+                results.push(...chunkResults);
+                // 检查版本号，若被取消则提前终止
+                if (version !== loadVersion) {
+                    console.log('🔄 加载被取消（版本号不匹配）');
+                    statusEl.textContent = '🔄 已切换到其他站点，加载取消';
+                    return;
                 }
-                await sleep(80);
             }
+
+            // 统计成功/失败
+            let successCount = 0, failCount = 0;
+            const failedFiles = [];
+            results.forEach((res, idx) => {
+                if (res.status === 'fulfilled' && res.value === true) {
+                    successCount++;
+                } else {
+                    failCount++;
+                    failedFiles.push(fileList[idx]);
+                }
+            });
 
             let msg = `街道加载完成：成功 ${successCount}/${fileList.length}`;
             if (failCount > 0) {
-                msg += `，失败 ${failCount} 个（${failedFiles.join('、')}）。这些街道将使用高德地理编码获取位置。`;
+                msg += `，失败 ${failCount} 个（${failedFiles.join('、')}）。将使用地理编码替代。`;
                 document.getElementById('importErrorHint').textContent = '⚠️ 部分街道 GeoJSON 缺失，已自动启用地理编码替代。';
+            } else {
+                document.getElementById('importErrorHint').textContent = '';
             }
             statusEl.textContent = msg;
 
@@ -844,6 +754,7 @@
                 map.setFitView(streetPolygons);
             }
 
+            // 自动补全标记街道
             if (successCount > 0) {
                 await autoFillStreetForMarkers();
             }
@@ -851,8 +762,122 @@
         } catch (err) {
             console.error('加载街道失败:', err);
             statusEl.textContent = '❌ 街道加载失败：' + err.message;
-        } finally {
-            isLoadingStreets = false;
+        }
+    }
+
+    // ===== 加载单个街道文件（内部函数） =====
+    async function loadSingleStreet(filename, version) {
+        try {
+            const resp = await fetch("./geojson/" + filename);
+            if (!resp.ok) throw new Error("HTTP " + resp.status);
+            const geoData = await resp.json();
+
+            // 解析几何数据
+            let features = [];
+            let showName = streetFileToName[filename] || filename.replace(".geojson", "");
+            if (geoData.type === "Feature") features = [geoData];
+            else if (geoData.type === "FeatureCollection") features = geoData.features;
+            else { console.warn(`${filename} 未知geojson类型，跳过`); return false; }
+            if (!Array.isArray(features) || features.length === 0) { console.warn(`${filename} 没有有效的features，跳过`); return false; }
+
+            const polyList = [];
+            features.forEach((feat, index) => {
+                if (!feat.geometry) { console.warn(` ${filename} 第${index}个特征无geometry`); return; }
+                if (feat.properties?.乡镇名) { showName = feat.properties.乡镇名; }
+                const geoType = feat.geometry.type;
+                const coords = feat.geometry.coordinates;
+                if (geoType === "Polygon") {
+                    if (Array.isArray(coords) && Array.isArray(coords[0]) && coords[0].length > 2) {
+                        polyList.push(coords[0]);
+                    } else { console.warn(` ${filename} Polygon 外环格式异常`); }
+                } else if (geoType === "MultiPolygon") {
+                    coords.forEach((polygonRings, idx) => {
+                        if (Array.isArray(polygonRings) && Array.isArray(polygonRings[0]) && polygonRings[0].length > 2) {
+                            polyList.push(polygonRings[0]);
+                        } else { console.warn(` ${filename} MultiPolygon 第${idx}个碎片外环格式异常`); }
+                    });
+                } else { console.warn(` ${filename} 未知几何类型: ${geoType}`); }
+            });
+
+            const validPolyList = polyList.filter(p => Array.isArray(p) && p.length > 2);
+            if (validPolyList.length === 0) { console.warn(`⚠ 街道[${showName}] 没有有效多边形，跳过此街道`); return false; }
+
+            // 渲染多边形
+            validPolyList.forEach(pathArr => renderPolygonOnly(pathArr, showName));
+
+            // 计算中心点
+            let sumLng = 0, sumLat = 0, totalPoints = 0;
+            validPolyList.forEach(path => {
+                path.forEach(point => {
+                    if (Array.isArray(point) && point.length >= 2 && !isNaN(point[0]) && !isNaN(point[1])) {
+                        sumLng += point[0]; sumLat += point[1]; totalPoints++;
+                    }
+                });
+            });
+            if (totalPoints === 0) { console.warn(`⚠ 街道[${showName}] 无有效顶点，跳过`); return false; }
+
+            let useLng = sumLng / totalPoints;
+            let useLat = sumLat / totalPoints;
+
+            const override = manualCenterOverride[showName];
+            if (override) {
+                useLng = override.lng;
+                useLat = override.lat;
+            } else {
+                const inXiAn = (lng, lat) => lng > 108.5 && lng < 109.5 && lat > 33.8 && lat < 34.8;
+                if (!inXiAn(useLng, useLat)) {
+                    let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
+                    validPolyList.forEach(path => {
+                        path.forEach(point => {
+                            if (Array.isArray(point) && point.length >= 2 && !isNaN(point[0]) && !isNaN(point[1])) {
+                                const lng = point[0], lat = point[1];
+                                if (lng < minLng) minLng = lng;
+                                if (lng > maxLng) maxLng = lng;
+                                if (lat < minLat) minLat = lat;
+                                if (lat > maxLat) maxLat = lat;
+                            }
+                        });
+                    });
+                    if (isFinite(minLng) && isFinite(maxLng) && isFinite(minLat) && isFinite(maxLat)) {
+                        useLng = (minLng + maxLng) / 2;
+                        useLat = (minLat + maxLat) / 2;
+                    } else { console.warn(`⚠ 街道[${showName}] 包围盒计算失败，跳过`); return false; }
+                }
+            }
+            if (isNaN(useLng) || isNaN(useLat) || !isFinite(useLng) || !isFinite(useLat)) {
+                console.warn(`⚠ 街道[${showName}] 最终坐标无效，跳过`); return false;
+            }
+
+            const stdName = showName.trim();
+            streetCenterCache[stdName] = { lng: useLng, lat: useLat };
+
+            // 添加文字标签
+            const streetMarkerLabel = new AMap.Marker({
+                position: [useLng, useLat],
+                icon: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMSIgaGVpZ2h0PSIxIj48L3N2Zz4=",
+                offset: new AMap.Pixel(0, 0),
+                zIndex: 25,
+                label: {
+                    content: showName,
+                    direction: "center",
+                    offset: new AMap.Pixel(0, 0),
+                    style: {
+                        fontSize: "11px",
+                        color: "#002266",
+                        backgroundColor: "rgba(255,255,255,0.86)",
+                        padding: "1px 5px",
+                        border: "none",
+                        fontWeight: "bold"
+                    }
+                }
+            });
+            streetMarkerLabel.setMap(map);
+            streetTextMarkers.push(streetMarkerLabel);
+
+            return true;
+        } catch (err) {
+            console.error(`❌加载文件失败：${filename}`, err);
+            return false;
         }
     }
 
@@ -2368,7 +2393,7 @@
 
         loadFromCloud().then(() => {
             setupRealtimeSubscription();
-            loadStreetsForCurrentSite();
+            loadStreetsForCurrentSite('all', ++loadVersion);
         });
 
         setMode('repair');
