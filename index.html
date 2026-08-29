@@ -3,7 +3,11 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Search</title>
+    <title>Map Search</title>
+    <!-- 网站图标：使用主标，如需更换为家修或家居，将 href 改为 jiaxiu.svg 或 jiaju.svg -->
+    <link rel="icon" type="image/svg+xml" href="zhubiao.svg" />
+    <!-- 兼容旧版浏览器（可选） -->
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
     <script type="text/javascript">
         window._AMapSecurityConfig = {
             securityJsCode: "20379ff4e621b8c614c0f5916468c0ae"
@@ -13,7 +17,6 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        /* 样式同上（保持原样） */
         * { margin:0; padding:0; box-sizing:border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f5f7fa; color: #1e293b; height: 100vh; overflow: hidden; }
         #wrap { display:flex; height:100vh; }
@@ -100,6 +103,7 @@
             box-shadow: 0 2px 6px rgba(0,0,0,0.3);
             pointer-events: none;
             user-select: none;
+            cursor: move;
         }
         .filter-select { flex:1; min-width:70px; }
         .merge-option { display:flex; align-items:center; gap:8px; padding:4px 8px; margin:4px 0; background:#f8fafc; border-radius:4px; }
@@ -109,6 +113,7 @@
         .mode-selector { display:flex; gap:6px; align-items:center; }
         .mode-selector button { flex:1; justify-content:center; padding:3px 6px; }
         .mode-badge { font-size:10px; background:#dbeafe; color:#1e40af; padding:0 6px; border-radius:10px; margin-left:4px; }
+        .dragging-hint { font-size:10px; color:#64748b; background:#f1f5f9; padding:2px 6px; border-radius:10px; display:inline-block; }
         @media (max-width:768px) {
             #sidebar { width:100%; min-width:unset; height:50vh; border-right:none; border-bottom:1px solid #e9edf4; }
             #wrap { flex-direction:column; }
@@ -129,6 +134,7 @@
                 </div>
                 <div class="text-xs" style="margin-top:2px; color:#64748b;">
                     当前模式：<span id="currentModeLabel">家修</span> ｜ 标记数：<span id="modeMarkerCount">0</span>
+                    <span class="dragging-hint">🖱️ 拖拽标记可移动位置</span>
                 </div>
             </div>
         </details>
@@ -455,6 +461,8 @@
         const letter = trimmed.match(/[a-zA-Z]/);
         return letter ? letter[0].toUpperCase() : '点';
     }
+
+    // 新增：创建标记图标内容
     function createMarkerIconContent(category) {
         const abbr = getCategoryAbbr(category);
         const color = getCategoryColor(category);
@@ -503,7 +511,7 @@
         document.getElementById('modeMarkerCount').textContent = count;
     }
 
-    // ===== 创建标记（含 type） =====
+    // ===== 创建标记（带拖拽） =====
     function createMarkerItem(geoObj, noteText, id = null, createdAt = null, updatedAt = null, type = 'repair') {
         if (!geoObj.category) {
             const parts = (geoObj.name || '').split('｜');
@@ -517,7 +525,9 @@
             position: [geoObj.lng, geoObj.lat],
             content: contentDiv,
             offset: new AMap.Pixel(-15, -15),
-            map: map
+            map: map,
+            draggable: true,  // 启用拖拽
+            cursor: 'move'
         });
 
         const created = createdAt ? formatTimestamp(createdAt) : '无';
@@ -550,6 +560,38 @@
             const idx = markerList.findIndex(item => item.marker === marker);
             if (idx !== -1) openEditModal(idx);
         });
+
+        // 拖拽结束事件：保存新位置到数据库
+        marker.on("dragend", function(e) {
+            const pos = this.getPosition();
+            const lng = pos.getLng();
+            const lat = pos.getLat();
+            // 查找对应的 item
+            const item = markerList.find(it => it.marker === this);
+            if (!item) return;
+            // 更新本地坐标
+            item.geo.lng = lng;
+            item.geo.lat = lat;
+            // 更新信息窗口（位置变化不影响内容，但确保坐标显示更新）
+            const idx = markerList.indexOf(item);
+            refreshMarkerInfoWindow(item, idx);
+            // 保存到数据库
+            if (item.id) {
+                supabaseClient.from(TABLE_NAME).update({
+                    geo: item.geo,
+                    updated_at: new Date().toISOString()
+                }).match({ id: item.id })
+                .then(({ error }) => {
+                    if (error) {
+                        console.error('拖拽后保存位置失败:', error);
+                        alert('保存位置失败，请重试或手动编辑。');
+                    } else {
+                        console.log('标记位置已更新');
+                    }
+                });
+            }
+        });
+
         const item = { marker, infoWin, geo: { ...geoObj }, note: noteText, id, created_at: createdAt, updated_at: updatedAt, type: type };
         return item;
     }
@@ -2027,7 +2069,6 @@
                     const { data, error } = await supabaseFetchWithTimeout(() => promise);
                     if (error) {
                         console.error('插入新标记失败，详细错误:', error);
-                        // 尝试打印更详细的信息
                         if (error.details) console.error('细节:', error.details);
                         if (error.hint) console.error('提示:', error.hint);
                         throw error;
