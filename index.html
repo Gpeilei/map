@@ -158,15 +158,13 @@
             </div>
         </details>
 
-        <!-- 卡片1：地图控制 -->
+        <!-- 卡片1：地图控制（精简） -->
         <details class="card" open>
             <summary class="card-title"><span>🗺️ 地图控制</span><span class="arrow">▶</span></summary>
             <div class="card-body">
-                <div class="flex-row">
-                    <button onclick="setCityXiAn()" class="small ghost">📍 西安</button>
-                    <button id="toggleSimpleBtn" onclick="toggleSimpleMap()" class="outline small">极简</button>
-                    <button onclick="clearAllCustomOverlay()" class="outline small danger" style="color:#dc2626;border-color:#fecaca;">清除</button>
-                    <button onclick="toggleAllOverlayVisible()" class="outline small">显隐</button>
+                <div class="flex-row" style="gap:4px;">
+                    <button onclick="setCityXiAn()" class="small ghost" style="flex:1;">📍 西安</button>
+                    <button id="toggleSimpleBtn" onclick="toggleSimpleMap()" class="outline small" style="flex:1;">极简</button>
                 </div>
                 <div class="text-xs">搜索限定西安市范围，标记支持编辑、聚合、时间戳。</div>
                 <div class="shortcut-hint">快捷键：Ctrl+Z撤销  |  Ctrl+Shift+Z重做  |  Esc关闭弹窗</div>
@@ -328,17 +326,14 @@
     let pendingExcelData = null;
     let isProcessing = false;
     let clusterer = null;
-    let bigDistrictPolygons = [];
-    let bigDistrictTexts = [];
-    let streetPolygons = [];
-    let streetTextMarkers = [];
-    let allOverlayVisible = true;
+    let streetPolygons = [];          // 所有已加载街道的多边形（用于contains查询）
+    let streetTextMarkers = [];       // 所有已加载街道的文本标记
     let _isMerging = false;
-    let loadVersion = 0;          // 用于取消旧加载
+    let loadVersion = 0;
 
     // 当前模式
     let currentMode = 'repair';
-    let currentSite = 'all';
+    let currentSite = 'all';          // 默认加载全部街道
 
     // 回收站
     let undoStack = [];
@@ -347,6 +342,9 @@
     // 合并确认
     let pendingMergeResolve = null;
     let pendingMergeReject = null;
+
+    // --- 新增：街道数据缓存 ---
+    let streetDataCache = {};         // key: 街道名称, value: { polygons: [], textMarkers: [], sites: Set }
 
     const ICON_NORMAL = new AMap.Icon({
         image: "https://webapi.amap.com/theme/v1.3/markers/n/mark_r.png",
@@ -669,8 +667,7 @@
     // ===== 站点切换（优化版） =====
     function setSite(site) {
         if (site === currentSite) return;
-        clearStreetLayer();
-        streetCenterCache = {};
+        // 不再清空 streetCenterCache，保留已计算的坐标
         filterStreet = '';
 
         const allBtn = document.getElementById('siteAllBtn');
@@ -701,7 +698,7 @@
         updateModeMarkerCount();
     }
 
-    // ===== 加载街道（并行，版本控制） =====
+    // ===== 加载街道（并行，版本控制，使用缓存） =====
     async function loadStreetsForCurrentSite(site, version) {
         const statusEl = document.getElementById('streetLoadStatus');
         try {
@@ -720,18 +717,33 @@
                 return;
             }
 
-            const concurrency = 8; // 提高并发数
+            // 筛选出尚未缓存或未包含当前站点的文件
+            const filesToLoad = fileList.filter(f => {
+                const name = streetFileToName[f] || f.replace('.geojson', '');
+                return !streetDataCache[name] || !streetDataCache[name].sites.has(site);
+            });
+
+            if (filesToLoad.length === 0) {
+                // 全部已缓存，直接显示
+                updateStreetVisibility(site);
+                statusEl.textContent = `✅ 街道已缓存，显示 ${fileList.length} 个街道`;
+                // 延迟补全（如果标记还没有街道信息）
+                setTimeout(() => { autoFillStreetForMarkers(); }, 100);
+                return;
+            }
+
+            statusEl.textContent = `⏳ 加载街道中... (${filesToLoad.length}/${fileList.length})`;
+            const concurrency = 8;
             let loadedCount = 0;
-            const total = fileList.length;
+            const total = filesToLoad.length;
             const results = [];
 
-            for (let i = 0; i < fileList.length; i += concurrency) {
-                const chunk = fileList.slice(i, i + concurrency);
-                const chunkPromises = chunk.map(filename => loadSingleStreet(filename, version));
+            for (let i = 0; i < filesToLoad.length; i += concurrency) {
+                const chunk = filesToLoad.slice(i, i + concurrency);
+                const chunkPromises = chunk.map(f => loadSingleStreet(f, version, site));
                 const chunkResults = await Promise.allSettled(chunkPromises);
                 results.push(...chunkResults);
                 loadedCount += chunk.length;
-                // 显示进度
                 statusEl.textContent = `⏳ 加载街道中... (${loadedCount}/${total})`;
                 if (version !== loadVersion) {
                     console.log('🔄 加载被取消（版本号不匹配）');
@@ -740,7 +752,7 @@
                 }
             }
 
-            // 统计成功/失败
+            // 统计结果
             let successCount = 0, failCount = 0;
             const failedFiles = [];
             results.forEach((res, idx) => {
@@ -748,10 +760,12 @@
                     successCount++;
                 } else {
                     failCount++;
-                    failedFiles.push(fileList[idx]);
+                    failedFiles.push(filesToLoad[idx]);
                 }
             });
 
+            // 显示所有街道（包括之前缓存的）
+            updateStreetVisibility(site);
             let msg = `街道加载完成：成功 ${successCount}/${fileList.length}`;
             if (failCount > 0) {
                 msg += `，失败 ${failCount} 个（${failedFiles.join('、')}）。将使用地理编码替代。`;
@@ -763,8 +777,11 @@
                 map.setFitView(streetPolygons);
             }
 
+            // 延迟执行自动补全（不阻塞）
             if (successCount > 0) {
-                await autoFillStreetForMarkers();
+                setTimeout(() => {
+                    autoFillStreetForMarkers();
+                }, 100);
             }
 
         } catch (err) {
@@ -773,14 +790,13 @@
         }
     }
 
-    // ===== 加载单个街道文件 =====
-    async function loadSingleStreet(filename, version) {
-    try {
-        // 启用强缓存，第二次加载极快
-        const resp = await fetch("./geojson/" + filename, { cache: 'force-cache' });
-        if (!resp.ok) throw new Error("HTTP " + resp.status);
-        const geoData = await resp.json();
-        if (version !== loadVersion) return false;
+    // ===== 加载单个街道文件（存入缓存） =====
+    async function loadSingleStreet(filename, version, site) {
+        try {
+            const resp = await fetch("./geojson/" + filename, { cache: 'force-cache' });
+            if (!resp.ok) throw new Error("HTTP " + resp.status);
+            const geoData = await resp.json();
+            if (version !== loadVersion) return false;
 
             let features = [];
             let showName = streetFileToName[filename] || filename.replace(".geojson", "");
@@ -812,8 +828,7 @@
             const validPolyList = polyList.filter(p => Array.isArray(p) && p.length > 2);
             if (validPolyList.length === 0) { console.warn(`⚠ 街道[${showName}] 没有有效多边形，跳过此街道`); return false; }
 
-            validPolyList.forEach(pathArr => renderPolygonOnly(pathArr, showName));
-
+            // 计算中心点
             let sumLng = 0, sumLat = 0, totalPoints = 0;
             validPolyList.forEach(path => {
                 path.forEach(point => {
@@ -857,15 +872,43 @@
             }
 
             const stdName = showName.trim();
+            // 更新中心点缓存
             streetCenterCache[stdName] = { lng: useLng, lat: useLat };
 
-            const streetMarkerLabel = new AMap.Marker({
+            // 创建多边形对象（存入缓存，但不显示）
+            const polyObjects = [];
+            validPolyList.forEach(pathArr => {
+                const colorOpt = getRandomStreetColor();
+                const poly = new AMap.Polygon({
+                    path: pathArr,
+                    strokeColor: colorOpt.strokeColor,
+                    strokeWeight: 2,
+                    fillColor: colorOpt.fillColor,
+                    fillOpacity: 0.14,
+                    zIndex: 10
+                });
+                poly._streetName = stdName;
+                poly.on('click', function(e) {
+                    setFilterStreet(poly._streetName);
+                    poly.setOptions({ fillOpacity: 0.3, strokeWeight: 4 });
+                    setTimeout(() => {
+                        poly.setOptions({ fillOpacity: 0.14, strokeWeight: 2 });
+                    }, 500);
+                });
+                poly.setMap(null); // 先不添加到地图
+                polyObjects.push(poly);
+                // 同时加入全局 streetPolygons 供 contains 查询使用
+                streetPolygons.push(poly);
+            });
+
+            // 创建文本标记
+            const textMarker = new AMap.Marker({
                 position: [useLng, useLat],
                 icon: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMSIgaGVpZ2h0PSIxIj48L3N2Zz4=",
                 offset: new AMap.Pixel(0, 0),
                 zIndex: 25,
                 label: {
-                    content: showName,
+                    content: stdName,
                     direction: "center",
                     offset: new AMap.Pixel(0, 0),
                     style: {
@@ -878,37 +921,58 @@
                     }
                 }
             });
-            streetMarkerLabel.setMap(map);
-            streetTextMarkers.push(streetMarkerLabel);
+            textMarker.setMap(null);
+            streetTextMarkers.push(textMarker); // 全局文本标记
+
+            // 存入缓存
+            if (!streetDataCache[stdName]) {
+                streetDataCache[stdName] = { polygons: [], textMarkers: [], sites: new Set() };
+            }
+            streetDataCache[stdName].polygons.push(...polyObjects);
+            streetDataCache[stdName].textMarkers.push(textMarker);
+            streetDataCache[stdName].sites.add(site);
 
             return true;
-            } catch (err) {
+        } catch (err) {
             console.error(`❌加载文件失败：${filename}`, err);
             return false;
         }
     }
 
-    // ===== 渲染多边形 =====
-    function renderPolygonOnly(pathArr, showName) {
-        const colorOpt = getRandomStreetColor();
-        const poly = new AMap.Polygon({
-            path: pathArr,
-            strokeColor: colorOpt.strokeColor,
-            strokeWeight: 2,
-            fillColor: colorOpt.fillColor,
-            fillOpacity: 0.14,
-            zIndex: 10
+    // ===== 根据当前站点显示/隐藏街道 =====
+    function updateStreetVisibility(site) {
+        // 先隐藏所有缓存的街道
+        Object.values(streetDataCache).forEach(cache => {
+            cache.polygons.forEach(p => p.setMap(null));
+            cache.textMarkers.forEach(t => t.setMap(null));
         });
-        poly._streetName = showName;
-        poly.on('click', function(e) {
-            setFilterStreet(poly._streetName);
-            poly.setOptions({ fillOpacity: 0.3, strokeWeight: 4 });
-            setTimeout(() => {
-                poly.setOptions({ fillOpacity: 0.14, strokeWeight: 2 });
-            }, 500);
+
+        // 获取当前站点应显示的文件列表
+        let fileList = [];
+        if (site === 'all') {
+            fileList = getAllStreetFiles();
+        } else {
+            fileList = SITE_CONFIG[site]?.streetFiles || [];
+        }
+
+        fileList.forEach(f => {
+            const name = streetFileToName[f] || f.replace('.geojson', '');
+            const cache = streetDataCache[name];
+            if (cache) {
+                cache.polygons.forEach(p => p.setMap(map));
+                cache.textMarkers.forEach(t => t.setMap(map));
+            }
         });
-        poly.setMap(map);
-        streetPolygons.push(poly);
+    }
+
+    // ===== 清除街道（隐藏所有，不销毁） =====
+    function clearStreetLayer() {
+        // 隐藏所有已缓存的街道
+        Object.values(streetDataCache).forEach(cache => {
+            cache.polygons.forEach(p => p.setMap(null));
+            cache.textMarkers.forEach(t => t.setMap(null));
+        });
+        // 注意：streetPolygons 和 streetTextMarkers 仍然保留所有对象，用于 contains 查询
     }
 
     // ===== 创建标记 =====
@@ -1925,33 +1989,6 @@
         }
     }
 
-    function clearStreetLayer() {
-        streetPolygons.forEach(p => p.setMap(null));
-        streetTextMarkers.forEach(t => t.setMap(null));
-        streetPolygons = [];
-        streetTextMarkers = [];
-    }
-
-    // ===== 图层显隐 & 清除 =====
-    function toggleAllOverlayVisible() {
-        allOverlayVisible = !allOverlayVisible;
-        bigDistrictPolygons.forEach(p => p.setMap(allOverlayVisible ? map : null));
-        bigDistrictTexts.forEach(t => t.setMap(allOverlayVisible ? map : null));
-        streetPolygons.forEach(p => p.setMap(allOverlayVisible ? map : null));
-        streetTextMarkers.forEach(t => t.setMap(allOverlayVisible ? map : null));
-    }
-    function clearAllCustomOverlay() {
-        clearBigDistrictLayer();
-        clearStreetLayer();
-    }
-
-    function clearBigDistrictLayer() {
-        bigDistrictPolygons.forEach(p => p.setMap(null));
-        bigDistrictTexts.forEach(t => t.setMap(null));
-        bigDistrictPolygons = [];
-        bigDistrictTexts = [];
-    }
-
     // ===== Excel 导入 =====
     function handleExcelImport(e) {
         const file = e.target.files[0];
@@ -2391,6 +2428,13 @@
 
         document.getElementById("excelFileInput").addEventListener("change", handleExcelImport);
 
+        // 设置默认站点为全部
+        document.getElementById('siteAllBtn').className = 'primary small';
+        document.getElementById('siteLianhuBtn').className = 'outline small';
+        document.getElementById('siteWeiyangBtn').className = 'outline small';
+        document.getElementById('siteYantaBtn').className = 'outline small';
+        document.getElementById('currentSiteLabel').textContent = '全部';
+
         loadFromCloud().then(() => {
             setupRealtimeSubscription();
             loadStreetsForCurrentSite(currentSite, loadVersion);
@@ -2398,7 +2442,6 @@
 
         setMode('repair');
     };
-    //111
 </script>
 </body>
 </html>
