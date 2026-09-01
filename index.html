@@ -685,7 +685,7 @@
                         </button>
                         <button id="cancelAddModeBtn" class="outline small" style="display:none;flex:1;color:#dc2626;" onclick="cancelAddMarkerMode()">取消</button>
                     </div>
-                    <div id="addModeStatus">🎯 点击街道选中 → 点击地图添加</div>
+                    <div id="addModeStatus">🎯 点击街道选中 → 再次点击同一街道放置标记</div>
                     <div class="shortcut-hint">Ctrl+Z 撤销 · Ctrl+Shift+Z 重做 · Esc 取消</div>
                 </div>
             </div>
@@ -805,7 +805,7 @@
     </div>
 
     <!-- ============================================================ -->
-    <!-- ===== 所有 JavaScript 逻辑（完全保留，未作修改） ===== -->
+    <!-- ===== 所有 JavaScript 逻辑（完整保留，仅修改添加标记交互） ===== -->
     <!-- ============================================================ -->
     <script>
         // ===== Supabase 配置 =====
@@ -1241,7 +1241,7 @@
             }
         }
 
-        // ===== 加载单个街道文件 =====
+        // ===== 加载单个街道文件（修改：两步点击逻辑） =====
         async function loadSingleStreet(filename, version, site) {
             try {
                 const resp = await fetch("./geojson/" + filename, { cache: 'force-cache' });
@@ -1354,10 +1354,23 @@
                         bubble: true
                     });
                     poly._streetName = stdName;
+
+                    // ===== 核心修改：两步点击逻辑 =====
                     poly.on('click', function(e) {
                         if (isAddMarkerMode) {
-                            selectStreetForAdd(poly._streetName, poly);
+                            // 如果当前没有选中街道，或者选中的不是这个街道
+                            if (!selectedStreetForAdd || selectedStreetForAdd !== poly._streetName) {
+                                // 选中该街道（高亮），不弹出对话框
+                                selectStreetForAdd(poly._streetName, poly);
+                            } else {
+                                // 已经选中该街道，则弹出新增对话框
+                                const lnglat = e.lnglat;
+                                const lng = lnglat.getLng();
+                                const lat = lnglat.getLat();
+                                handleMapClickForAdd(lng, lat, poly._streetName);
+                            }
                         } else {
+                            // 非添加模式，点击街道过滤
                             setFilterStreet(poly._streetName);
                             poly.setOptions({ fillOpacity: 0.3, strokeWeight: 4 });
                             setTimeout(() => {
@@ -1365,6 +1378,7 @@
                             }, 500);
                         }
                     });
+
                     poly.setMap(null);
                     polyObjects.push(poly);
                     streetPolygons.push(poly);
@@ -1879,28 +1893,31 @@
             }
         };
 
-        // ===== 添加标记 =====
+        // ===== 添加标记（通过"添加"按钮） =====
         async function addNoteMarker() {
             const noteText = document.getElementById("noteInput").value.trim();
 
+            // 如果处于添加标记模式，引导用户操作
             if (isAddMarkerMode) {
                 if (!selectedStreetForAdd) {
-                    alert('请先点击地图上的街道区域选中目标，然后点击地图任意位置添加标记。');
+                    alert('请先点击街道选中目标区域，再次点击同一街道内部放置标记。');
                 } else {
-                    alert('请点击地图任意位置完成标记添加。');
+                    alert('请点击选中的街道内部任意位置完成标记添加。');
                 }
                 return;
             }
 
+            // 如果尚未搜索位置，自动开启添加标记模式
             if (!currentGeo) {
                 const msg = '尚未搜索位置，自动开启「添加标记」模式。\n' +
-                    '请点击地图上的街道区域选中目标，然后点击地图任意位置添加标记。\n' +
+                    '请点击街道选中，再次点击同一街道内部放置标记。\n' +
                     '（备注内容会自动带入）';
                 if (!confirm(msg)) return;
                 toggleAddMarkerMode();
                 return;
             }
 
+            // 有 currentGeo，正常走原有逻辑
             const geo = { ...currentGeo };
             if (!geo.category) {
                 const parts = (geo.name || '').split('｜');
@@ -2571,7 +2588,7 @@
                 toggleBtn.style.flex = '1';
                 cancelBtn.style.display = 'flex';
                 statusEl.style.display = 'block';
-                statusEl.innerHTML = '🎯 点击街道选中 → 点击地图添加';
+                statusEl.innerHTML = '🎯 点击街道选中 → 再次点击同一街道放置标记';
                 indicator.className = 'mode-indicator on';
                 clearSelectedStreet();
                 if (filterStreet) clearFilter();
@@ -2641,7 +2658,7 @@
             });
 
             const statusEl = document.getElementById('addModeStatus');
-            statusEl.innerHTML = `📍 已选：<strong class="highlight-street">${streetName}</strong>，点击地图添加`;
+            statusEl.innerHTML = `📍 已选中：<strong class="highlight-street">${streetName}</strong>，再次点击该街道内部放置标记`;
         }
 
         function clearSelectedStreet() {
@@ -2659,7 +2676,7 @@
             selectedStreetForAdd = null;
             if (isAddMarkerMode) {
                 const statusEl = document.getElementById('addModeStatus');
-                statusEl.innerHTML = '🎯 点击街道选中 → 点击地图添加';
+                statusEl.innerHTML = '🎯 点击街道选中 → 再次点击同一街道放置标记';
             }
             if (tempClickMarker) { tempClickMarker.remove();
                 tempClickMarker = null; }
@@ -2671,6 +2688,7 @@
                 return;
             }
 
+            // 显示临时标记（反馈）
             if (tempClickMarker) tempClickMarker.remove();
             const contentDiv = document.createElement('div');
             contentDiv.className = 'temp-marker';
@@ -2693,6 +2711,7 @@
                 }
             }, 2000);
 
+            // 打开新增标记对话框（不取消选中，方便连续添加）
             openAddMarkerModal(lng, lat, streetName);
         }
 
@@ -3186,14 +3205,8 @@
                 features: ['bg', 'road', 'point', 'building']
             });
 
-            map.on('click', function(e) {
-                if (isAddMarkerMode && selectedStreetForAdd) {
-                    const lnglat = e.lnglat;
-                    const lng = lnglat.getLng();
-                    const lat = lnglat.getLat();
-                    handleMapClickForAdd(lng, lat, selectedStreetForAdd);
-                }
-            });
+            // 移除了 map 的 click 事件处理（添加标记逻辑已移至街道多边形 click 中）
+            // 地图 click 保留为空（可扩展其他功能）
 
             document.getElementById("excelFileInput").addEventListener("change", handleExcelImport);
 
@@ -3212,7 +3225,7 @@
             document.getElementById('modeIndicator').className = 'mode-indicator off';
 
             console.log('✅ 应用初始化完成');
-            console.log('📌 提示：开启添加标记模式后，点击街道选中，再点击地图任意位置，会弹出新增对话框，填写信息后手动确认添加。');
+            console.log('📌 提示：开启添加标记模式后，点击街道选中（高亮），再次点击同一街道内部即可放置标记。');
         };
     </script>
 </body>
