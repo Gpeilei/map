@@ -15,7 +15,7 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        /* 样式保持不变（略） */
+        /* ===== 基础样式（保持不变） ===== */
         * { margin:0; padding:0; box-sizing:border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f5f7fa; color: #1e293b; height: 100vh; overflow: hidden; }
         #wrap { display:flex; height:100vh; }
@@ -116,6 +116,49 @@
         .mode-selector button.primary img, .site-selector button.primary img { filter: brightness(0) invert(1); }
         .mode-selector button.outline img, .site-selector button.outline img { filter: none; }
         .dragging-hint { font-size:10px; color:#64748b; background:#f1f5f9; padding:2px 6px; border-radius:10px; display:inline-block; }
+        #addModeStatus {
+            font-size: 11px;
+            color: #1e40af;
+            background: #eff6ff;
+            padding: 4px 8px;
+            border-radius: 4px;
+            border: 1px solid #bfdbfe;
+            text-align: center;
+            display: none;
+            margin-top: 3px;
+            line-height: 1.4;
+        }
+        #addModeStatus .highlight-street {
+            font-weight: 700;
+            color: #dc2626;
+        }
+        .add-mode-active .card {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 2px rgba(37,99,235,0.15);
+        }
+        .mode-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 4px;
+            vertical-align: middle;
+        }
+        .mode-indicator.on { background: #16a34a; }
+        .mode-indicator.off { background: #94a3b8; }
+        .temp-marker {
+            background: rgba(255, 0, 0, 0.4);
+            border: 2px solid #ff0000;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            pointer-events: none;
+            animation: pulse 0.6s ease-out;
+        }
+        @keyframes pulse {
+            0% { transform: scale(0.5); opacity: 1; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
         @media (max-width:768px) {
             #sidebar { width:100%; min-width:unset; height:50vh; border-right:none; border-bottom:1px solid #e9edf4; }
             #wrap { flex-direction:column; }
@@ -158,7 +201,7 @@
             </div>
         </details>
 
-        <!-- 卡片1：地图控制（精简） -->
+        <!-- 卡片1：地图控制（精简） + 添加标记模式 -->
         <details class="card" open>
             <summary class="card-title"><span>🗺️ 地图控制</span><span class="arrow">▶</span></summary>
             <div class="card-body">
@@ -166,8 +209,21 @@
                     <button onclick="setCityXiAn()" class="small ghost" style="flex:1;">📍 西安</button>
                     <button id="toggleSimpleBtn" onclick="toggleSimpleMap()" class="outline small" style="flex:1;">极简</button>
                 </div>
-                <div class="text-xs">搜索限定西安市范围，标记支持编辑、聚合、时间戳。</div>
-                <div class="shortcut-hint">快捷键：Ctrl+Z撤销  |  Ctrl+Shift+Z重做  |  Esc关闭弹窗</div>
+                <div class="flex-row" style="gap:4px; margin-top:4px; border-top:1px dashed #e2e8f0; padding-top:4px;">
+                    <button id="toggleAddModeBtn" class="outline small" style="flex:1;" onclick="toggleAddMarkerMode()">
+                        <span class="mode-indicator off" id="modeIndicator"></span> 📌 添加标记
+                    </button>
+                    <button id="cancelAddModeBtn" class="outline small" style="display:none; flex:1; color:#dc2626;" onclick="cancelAddMarkerMode()">
+                        ✕ 取消
+                    </button>
+                </div>
+                <div id="addModeStatus">
+                    🎯 点击地图上的 <strong>街道区域</strong> 选择目标，再点击地图 <strong>任意位置</strong> 添加标记
+                </div>
+                <div class="text-xs" style="margin-top:2px; color:#94a3b8;">
+                    开启后点击街道 → 选中（高亮）→ 点击地图添加标记，自动归属该街道
+                </div>
+                <div class="shortcut-hint">快捷键：Ctrl+Z撤销  |  Ctrl+Shift+Z重做  |  Esc关闭弹窗 / 取消添加模式</div>
             </div>
         </details>
 
@@ -211,7 +267,7 @@
                 <div class="flex-col" style="margin-top:3px;">
                     <textarea id="noteInput" rows="1" placeholder="添加备注（多个关键词逗号分隔）" style="min-height:24px;"></textarea>
                     <div class="flex-row" style="gap:3px;">
-                        <button onclick="addNoteMarker()" class="primary small" style="flex:1;">➕ 添加</button>
+                        <button id="addNoteBtn" onclick="addNoteMarker()" class="primary small" style="flex:1;">➕ 添加</button>
                         <button onclick="loadFromCloud()" class="outline small" style="flex:1;">🔄 刷新</button>
                     </div>
                 </div>
@@ -249,10 +305,10 @@
     <div id="map"></div>
 </div>
 
-<!-- 编辑模态框 -->
+<!-- ===== 编辑模态框（同时用作新增） ===== -->
 <div class="modal-mask" id="editModal">
     <div class="modal-box">
-        <h4>编辑点位标记</h4>
+        <h4 id="editModalTitle">编辑点位标记</h4>
         <div class="modal-row">
             <label>点位名称</label>
             <input type="text" id="editNameInput" />
@@ -276,13 +332,13 @@
                 <option value="yanta">雁塔</option>
             </select>
         </div>
-        <div class="modal-row">
+        <div class="modal-row" id="editCreatedRow" style="display:none;">
             <label>创建时间</label>
             <span id="editCreatedAt" style="font-size:11px; color:#64748b;"></span>
         </div>
         <div class="modal-btn-group">
             <button class="outline" onclick="closeEditModal()">取消</button>
-            <button class="primary" onclick="saveMarkerEdit()">保存</button>
+            <button class="primary" id="editSaveBtn" onclick="saveMarkerEdit()">保存</button>
         </div>
     </div>
 </div>
@@ -317,23 +373,34 @@
     let map = null;
     let currentGeo = null;
     let markerList = [];
-    let tempSelectMarker = null;
+    let tempSelectMarker = null;          // 搜索高亮
+    let tempClickMarker = null;           // 添加模式点击临时标记
     let isSimpleMode = false;
-    let editingMarkerIndex = -1;
+    let editingMarkerIndex = -1;          // -1 表示新增模式
     let streetCenterCache = {};
     let lastHighlightMarker = null;
     let filterStreet = '';
     let pendingExcelData = null;
     let isProcessing = false;
     let clusterer = null;
-    let streetPolygons = [];          // 所有已加载街道的多边形（用于contains查询）
-    let streetTextMarkers = [];       // 所有已加载街道的文本标记
+    let streetPolygons = [];
+    let streetTextMarkers = [];
     let _isMerging = false;
     let loadVersion = 0;
 
+    // ===== 添加标记模式状态 =====
+    let isAddMarkerMode = false;
+    let selectedStreetForAdd = null;
+    let highlightedPolygon = null;
+    let highlightedPolygonOrigOpts = null;
+
+    // ===== 新增：手动添加待确认 =====
+    let pendingAddPosition = null;        // { lng, lat }
+    let pendingAddStreet = null;          // string
+
     // 当前模式
     let currentMode = 'repair';
-    let currentSite = 'all';          // 默认加载全部街道
+    let currentSite = 'all';
 
     // 回收站
     let undoStack = [];
@@ -343,8 +410,8 @@
     let pendingMergeResolve = null;
     let pendingMergeReject = null;
 
-    // --- 新增：街道数据缓存 ---
-    let streetDataCache = {};         // key: 街道名称, value: { polygons: [], textMarkers: [], sites: Set }
+    // --- 街道数据缓存 ---
+    let streetDataCache = {};
 
     const ICON_NORMAL = new AMap.Icon({
         image: "https://webapi.amap.com/theme/v1.3/markers/n/mark_r.png",
@@ -357,9 +424,8 @@
         imageSize: new AMap.Size(25, 34)
     });
 
-    // ===== 街道文件映射（莲湖25，未央28，雁塔14） =====
+    // ===== 街道文件映射 =====
     const streetFileToName = {
-        // 莲湖 25 个（删除漳浒寨）
         "zaoyuan.geojson": "枣园街道",
         "taoyuanlu.geojson": "桃园路街道",
         "xiguan.geojson": "西关街道",
@@ -385,7 +451,6 @@
         "changanlu.geojson": "长安路街道",
         "baishulin.geojson": "柏树林街道",
         "nanyuanmen.geojson": "南院门街道",
-        // 未央 28 个
         "xinhe.geojson": "新合街道",
         "xinzhu.geojson": "新筑街道",
         "baqiao.geojson": "灞桥街道",
@@ -414,7 +479,6 @@
         "changlefang.geojson": "长乐坊街道",
         "dongguannanjie.geojson": "东关南街街道",
         "taiyilu.geojson": "太乙路街道",
-        // 雁塔 14 个
         "dianzicheng.geojson": "电子城街道",
         "ducheng.geojson": "杜城街道",
         "xiaozhailu.geojson": "小寨路街道",
@@ -437,90 +501,43 @@
             label: '莲湖',
             center: [108.878, 34.268],
             streetFiles: [
-                "zaoyuan.geojson",
-                "taoyuanlu.geojson",
-                "xiguan.geojson",
-                "tumen.geojson",
-                "beiguan.geojson",
-                "hongmiaopo.geojson",
-                "huanchengxilu.geojson",
-                "qingnianlu.geojson",
-                "beiyuanmen.geojson",
-                "zhangbagou.geojson",
-                "yuhuazhai.geojson",
-                "sanqiao.geojson",
-                "hancheng.geojson",
-                "weiyanggong.geojson",
-                "liucunbao.geojson",
-                "jianzhanglu.geojson",
-                "gaoqiao.geojson",
-                "doumen.geojson",
-                "wangsi.geojson",
-                "mawang.geojson",
-                "zhangjiacun.geojson",
-                "wenyilu.geojson",
-                "changanlu.geojson",
-                "baishulin.geojson",
-                "nanyuanmen.geojson"
+                "zaoyuan.geojson", "taoyuanlu.geojson", "xiguan.geojson", "tumen.geojson",
+                "beiguan.geojson", "hongmiaopo.geojson", "huanchengxilu.geojson",
+                "qingnianlu.geojson", "beiyuanmen.geojson", "zhangbagou.geojson",
+                "yuhuazhai.geojson", "sanqiao.geojson", "hancheng.geojson",
+                "weiyanggong.geojson", "liucunbao.geojson", "jianzhanglu.geojson",
+                "gaoqiao.geojson", "doumen.geojson", "wangsi.geojson", "mawang.geojson",
+                "zhangjiacun.geojson", "wenyilu.geojson", "changanlu.geojson",
+                "baishulin.geojson", "nanyuanmen.geojson"
             ]
         },
         weiyang: {
             label: '未央',
             center: [108.928, 34.308],
             streetFiles: [
-                "xinhe.geojson",
-                "xinzhu.geojson",
-                "baqiao.geojson",
-                "shilipu.geojson",
-                "hongqing.geojson",
-                "fangzhicheng.geojson",
-                "xiwang.geojson",
-                "hongqi.geojson",
-                "dizhai.geojson",
-                "caotan.geojson",
-                "weiyanghu.geojson",
-                "xujiawan.geojson",
-                "zhangjiabao.geojson",
-                "tanjia.geojson",
-                "daminggong.geojson",
-                "xinjiamiao.geojson",
-                "ziqianglu.geojson",
-                "taihualu.geojson",
-                "jiefangmen.geojson",
-                "hujiamiao.geojson",
-                "changlexilu.geojson",
-                "xiyilu.geojson",
-                "zhongshanmen.geojson",
-                "changlezhonglu.geojson",
-                "hansenzhai.geojson",
-                "changlefang.geojson",
-                "dongguannanjie.geojson",
-                "taiyilu.geojson"
+                "xinhe.geojson", "xinzhu.geojson", "baqiao.geojson", "shilipu.geojson",
+                "hongqing.geojson", "fangzhicheng.geojson", "xiwang.geojson",
+                "hongqi.geojson", "dizhai.geojson", "caotan.geojson", "weiyanghu.geojson",
+                "xujiawan.geojson", "zhangjiabao.geojson", "tanjia.geojson",
+                "daminggong.geojson", "xinjiamiao.geojson", "ziqianglu.geojson",
+                "taihualu.geojson", "jiefangmen.geojson", "hujiamiao.geojson",
+                "changlexilu.geojson", "xiyilu.geojson", "zhongshanmen.geojson",
+                "changlezhonglu.geojson", "hansenzhai.geojson", "changlefang.geojson",
+                "dongguannanjie.geojson", "taiyilu.geojson"
             ]
         },
         yanta: {
             label: '雁塔',
             center: [108.948, 34.218],
             streetFiles: [
-                "dianzicheng.geojson",
-                "ducheng.geojson",
-                "xiaozhailu.geojson",
-                "changyanbao.geojson",
-                "dayanta.geojson",
-                "qujiang.geojson",
-                "dengjiapo.geojson",
-                "paoli.geojson",
-                "mingdu.geojson",
-                "dazhao.geojson",
-                "weiqu.geojson",
-                "xiliu.geojson",
-                "guodu.geojson",
-                "lingzhao.geojson"
+                "dianzicheng.geojson", "ducheng.geojson", "xiaozhailu.geojson",
+                "changyanbao.geojson", "dayanta.geojson", "qujiang.geojson",
+                "dengjiapo.geojson", "paoli.geojson", "mingdu.geojson", "dazhao.geojson",
+                "weiqu.geojson", "xiliu.geojson", "guodu.geojson", "lingzhao.geojson"
             ]
         }
     };
 
-    // 获取所有站点街道文件（去重）
     function getAllStreetFiles() {
         const all = new Set();
         Object.values(SITE_CONFIG).forEach(site => {
@@ -540,7 +557,7 @@
         "张家堡街道": {lng: 108.9366,lat: 34.3276}
     };
 
-    // ===== 坐标转换（保留） =====
+    // ===== 坐标转换 =====
     const PI = 3.1415926535897932384626;
     const a = 6378245.0;
     const ee = 0.00669342162296594323;
@@ -669,10 +686,9 @@
         document.getElementById('modeMarkerCount').textContent = count;
     }
 
-    // ===== 站点切换（优化版） =====
+    // ===== 站点切换 =====
     function setSite(site) {
         if (site === currentSite) return;
-        // 不再清空 streetCenterCache，保留已计算的坐标
         filterStreet = '';
 
         const allBtn = document.getElementById('siteAllBtn');
@@ -701,9 +717,10 @@
         loadStreetsForCurrentSite(site, loadVersion);
         applyFilterAndRenderMap();
         updateModeMarkerCount();
+        if (isAddMarkerMode) toggleAddMarkerMode();
     }
 
-    // ===== 加载街道（并行，版本控制，使用缓存） =====
+    // ===== 加载街道 =====
     async function loadStreetsForCurrentSite(site, version) {
         const statusEl = document.getElementById('streetLoadStatus');
         try {
@@ -722,17 +739,14 @@
                 return;
             }
 
-            // 筛选出尚未缓存或未包含当前站点的文件
             const filesToLoad = fileList.filter(f => {
                 const name = streetFileToName[f] || f.replace('.geojson', '');
                 return !streetDataCache[name] || !streetDataCache[name].sites.has(site);
             });
 
             if (filesToLoad.length === 0) {
-                // 全部已缓存，直接显示
                 updateStreetVisibility(site);
                 statusEl.textContent = `✅ 街道已缓存，显示 ${fileList.length} 个街道`;
-                // 延迟补全（如果标记还没有街道信息）
                 setTimeout(() => { autoFillStreetForMarkers(); }, 100);
                 return;
             }
@@ -741,53 +755,25 @@
             const concurrency = 8;
             let loadedCount = 0;
             const total = filesToLoad.length;
-            const results = [];
 
             for (let i = 0; i < filesToLoad.length; i += concurrency) {
                 const chunk = filesToLoad.slice(i, i + concurrency);
                 const chunkPromises = chunk.map(f => loadSingleStreet(f, version, site));
                 const chunkResults = await Promise.allSettled(chunkPromises);
-                results.push(...chunkResults);
                 loadedCount += chunk.length;
                 statusEl.textContent = `⏳ 加载街道中... (${loadedCount}/${total})`;
                 if (version !== loadVersion) {
-                    console.log('🔄 加载被取消（版本号不匹配）');
                     statusEl.textContent = '⏹️ 加载已取消（切换站点）';
                     return;
                 }
             }
 
-            // 统计结果
-            let successCount = 0, failCount = 0;
-            const failedFiles = [];
-            results.forEach((res, idx) => {
-                if (res.status === 'fulfilled' && res.value) {
-                    successCount++;
-                } else {
-                    failCount++;
-                    failedFiles.push(filesToLoad[idx]);
-                }
-            });
-
-            // 显示所有街道（包括之前缓存的）
             updateStreetVisibility(site);
-            let msg = `街道加载完成：成功 ${successCount}/${fileList.length}`;
-            if (failCount > 0) {
-                msg += `，失败 ${failCount} 个（${failedFiles.join('、')}）。将使用地理编码替代。`;
-                document.getElementById('importErrorHint').textContent = '⚠️ 部分街道 GeoJSON 缺失，已自动启用地理编码替代。';
-            }
-            statusEl.textContent = msg;
-
+            statusEl.textContent = `✅ 街道加载完成（${fileList.length} 个）`;
             if (streetPolygons.length > 0) {
                 map.setFitView(streetPolygons);
             }
-
-            // 延迟执行自动补全（不阻塞）
-            if (successCount > 0) {
-                setTimeout(() => {
-                    autoFillStreetForMarkers();
-                }, 100);
-            }
+            setTimeout(() => { autoFillStreetForMarkers(); }, 100);
 
         } catch (err) {
             console.error('加载街道失败:', err);
@@ -795,7 +781,7 @@
         }
     }
 
-    // ===== 加载单个街道文件（存入缓存） =====
+    // ===== 加载单个街道文件 =====
     async function loadSingleStreet(filename, version, site) {
         try {
             const resp = await fetch("./geojson/" + filename, { cache: 'force-cache' });
@@ -833,7 +819,6 @@
             const validPolyList = polyList.filter(p => Array.isArray(p) && p.length > 2);
             if (validPolyList.length === 0) { console.warn(`⚠ 街道[${showName}] 没有有效多边形，跳过此街道`); return false; }
 
-            // 计算中心点
             let sumLng = 0, sumLat = 0, totalPoints = 0;
             validPolyList.forEach(path => {
                 path.forEach(point => {
@@ -877,10 +862,8 @@
             }
 
             const stdName = showName.trim();
-            // 更新中心点缓存
             streetCenterCache[stdName] = { lng: useLng, lat: useLat };
 
-            // 创建多边形对象（存入缓存，但不显示）
             const polyObjects = [];
             validPolyList.forEach(pathArr => {
                 const colorOpt = getRandomStreetColor();
@@ -893,20 +876,23 @@
                     zIndex: 10
                 });
                 poly._streetName = stdName;
+                // ===== 街道点击事件：支持添加标记模式 =====
                 poly.on('click', function(e) {
-                    setFilterStreet(poly._streetName);
-                    poly.setOptions({ fillOpacity: 0.3, strokeWeight: 4 });
-                    setTimeout(() => {
-                        poly.setOptions({ fillOpacity: 0.14, strokeWeight: 2 });
-                    }, 500);
+                    if (isAddMarkerMode) {
+                        selectStreetForAdd(poly._streetName, poly);
+                    } else {
+                        setFilterStreet(poly._streetName);
+                        poly.setOptions({ fillOpacity: 0.3, strokeWeight: 4 });
+                        setTimeout(() => {
+                            poly.setOptions({ fillOpacity: 0.14, strokeWeight: 2 });
+                        }, 500);
+                    }
                 });
-                poly.setMap(null); // 先不添加到地图
+                poly.setMap(null);
                 polyObjects.push(poly);
-                // 同时加入全局 streetPolygons 供 contains 查询使用
                 streetPolygons.push(poly);
             });
 
-            // 创建文本标记
             const textMarker = new AMap.Marker({
                 position: [useLng, useLat],
                 icon: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMSIgaGVpZ2h0PSIxIj48L3N2Zz4=",
@@ -927,9 +913,8 @@
                 }
             });
             textMarker.setMap(null);
-            streetTextMarkers.push(textMarker); // 全局文本标记
+            streetTextMarkers.push(textMarker);
 
-            // 存入缓存
             if (!streetDataCache[stdName]) {
                 streetDataCache[stdName] = { polygons: [], textMarkers: [], sites: new Set() };
             }
@@ -944,15 +929,12 @@
         }
     }
 
-    // ===== 根据当前站点显示/隐藏街道 =====
     function updateStreetVisibility(site) {
-        // 先隐藏所有缓存的街道
         Object.values(streetDataCache).forEach(cache => {
             cache.polygons.forEach(p => p.setMap(null));
             cache.textMarkers.forEach(t => t.setMap(null));
         });
 
-        // 获取当前站点应显示的文件列表
         let fileList = [];
         if (site === 'all') {
             fileList = getAllStreetFiles();
@@ -970,17 +952,14 @@
         });
     }
 
-    // ===== 清除街道（隐藏所有，不销毁） =====
     function clearStreetLayer() {
-        // 隐藏所有已缓存的街道
         Object.values(streetDataCache).forEach(cache => {
             cache.polygons.forEach(p => p.setMap(null));
             cache.textMarkers.forEach(t => t.setMap(null));
         });
-        // 注意：streetPolygons 和 streetTextMarkers 仍然保留所有对象，用于 contains 查询
     }
 
-    // ===== 创建标记 =====
+    // ===== 创建标记（内部使用） =====
     function createMarkerItem(geoObj, noteText, id = null, createdAt = null, updatedAt = null, type = 'repair', site = 'lianhu') {
         if (!geoObj.category) {
             const parts = (geoObj.name || '').split('｜');
@@ -1250,7 +1229,6 @@
     // ===== 街道识别 =====
     function findStreetByLngLat(lng, lat) {
         if (!streetPolygons || streetPolygons.length === 0) {
-            console.warn('⚠️ 街道数据未加载，请先切换站点加载街道');
             return null;
         }
         const point = new AMap.LngLat(lng, lat);
@@ -1419,10 +1397,33 @@
         }
     };
 
-    // ===== 添加标记 =====
+    // ================================================================
+    // ===== 添加标记（通过"添加"按钮） =====
+    // ================================================================
     async function addNoteMarker() {
-        if (!currentGeo) { alert("请先搜索地址/街道并选中位置"); return; }
         const noteText = document.getElementById("noteInput").value.trim();
+
+        // 如果处于添加标记模式，引导用户直接点击地图
+        if (isAddMarkerMode) {
+            if (!selectedStreetForAdd) {
+                alert('请先点击地图上的街道区域选中目标，然后点击地图任意位置添加标记。');
+            } else {
+                alert('请点击地图任意位置完成标记添加。');
+            }
+            return;
+        }
+
+        // 如果尚未搜索位置，自动开启添加标记模式
+        if (!currentGeo) {
+            const msg = '尚未搜索位置，自动开启「添加标记」模式。\n' +
+                        '请点击地图上的街道区域选中目标，然后点击地图任意位置添加标记。\n' +
+                        '（备注内容会自动带入）';
+            if (!confirm(msg)) return;
+            toggleAddMarkerMode(); // 开启模式
+            return;
+        }
+
+        // 有 currentGeo，正常走原有逻辑
         const geo = { ...currentGeo };
         if (!geo.category) {
             const parts = (geo.name || '').split('｜');
@@ -1455,33 +1456,176 @@
                 applyFilterAndRenderMap();
                 updateMarkerCountBadge();
                 updateUndoButton();
+                // 清空备注框
+                document.getElementById("noteInput").value = '';
+                // 清空 currentGeo 避免重复添加
+                currentGeo = null;
+                if (tempSelectMarker) {
+                    tempSelectMarker.remove();
+                    tempSelectMarker = null;
+                }
             }
         } catch (err) {
             alert('添加标记失败：' + err.message);
         }
     }
 
-    // ===== 编辑保存 =====
+    // ================================================================
+    // ===== 编辑/新增 模态框统一管理 =====
+    // ================================================================
+    function openEditModal(index) {
+        // 编辑模式
+        if (index < 0 || index >= markerList.length) {
+            console.warn("无效标记索引");
+            return;
+        }
+        const item = markerList[index];
+        if (item.type !== currentMode) {
+            alert('当前模式下不能编辑其他类型的标记');
+            return;
+        }
+        if (currentSite !== 'all' && item.site !== currentSite) {
+            alert('当前站点下不能编辑其他站点的标记');
+            return;
+        }
+        editingMarkerIndex = index;
+        document.getElementById('editModalTitle').textContent = '编辑点位标记';
+        document.getElementById('editSaveBtn').textContent = '保存';
+        document.getElementById('editCreatedRow').style.display = 'block';
+        document.getElementById("editNameInput").value = item.geo.name || "";
+        document.getElementById("editNoteInput").value = item.note || "";
+        document.getElementById("editTypeSelect").value = item.type || 'repair';
+        document.getElementById("editSiteSelect").value = item.site || 'lianhu';
+        document.getElementById("editCreatedAt").textContent = item.created_at ? formatTimestamp(item.created_at) : '无';
+        document.getElementById("editModal").style.display = "flex";
+        // 清除新增待确认数据
+        pendingAddPosition = null;
+        pendingAddStreet = null;
+    }
+
+    // 新增标记弹窗
+    function openAddMarkerModal(lng, lat, streetName) {
+        pendingAddPosition = { lng, lat };
+        pendingAddStreet = streetName;
+        editingMarkerIndex = -1; // 标记为新增模式
+
+        document.getElementById('editModalTitle').textContent = '新增标记';
+        document.getElementById('editSaveBtn').textContent = '确认添加';
+        document.getElementById('editCreatedRow').style.display = 'none';
+        // 预填名称：街道｜新增
+        const defaultName = `${streetName}｜新增`;
+        document.getElementById("editNameInput").value = defaultName;
+        document.getElementById("editNoteInput").value = document.getElementById("noteInput").value.trim() || '';
+        document.getElementById("editTypeSelect").value = currentMode;
+        document.getElementById("editSiteSelect").value = currentSite === 'all' ? 'lianhu' : currentSite;
+        document.getElementById("editModal").style.display = "flex";
+    }
+
+    function closeEditModal() {
+        document.getElementById("editModal").style.display = "none";
+        editingMarkerIndex = -1;
+        pendingAddPosition = null;
+        pendingAddStreet = null;
+        // 移除临时标记
+        if (tempClickMarker) { tempClickMarker.remove(); tempClickMarker = null; }
+    }
+
+    // 保存：根据 editingMarkerIndex 判断是编辑还是新增
     async function saveMarkerEdit() {
+        const name = document.getElementById("editNameInput").value.trim();
+        const note = document.getElementById("editNoteInput").value.trim();
+        const type = document.getElementById("editTypeSelect").value;
+        const site = document.getElementById("editSiteSelect").value;
+
+        if (!name) { alert('请输入点位名称'); return; }
+        if (!pendingAddPosition && editingMarkerIndex === -1) {
+            alert('未获取到新增位置，请重新点击地图');
+            return;
+        }
+
+        const now = new Date().toISOString();
+
+        // ---- 新增模式 ----
+        if (editingMarkerIndex === -1 && pendingAddPosition) {
+            const { lng, lat } = pendingAddPosition;
+            const street = pendingAddStreet || '未知街道';
+            // 构建 geo
+            const geo = {
+                name: name,
+                address: street,
+                lng: lng,
+                lat: lat,
+                province: "陕西省",
+                city: "西安市",
+                district: "",
+                street: street,
+                category: '新增' // 可从name中解析，这里默认
+            };
+            // 如果名称中包含｜，尝试提取品类
+            if (name.includes('｜')) {
+                const parts = name.split('｜');
+                geo.name = parts[0] + '｜' + parts[1];
+                geo.category = parts[1] || '新增';
+            } else {
+                geo.name = name;
+                geo.category = '新增';
+            }
+
+            try {
+                const promise = supabaseClient.from(TABLE_NAME).insert([{
+                    geo,
+                    note: note,
+                    created_at: now,
+                    updated_at: now,
+                    type: type,
+                    site: site
+                }]).select();
+                const { data, error } = await supabaseFetchWithTimeout(() => promise);
+                if (error) {
+                    console.error('新增标记失败，详细错误:', error);
+                    throw error;
+                }
+                if (data && data.length > 0) {
+                    const newDoc = data[0];
+                    const item = createMarkerItem(newDoc.geo, newDoc.note, newDoc.id, newDoc.created_at, newDoc.updated_at, newDoc.type || type, newDoc.site || site);
+                    markerList.push(item);
+                    const idx = markerList.length - 1;
+                    refreshMarkerInfoWindow(item, idx);
+                    updateMarkerIcon(item);
+                    applyFilterAndRenderMap();
+                    updateMarkerCountBadge();
+                    updateUndoButton();
+                    // 清空备注框
+                    document.getElementById("noteInput").value = '';
+                    closeEditModal();
+                    alert('✅ 标记添加成功！');
+                }
+            } catch (err) {
+                alert('添加标记失败：' + err.message);
+            }
+            return;
+        }
+
+        // ---- 编辑模式 ----
         if (editingMarkerIndex < 0 || editingMarkerIndex >= markerList.length) {
             alert("没有选中任何标记");
             return;
         }
         const item = markerList[editingMarkerIndex];
         if (!item.id) { alert('该标记缺少云端ID，无法更新'); return; }
-        const newName = document.getElementById("editNameInput").value.trim();
-        const newNote = document.getElementById("editNoteInput").value.trim();
-        const newType = document.getElementById("editTypeSelect").value;
-        const newSite = document.getElementById("editSiteSelect").value;
-        item.geo.name = newName || item.geo.name;
-        const parts = item.geo.name.split('｜');
-        if (parts.length === 2) {
-            item.geo.category = parts[1];
+
+        // 更新名称和备注
+        item.geo.name = name;
+        // 更新品类
+        if (name.includes('｜')) {
+            const parts = name.split('｜');
+            item.geo.category = parts[1] || '';
+        } else {
+            item.geo.category = '';
         }
-        item.note = newNote;
-        item.type = newType;
-        item.site = newSite;
-        const now = new Date().toISOString();
+        item.note = note;
+        item.type = type;
+        item.site = site;
         item.updated_at = now;
 
         try {
@@ -1503,6 +1647,7 @@
             applyFilterAndRenderMap();
             updateMarkerCountBadge();
             updateUndoButton();
+            alert('✅ 标记更新成功！');
         } catch (err) {
             alert('更新失败：' + err.message);
         }
@@ -1599,31 +1744,6 @@
         } catch (err) {
             alert('批量删除失败：' + err.message);
         }
-    }
-
-    // ===== 编辑弹窗 =====
-    function openEditModal(index) {
-        if (index < 0 || index >= markerList.length) { console.warn("无效标记索引"); return; }
-        const item = markerList[index];
-        if (item.type !== currentMode) {
-            alert('当前模式下不能编辑其他类型的标记');
-            return;
-        }
-        if (currentSite !== 'all' && item.site !== currentSite) {
-            alert('当前站点下不能编辑其他站点的标记');
-            return;
-        }
-        editingMarkerIndex = index;
-        document.getElementById("editNameInput").value = item.geo.name || "";
-        document.getElementById("editNoteInput").value = item.note || "";
-        document.getElementById("editTypeSelect").value = item.type || 'repair';
-        document.getElementById("editSiteSelect").value = item.site || 'lianhu';
-        document.getElementById("editCreatedAt").textContent = item.created_at ? formatTimestamp(item.created_at) : '无';
-        document.getElementById("editModal").style.display = "flex";
-    }
-    function closeEditModal() {
-        document.getElementById("editModal").style.display = "none";
-        editingMarkerIndex = -1;
     }
 
     // ===== 应用过滤 & 聚合 =====
@@ -1964,7 +2084,151 @@
         document.getElementById("toggleSimpleBtn").innerText = "极简";
     }
 
+    // ================================================================
+    // ===== 添加标记模式核心功能 =====
+    // ================================================================
+
+    function toggleAddMarkerMode() {
+        isAddMarkerMode = !isAddMarkerMode;
+        const toggleBtn = document.getElementById('toggleAddModeBtn');
+        const cancelBtn = document.getElementById('cancelAddModeBtn');
+        const statusEl = document.getElementById('addModeStatus');
+        const indicator = document.getElementById('modeIndicator');
+
+        if (isAddMarkerMode) {
+            toggleBtn.className = 'primary small';
+            toggleBtn.style.flex = '1';
+            cancelBtn.style.display = 'flex';
+            statusEl.style.display = 'block';
+            statusEl.innerHTML = '🎯 点击地图上的 <strong>街道区域</strong> 选择目标，再点击地图 <strong>任意位置</strong> 添加标记';
+            indicator.className = 'mode-indicator on';
+            clearSelectedStreet();
+            if (filterStreet) clearFilter();
+            map.setDefaultCursor('crosshair');
+            document.getElementById('wrap').classList.add('add-mode-active');
+            if (tempClickMarker) { tempClickMarker.remove(); tempClickMarker = null; }
+        } else {
+            toggleBtn.className = 'outline small';
+            toggleBtn.style.flex = '1';
+            cancelBtn.style.display = 'none';
+            statusEl.style.display = 'none';
+            indicator.className = 'mode-indicator off';
+            clearSelectedStreet();
+            map.setDefaultCursor('');
+            document.getElementById('wrap').classList.remove('add-mode-active');
+            if (tempClickMarker) { tempClickMarker.remove(); tempClickMarker = null; }
+            // 关闭可能打开的模态框（新增弹窗）
+            if (document.getElementById('editModal').style.display === 'flex') {
+                closeEditModal();
+            }
+        }
+    }
+
+    function cancelAddMarkerMode() {
+        if (isAddMarkerMode) {
+            toggleAddMarkerMode();
+        }
+        clearSelectedStreet();
+        if (tempClickMarker) { tempClickMarker.remove(); tempClickMarker = null; }
+        if (document.getElementById('editModal').style.display === 'flex') {
+            closeEditModal();
+        }
+    }
+
+    function selectStreetForAdd(streetName, polygon) {
+        clearSelectedStreet();
+
+        if (!polygon) {
+            for (let p of streetPolygons) {
+                if (p._streetName === streetName) {
+                    polygon = p;
+                    break;
+                }
+            }
+        }
+
+        if (!polygon) {
+            alert('未找到对应的街道多边形，请重试');
+            return;
+        }
+
+        selectedStreetForAdd = streetName;
+        highlightedPolygon = polygon;
+
+        highlightedPolygonOrigOpts = {
+            fillOpacity: polygon.getOptions().fillOpacity || 0.14,
+            strokeWeight: polygon.getOptions().strokeWeight || 2,
+            strokeColor: polygon.getOptions().strokeColor || '#3b82f6'
+        };
+        polygon.setOptions({
+            fillOpacity: 0.45,
+            strokeWeight: 5,
+            strokeColor: '#ff6b6b',
+            strokeStyle: 'solid'
+        });
+
+        const statusEl = document.getElementById('addModeStatus');
+        statusEl.innerHTML = `📍 已选街道：<strong class="highlight-street">${streetName}</strong>，请点击地图 <strong>任意位置</strong> 添加标记（点击其他街道可切换）`;
+    }
+
+    function clearSelectedStreet() {
+        if (highlightedPolygon) {
+            const opts = highlightedPolygonOrigOpts || { fillOpacity: 0.14, strokeWeight: 2 };
+            highlightedPolygon.setOptions({
+                fillOpacity: opts.fillOpacity,
+                strokeWeight: opts.strokeWeight,
+                strokeColor: opts.strokeColor || '#3b82f6',
+                strokeStyle: 'solid'
+            });
+            highlightedPolygon = null;
+            highlightedPolygonOrigOpts = null;
+        }
+        selectedStreetForAdd = null;
+        if (isAddMarkerMode) {
+            const statusEl = document.getElementById('addModeStatus');
+            statusEl.innerHTML = '🎯 点击地图上的 <strong>街道区域</strong> 选择目标，再点击地图 <strong>任意位置</strong> 添加标记';
+        }
+        if (tempClickMarker) { tempClickMarker.remove(); tempClickMarker = null; }
+    }
+
+    // ===== 点击地图处理（添加模式）：显示临时标记并弹出新增对话框 =====
+    function handleMapClickForAdd(lng, lat, streetName) {
+        if (!streetName) {
+            alert('请先点击街道选择目标区域');
+            return;
+        }
+
+        // 显示临时标记（反馈）
+        if (tempClickMarker) tempClickMarker.remove();
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'temp-marker';
+        contentDiv.style.width = '20px';
+        contentDiv.style.height = '20px';
+        contentDiv.style.background = 'rgba(255, 0, 0, 0.4)';
+        contentDiv.style.border = '2px solid #ff0000';
+        contentDiv.style.borderRadius = '50%';
+        contentDiv.style.pointerEvents = 'none';
+        tempClickMarker = new AMap.Marker({
+            position: [lng, lat],
+            content: contentDiv,
+            offset: new AMap.Pixel(-10, -10),
+            map: map
+        });
+        // 自动消失（但弹窗打开后，关闭时我们会手动移除）
+        setTimeout(() => {
+            if (tempClickMarker && document.getElementById('editModal').style.display !== 'flex') {
+                tempClickMarker.remove();
+                tempClickMarker = null;
+            }
+        }, 2000);
+
+        // 打开新增标记对话框
+        openAddMarkerModal(lng, lat, streetName);
+    }
+
+    // ================================================================
     // ===== 自动补全街道 =====
+    // ================================================================
     async function autoFillStreetForMarkers() {
         let updatedCount = 0;
         for (let item of markerList) {
@@ -1994,7 +2258,9 @@
         }
     }
 
+    // ================================================================
     // ===== Excel 导入 =====
+    // ================================================================
     function handleExcelImport(e) {
         const file = e.target.files[0];
         if (!file) return;
@@ -2111,7 +2377,7 @@
         }
     }
 
-    // ===== 核心处理 =====
+    // ===== 核心处理（Excel导入） =====
     async function processExcelRowsWithProgress(rows, onProgress) {
         if (!rows || rows.length === 0) {
             onProgress && onProgress({ status: '❌ 无数据', done: true, count: 0 });
@@ -2190,11 +2456,9 @@
                 key.includes(gItem.street.replace('街道', '')) || gItem.street.includes(key.replace('街道', ''))
             );
             if (fuzzyKey) {
-                console.log(`✅ 模糊匹配：${gItem.street} → ${fuzzyKey}`);
                 gItem.street = fuzzyKey;
                 continue;
             }
-            console.log(`🔍 地理编码：${gItem.street}`);
             const fullAddress = `西安市${gItem.street}`;
             const geo = await geocodeAmap(fullAddress);
             if (geo) {
@@ -2408,11 +2672,23 @@
         if (e.key === 'Escape') {
             if (document.getElementById('editModal').style.display === 'flex') {
                 closeEditModal();
+                return;
             }
             if (document.getElementById('mergeModal').style.display === 'flex') {
                 document.getElementById('mergeModal').style.display = 'none';
                 if (pendingMergeReject) pendingMergeReject('cancel');
                 pendingMergeResolve = null;
+                return;
+            }
+            if (isAddMarkerMode && selectedStreetForAdd) {
+                clearSelectedStreet();
+                const statusEl = document.getElementById('addModeStatus');
+                statusEl.innerHTML = '🎯 已取消选中，请重新点击街道选择目标';
+                return;
+            }
+            if (isAddMarkerMode) {
+                cancelAddMarkerMode();
+                return;
             }
         }
         if (e.ctrlKey && e.key === 's') {
@@ -2423,12 +2699,25 @@
         }
     });
 
+    // ================================================================
     // ===== 初始化 =====
+    // ================================================================
     window.onload = function() {
         map = new AMap.Map("map", {
             zoom: 10,
             center: [108.95, 34.27],
             features: ['bg','road','point','building']
+        });
+
+        // 地图点击事件（添加标记模式）
+        map.on('click', function(e) {
+            if (isAddMarkerMode && selectedStreetForAdd) {
+                const lnglat = e.lnglat;
+                const lng = lnglat.getLng();
+                const lat = lnglat.getLat();
+                // 调用新的处理函数：显示临时标记 + 弹出新增对话框
+                handleMapClickForAdd(lng, lat, selectedStreetForAdd);
+            }
         });
 
         document.getElementById("excelFileInput").addEventListener("change", handleExcelImport);
@@ -2446,6 +2735,10 @@
         });
 
         setMode('repair');
+        document.getElementById('modeIndicator').className = 'mode-indicator off';
+
+        console.log('✅ 应用初始化完成');
+        console.log('📌 提示：开启添加标记模式后，点击街道选中，再点击地图任意位置，会弹出新增对话框，填写信息后手动确认添加。');
     };
 </script>
 </body>
