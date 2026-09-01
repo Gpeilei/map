@@ -23,8 +23,8 @@
         }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            background: #f1f5f9;
-            color: #1e293b;
+            background: #f3f4f6;
+            color: #1f2937;
             height: 100vh;
             overflow: hidden;
             font-size: 13px;
@@ -41,7 +41,7 @@
             background: #ffffff;
             padding: 12px 14px 16px;
             overflow-y: auto;
-            border-right: 1px solid #e2e8f0;
+            border-right: 1px solid #e5e7eb;
             display: flex;
             flex-direction: column;
             gap: 10px;
@@ -50,23 +50,23 @@
             width: 4px;
         }
         #sidebar::-webkit-scrollbar-track {
-            background: #f1f5f9;
+            background: #f3f4f6;
         }
         #sidebar::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
+            background: #d1d5db;
             border-radius: 4px;
         }
 
         #map {
             flex: 1;
-            background: #eef2f6;
+            background: #e5e7eb;
         }
 
         /* ===== 卡片系统 ===== */
         .section {
             background: #ffffff;
             border-radius: 6px;
-            border: 1px solid #e9edf4;
+            border: 1px solid #e5e7eb;
             overflow: hidden;
         }
         .section-header {
@@ -74,22 +74,22 @@
             align-items: center;
             justify-content: space-between;
             padding: 6px 10px;
-            background: #fafbfc;
-            border-bottom: 1px solid #e9edf4;
+            background: #f9fafb;
+            border-bottom: 1px solid #e5e7eb;
             cursor: pointer;
             user-select: none;
             font-size: 12px;
             font-weight: 600;
-            color: #334155;
+            color: #374151;
             transition: background 0.15s;
         }
         .section-header:hover {
-            background: #f1f4f9;
+            background: #f3f4f6;
         }
         .section-header .arrow {
             font-size: 10px;
             transition: transform 0.2s;
-            color: #94a3b8;
+            color: #9ca3af;
         }
         .section-header.open .arrow {
             transform: rotate(90deg);
@@ -133,35 +133,35 @@
         }
         .text-xs {
             font-size: 11px;
-            color: #64748b;
+            color: #6b7280;
             line-height: 1.4;
         }
         .text-sm {
             font-size: 12px;
-            color: #334155;
+            color: #374151;
             line-height: 1.4;
         }
         .text-muted {
-            color: #94a3b8;
+            color: #9ca3af;
             font-size: 10px;
         }
         .badge {
             display: inline-block;
-            background: #f1f5f9;
+            background: #f3f4f6;
             padding: 0 8px;
             border-radius: 12px;
             font-size: 10px;
-            color: #475569;
+            color: #4b5563;
             line-height: 18px;
             white-space: nowrap;
         }
         .badge-primary {
-            background: #2563eb;
+            background: #4b5563;
             color: #fff;
         }
         .divider {
             border: none;
-            border-top: 1px solid #e9edf4;
+            border-top: 1px solid #e5e7eb;
             margin: 2px 0;
         }
 
@@ -173,8 +173,8 @@
             padding: 4px 10px;
             border: none;
             border-radius: 4px;
-            background: #f1f5f9;
-            color: #1e293b;
+            background: #f3f4f6;
+            color: #1f2937;
             cursor: pointer;
             transition: all 0.12s;
             display: inline-flex;
@@ -186,7 +186,7 @@
             min-height: 28px;
         }
         button:hover {
-            background: #e2e8f0;
+            background: #e5e7eb;
         }
         button:active {
             transform: scale(0.96);
@@ -197,41 +197,41 @@
         }
 
         button.primary {
-            background: #2563eb;
+            background: #4b5563;
             color: #fff;
         }
         button.primary:hover {
-            background: #1d4ed8;
+            background: #374151;
         }
         button.success {
-            background: #16a34a;
+            background: #4b5563;
             color: #fff;
         }
         button.success:hover {
-            background: #15803d;
+            background: #374151;
         }
         button.danger {
-            background: #dc2626;
+            background: #9ca3af;
             color: #fff;
         }
         button.danger:hover {
-            background: #b91c1c;
+            background: #6b7280;
         }
         button.outline {
             background: transparent;
-            border: 1px solid #dce3ed;
-            color: #475569;
+            border: 1px solid #d1d5db;
+            color: #4b5563;
         }
         button.outline:hover {
-            background: #f8fafc;
-            border-color: #b8c4d4;
+            background: #f9fafb;
+            border-color: #9ca3af;
         }
         button.ghost {
             background: transparent;
-            color: #475569;
+            color: #4b5563;
         }
         button.ghost:hover {
-            background: #f1f5f9;
+            background: #f3f4f6;
         }
         button.small {
             font-size: 11px;
@@ -243,17 +243,17 @@
             justify-content: center;
         }
         button.mode-active {
-            background: #2563eb;
+            background: #4b5563;
             color: #fff;
-            border-color: #2563eb;
+            border-color: #4b5563;
         }
         button.mode-active:hover {
-            background: #1d4ed8;
+            background: #374151;
         }
         button.mode-inactive {
-            background: #f1f5f9;
-            color: #475569;
-            border: 1px solid #e2e8f0;
+            background: #f3f4f6;
+            color: #4b5563;
+            border: 1px solid #d1d5db;
         }
         button .mode-icon {
             width: 14px;
@@ -268,10 +268,10 @@
             font-family: inherit;
             font-size: 12px;
             padding: 4px 8px;
-            border: 1px solid #e2e8f0;
+            border: 1px solid #d1d5db;
             border-radius: 4px;
-            background: #fafbfc;
-            color: #1e293b;
+            background: #f9fafb;
+            color: #1f2937;
             width: 100%;
             outline: none;
             transition: border 0.15s, box-shadow 0.15s;
@@ -281,8 +281,8 @@
         input:focus,
         textarea:focus,
         select:focus {
-            border-color: #2563eb;
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
+            border-color: #6b7280;
+            box-shadow: 0 0 0 3px rgba(107, 114, 128, 0.15);
             background: #fff;
         }
         textarea {
@@ -307,16 +307,16 @@
             border: none;
             background: transparent;
             font-size: 11px;
-            color: #475569;
+            color: #4b5563;
             flex: 1;
             min-height: auto;
         }
         .file-name-tag {
-            background: #f1f5f9;
+            background: #f3f4f6;
             padding: 0 10px;
             border-radius: 12px;
             font-size: 11px;
-            color: #334155;
+            color: #374151;
             line-height: 24px;
             max-width: 160px;
             overflow: hidden;
@@ -326,22 +326,22 @@
 
         /* ===== 进度 ===== */
         .progress-area {
-            background: #f8fafc;
+            background: #f9fafb;
             border-radius: 4px;
             padding: 4px 8px;
-            border: 1px solid #e9edf4;
+            border: 1px solid #e5e7eb;
             display: none;
         }
         .progress-area .progress-text {
             font-size: 11px;
-            color: #334155;
+            color: #374151;
             line-height: 1.3;
             min-height: 18px;
         }
         .progress-area .progress-track {
             width: 100%;
             height: 3px;
-            background: #e2e8f0;
+            background: #e5e7eb;
             border-radius: 2px;
             margin-top: 3px;
             overflow: hidden;
@@ -349,18 +349,18 @@
         .progress-area .progress-bar {
             width: 0%;
             height: 100%;
-            background: #2563eb;
+            background: #4b5563;
             border-radius: 2px;
             transition: width 0.25s;
         }
         .progress-area .progress-bar.done {
-            background: #16a34a;
+            background: #4b5563;
         }
 
         /* ===== 结果列表 & 信息框 ===== */
         .result-item {
             padding: 2px 8px;
-            background: #f8fafc;
+            background: #f9fafb;
             margin: 2px 0;
             border-radius: 4px;
             cursor: pointer;
@@ -369,39 +369,39 @@
             border-left: 2px solid transparent;
         }
         .result-item:hover {
-            background: #e9edf4;
+            background: #f3f4f6;
         }
         .result-item.active {
-            background: #bfdbfe;
-            border-left-color: #2563eb;
+            background: #e5e7eb;
+            border-left-color: #6b7280;
         }
         .info-box {
-            background: #f8fafc;
+            background: #f9fafb;
             padding: 4px 8px;
             border-radius: 4px;
             font-size: 11px;
             white-space: pre-wrap;
             line-height: 1.4;
-            border: 1px solid #e9edf4;
-            color: #334155;
+            border: 1px solid #e5e7eb;
+            color: #374151;
             min-height: 24px;
         }
 
         /* ===== 街道识别栏 ===== */
         #streetIdentifyBar {
-            background: #eff6ff;
+            background: #f3f4f6;
             border-radius: 4px;
             padding: 3px 8px;
             font-size: 11px;
-            color: #1e40af;
-            border: 1px solid #bfdbfe;
+            color: #374151;
+            border: 1px solid #e5e7eb;
             display: none;
             align-items: center;
             gap: 6px;
             flex-wrap: wrap;
         }
         #streetIdentifyBar .badge-street {
-            background: #2563eb;
+            background: #4b5563;
             color: #fff;
             padding: 0 10px;
             border-radius: 12px;
@@ -411,7 +411,7 @@
         }
         #streetIdentifyBar .clear-filter-btn {
             background: transparent;
-            color: #64748b;
+            color: #6b7280;
             border: none;
             cursor: pointer;
             font-size: 10px;
@@ -419,29 +419,29 @@
             line-height: 20px;
         }
         #streetIdentifyBar .clear-filter-btn:hover {
-            color: #dc2626;
+            color: #9ca3af;
             background: transparent;
         }
 
         /* ===== 添加模式状态 ===== */
         #addModeStatus {
             font-size: 11px;
-            color: #1e40af;
-            background: #eff6ff;
+            color: #374151;
+            background: #f3f4f6;
             padding: 4px 8px;
             border-radius: 4px;
-            border: 1px solid #bfdbfe;
+            border: 1px solid #e5e7eb;
             text-align: center;
             display: none;
             line-height: 1.4;
         }
         #addModeStatus .highlight-street {
             font-weight: 700;
-            color: #dc2626;
+            color: #6b7280;
         }
         .add-mode-active .section {
-            border-color: #2563eb;
-            box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.2);
+            border-color: #6b7280;
+            box-shadow: 0 0 0 1px rgba(107, 114, 128, 0.2);
         }
         .mode-indicator {
             display: inline-block;
@@ -453,10 +453,10 @@
             flex-shrink: 0;
         }
         .mode-indicator.on {
-            background: #16a34a;
+            background: #4b5563;
         }
         .mode-indicator.off {
-            background: #94a3b8;
+            background: #9ca3af;
         }
 
         /* ===== 自定义标记 ===== */
@@ -476,10 +476,17 @@
             pointer-events: none;
             user-select: none;
             cursor: move;
+            transition: all 0.2s ease;
+        }
+        .custom-marker-label.highlighted {
+            border: 3px solid #ffaa00 !important;
+            box-shadow: 0 0 16px rgba(255, 170, 0, 0.8) !important;
+            transform: scale(1.15);
+            z-index: 100;
         }
         .temp-marker {
-            background: rgba(255, 0, 0, 0.4);
-            border: 2px solid #ff0000;
+            background: rgba(160, 160, 160, 0.4);
+            border: 2px solid #6b7280;
             border-radius: 50%;
             width: 20px;
             height: 20px;
@@ -500,22 +507,22 @@
         /* ===== 拖拽提示 ===== */
         .dragging-hint {
             font-size: 10px;
-            color: #94a3b8;
-            background: #f1f5f9;
+            color: #9ca3af;
+            background: #f3f4f6;
             padding: 0 8px;
             border-radius: 10px;
             line-height: 18px;
             white-space: nowrap;
         }
 
-        /* ===== 模态框 ===== */
+        /* ===== 模态框（通用） ===== */
         .modal-mask {
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0, 0, 0, 0.35);
+            background: rgba(0, 0, 0, 0.3);
             display: none;
             align-items: center;
             justify-content: center;
@@ -536,7 +543,7 @@
             font-size: 16px;
             font-weight: 600;
             margin-bottom: 16px;
-            color: #0f172a;
+            color: #1f2937;
         }
         .modal-row {
             margin: 10px 0;
@@ -544,7 +551,7 @@
         .modal-row label {
             font-size: 12px;
             font-weight: 500;
-            color: #334155;
+            color: #374151;
             display: block;
             margin-bottom: 3px;
         }
@@ -564,9 +571,9 @@
             gap: 8px;
             padding: 6px 8px;
             margin: 4px 0;
-            background: #f8fafc;
+            background: #f9fafb;
             border-radius: 4px;
-            border: 1px solid #e9edf4;
+            border: 1px solid #e5e7eb;
         }
         .merge-option input[type="radio"] {
             margin-top: 2px;
@@ -577,8 +584,135 @@
         /* ===== 快捷提示 ===== */
         .shortcut-hint {
             font-size: 10px;
-            color: #94a3b8;
+            color: #9ca3af;
             margin-top: 2px;
+        }
+
+        /* ===== Toast 通知（纯提示） ===== */
+        #toast-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 99999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .toast-message {
+            pointer-events: auto;
+            background: rgba(60, 60, 60, 0.92);
+            color: #ffffff;
+            padding: 14px 32px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 500;
+            max-width: 80vw;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+            animation: toastFadeIn 0.25s ease-out;
+            backdrop-filter: blur(4px);
+            letter-spacing: 0.3px;
+            line-height: 1.5;
+            min-width: 120px;
+        }
+        .toast-message.error {
+            background: rgba(180, 60, 60, 0.92);
+        }
+        .toast-message.info {
+            background: rgba(80, 80, 80, 0.88);
+        }
+        .toast-message .toast-icon {
+            margin-right: 8px;
+            font-size: 17px;
+        }
+
+        @keyframes toastFadeIn {
+            0% {
+                opacity: 0;
+                transform: scale(0.92) translateY(-8px);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+        @keyframes toastFadeOut {
+            0% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(0.95) translateY(-6px);
+            }
+        }
+        .toast-message.fade-out {
+            animation: toastFadeOut 0.25s ease-in forwards;
+        }
+
+        /* ===== 确认对话框（自定义，灰白主题） ===== */
+        #confirm-modal .modal-box {
+            width: 380px;
+        }
+        #confirm-modal .confirm-message {
+            font-size: 14px;
+            color: #1f2937;
+            padding: 8px 0;
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+        #confirm-modal .modal-btn-group button.confirm-btn {
+            background: #4b5563;
+            color: #fff;
+        }
+        #confirm-modal .modal-btn-group button.confirm-btn:hover {
+            background: #374151;
+        }
+        #confirm-modal .modal-btn-group button.cancel-btn {
+            background: #f3f4f6;
+            color: #1f2937;
+            border: 1px solid #d1d5db;
+        }
+        #confirm-modal .modal-btn-group button.cancel-btn:hover {
+            background: #e5e7eb;
+        }
+
+        /* ===== 回收站模态框 ===== */
+        #recycle-modal .modal-box {
+            width: 500px;
+        }
+        .recycle-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 8px;
+            border-bottom: 1px solid #f3f4f6;
+            font-size: 12px;
+        }
+        .recycle-item .info {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .recycle-item .time {
+            color: #9ca3af;
+            font-size: 10px;
+            margin-right: 10px;
+            flex-shrink: 0;
+        }
+        .recycle-item .actions button {
+            font-size: 10px;
+            padding: 2px 6px;
+            min-height: 20px;
+        }
+        .recycle-empty {
+            text-align: center;
+            color: #9ca3af;
+            padding: 20px 0;
         }
 
         /* ===== 响应式 ===== */
@@ -588,7 +722,7 @@
                 min-width: unset;
                 height: 50vh;
                 border-right: none;
-                border-bottom: 1px solid #e9edf4;
+                border-bottom: 1px solid #e5e7eb;
                 padding: 10px 12px;
             }
             #wrap {
@@ -596,6 +730,14 @@
             }
             #map {
                 height: 50vh;
+            }
+            .toast-message {
+                font-size: 14px;
+                padding: 12px 24px;
+                max-width: 90vw;
+            }
+            .modal-box {
+                padding: 20px;
             }
         }
 
@@ -637,12 +779,12 @@
         <div id="sidebar">
 
             <!-- ===== 顶部状态栏 ===== -->
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:2px 0 4px;border-bottom:1px solid #e9edf4;flex-wrap:wrap;gap:4px;">
-                <span style="font-weight:600;font-size:14px;color:#0f172a;">📍 地图标记</span>
-                <span style="font-size:11px;color:#64748b;display:flex;gap:10px;flex-wrap:wrap;">
-                    <span>模式: <strong id="currentModeLabel" style="color:#1e293b;">家修</strong></span>
-                    <span>站点: <strong id="currentSiteLabel" style="color:#1e293b;">全部</strong></span>
-                    <span>标记: <strong id="modeMarkerCount" style="color:#2563eb;">0</strong></span>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:2px 0 4px;border-bottom:1px solid #e5e7eb;flex-wrap:wrap;gap:4px;">
+                <span style="font-weight:600;font-size:14px;color:#1f2937;">📍 地图标记</span>
+                <span style="font-size:11px;color:#6b7280;display:flex;gap:10px;flex-wrap:wrap;">
+                    <span>模式: <strong id="currentModeLabel" style="color:#1f2937;">家修</strong></span>
+                    <span>站点: <strong id="currentSiteLabel" style="color:#1f2937;">全部</strong></span>
+                    <span>标记: <strong id="modeMarkerCount" style="color:#4b5563;">0</strong></span>
                     <span class="dragging-hint">🖱 拖拽移动</span>
                 </span>
             </div>
@@ -666,7 +808,7 @@
                         <button id="siteWeiyangBtn" class="outline small" onclick="setSite('weiyang')" style="flex:1;">未央</button>
                         <button id="siteYantaBtn" class="outline small" onclick="setSite('yanta')" style="flex:1;">雁塔</button>
                     </div>
-                    <div class="text-xs" id="streetLoadStatus" style="color:#64748b;">🔄 切换站点自动加载街道</div>
+                    <div class="text-xs" id="streetLoadStatus" style="color:#6b7280;">🔄 切换站点自动加载街道</div>
                 </div>
             </div>
 
@@ -683,10 +825,10 @@
                         <button id="toggleAddModeBtn" class="outline small" style="flex:1;" onclick="toggleAddMarkerMode()">
                             <span class="mode-indicator off" id="modeIndicator"></span> 添加
                         </button>
-                        <button id="cancelAddModeBtn" class="outline small" style="display:none;flex:1;color:#dc2626;" onclick="cancelAddMarkerMode()">取消</button>
+                        <button id="cancelAddModeBtn" class="outline small" style="display:none;flex:1;color:#6b7280;" onclick="cancelAddMarkerMode()">取消</button>
                     </div>
                     <div id="addModeStatus">🎯 点击街道选中 → 再次点击同一街道放置标记</div>
-                    <div class="shortcut-hint">Ctrl+Z 撤销 · Ctrl+Shift+Z 重做 · Esc 取消</div>
+                    <div class="shortcut-hint">Ctrl+Shift+Z 重做 · Esc 取消</div>
                 </div>
             </div>
 
@@ -703,14 +845,14 @@
                     <div id="fileStatusRow" class="flex-row" style="display:none;gap:4px;">
                         <span class="file-name-tag" id="selectedFileName">未选择</span>
                         <button id="btnStartRecognize" onclick="startExcelRecognition()" class="success small">识别</button>
-                        <button onclick="cancelPendingFile()" class="outline small" style="color:#94a3b8;">✕</button>
+                        <button onclick="cancelPendingFile()" class="outline small" style="color:#9ca3af;">✕</button>
                     </div>
                     <div class="progress-area" id="progressArea">
                         <div class="progress-text" id="progressText">等待开始…</div>
                         <div class="progress-track"><div class="progress-bar" id="progressBar"></div></div>
                     </div>
                     <div class="text-xs text-muted">表头：街道、品类、姓名1… 同街道同品类合并</div>
-                    <div class="text-xs" style="color:#dc2626;margin-top:1px;" id="importErrorHint"></div>
+                    <div class="text-xs" style="color:#6b7280;margin-top:1px;" id="importErrorHint"></div>
                 </div>
             </div>
 
@@ -729,7 +871,7 @@
                     <div class="flex-row gap-1">
                         <button onclick="exportData('xlsx')" class="primary small" style="flex:1;">📤 Excel</button>
                         <button onclick="exportData('csv')" class="outline small" style="flex:1;">📄 CSV</button>
-                        <button onclick="undoDelete()" class="outline small" id="undoBtn" disabled style="flex:1;">↩ 撤销 (<span id="recycleCount">0</span>)</button>
+                        <button onclick="openRecycleBin()" class="outline small" id="recycleBtn" style="flex:1;">🗑 回收站 (<span id="recycleCount">0</span>)</button>
                     </div>
                     <div class="flex-row gap-1" style="margin-top:2px;">
                         <input id="noteInput" placeholder="备注（逗号分隔）" style="flex:1;min-width:60px;" />
@@ -753,13 +895,13 @@
                     <div id="streetIdentifyBar">
                         <span>📍</span>
                         <span class="badge-street" id="identifiedStreetName">—</span>
-                        <span style="color:#64748b;font-size:10px;" id="identifiedStreetCount"></span>
+                        <span style="color:#6b7280;font-size:10px;" id="identifiedStreetCount"></span>
                         <button class="clear-filter-btn" onclick="clearFilter()">✕ 清除</button>
                     </div>
                     <div id="resultList" style="max-height:48px;overflow-y:auto;"></div>
                     <div class="info-box" id="detailBox" style="font-size:11px;min-height:20px;">搜索详情</div>
 
-                    <div style="border-top:1px dashed #e2e8f0;padding-top:5px;margin-top:3px;">
+                    <div style="border-top:1px dashed #e5e7eb;padding-top:5px;margin-top:3px;">
                         <div class="flex-row gap-1">
                             <input id="noteSearchInput" placeholder="品类 / 师傅名" style="flex:1;min-width:60px;" />
                             <button onclick="searchExistNoteMarker()" class="outline small">搜索</button>
@@ -775,6 +917,34 @@
         <div id="map"></div>
     </div>
 
+    <!-- ===== Toast 容器 ===== -->
+    <div id="toast-container"></div>
+
+    <!-- ===== 确认对话框（自定义） ===== -->
+    <div class="modal-mask" id="confirm-modal">
+        <div class="modal-box">
+            <h4 id="confirm-title">确认操作</h4>
+            <div class="confirm-message" id="confirm-message">确定要执行此操作吗？</div>
+            <div class="modal-btn-group">
+                <button class="cancel-btn" id="confirm-cancel-btn">取消</button>
+                <button class="confirm-btn" id="confirm-ok-btn">确认</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== 回收站模态框 ===== -->
+    <div class="modal-mask" id="recycle-modal">
+        <div class="modal-box">
+            <h4>🗑 回收站（最近3天）</h4>
+            <div id="recycle-list" style="max-height:300px;overflow-y:auto;margin:8px 0;">
+                <div class="recycle-empty">回收站为空</div>
+            </div>
+            <div class="modal-btn-group">
+                <button class="outline" onclick="closeRecycleBin()">关闭</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ===== 编辑模态框 ===== -->
     <div class="modal-mask" id="editModal">
         <div class="modal-box">
@@ -783,7 +953,7 @@
             <div class="modal-row"><label>备注内容</label><textarea id="editNoteInput" rows="3"></textarea></div>
             <div class="modal-row"><label>类型</label><select id="editTypeSelect"><option value="repair">家修</option><option value="install">家居</option></select></div>
             <div class="modal-row"><label>站点</label><select id="editSiteSelect"><option value="lianhu">莲湖</option><option value="weiyang">未央</option><option value="yanta">雁塔</option></select></div>
-            <div class="modal-row" id="editCreatedRow" style="display:none;"><label>创建时间</label><span id="editCreatedAt" style="font-size:11px;color:#64748b;"></span></div>
+            <div class="modal-row" id="editCreatedRow" style="display:none;"><label>创建时间</label><span id="editCreatedAt" style="font-size:11px;color:#6b7280;"></span></div>
             <div class="modal-btn-group">
                 <button class="outline" onclick="closeEditModal()">取消</button>
                 <button class="primary" id="editSaveBtn" onclick="saveMarkerEdit()">保存</button>
@@ -791,12 +961,12 @@
         </div>
     </div>
 
-    <!-- ===== 合并确认模态框 ===== -->
+    <!-- ===== 合并确认模态框（保留原样，但主题已灰白） ===== -->
     <div class="modal-mask" id="mergeModal">
         <div class="modal-box">
             <h4>⚠️ 发现重复标记</h4>
             <div id="mergeList" style="max-height:200px;overflow-y:auto;"></div>
-            <div class="modal-row"><label>合并后备注</label><textarea id="mergeNotePreview" rows="2" readonly style="background:#f1f5f9;"></textarea></div>
+            <div class="modal-row"><label>合并后备注</label><textarea id="mergeNotePreview" rows="2" readonly style="background:#f9fafb;"></textarea></div>
             <div class="modal-btn-group">
                 <button class="outline" onclick="rejectMerge()">跳过</button>
                 <button class="primary" onclick="confirmMerge()">确认合并</button>
@@ -805,9 +975,184 @@
     </div>
 
     <!-- ============================================================ -->
-    <!-- ===== 所有 JavaScript 逻辑（完整保留，仅修改添加标记交互） ===== -->
+    <!-- ===== JavaScript（改动：街道点击改为高亮+定位，不隐藏其他标记） ===== -->
     <!-- ============================================================ -->
     <script>
+        // ===== Toast 系统（纯提示） =====
+        let toastTimer = null;
+
+        function showToast(message, type = 'success', duration = 2600) {
+            const container = document.getElementById('toast-container');
+            container.innerHTML = '';
+            if (toastTimer) {
+                clearTimeout(toastTimer);
+                toastTimer = null;
+            }
+
+            const el = document.createElement('div');
+            el.className = 'toast-message';
+
+            let icon = '✅';
+            if (type === 'error') {
+                el.classList.add('error');
+                icon = '❌';
+            } else if (type === 'info') {
+                el.classList.add('info');
+                icon = 'ℹ️';
+            }
+
+            el.innerHTML = `<span class="toast-icon">${icon}</span>${message}`;
+            container.appendChild(el);
+
+            toastTimer = setTimeout(() => {
+                el.classList.add('fade-out');
+                setTimeout(() => {
+                    if (el.parentNode) el.parentNode.removeChild(el);
+                }, 300);
+                toastTimer = null;
+            }, duration);
+        }
+
+        // ===== 自定义确认对话框（返回 Promise） =====
+        function showConfirm(title, message) {
+            return new Promise((resolve) => {
+                const modal = document.getElementById('confirm-modal');
+                document.getElementById('confirm-title').textContent = title || '确认操作';
+                document.getElementById('confirm-message').textContent = message || '确定要执行此操作吗？';
+                modal.style.display = 'flex';
+
+                const okBtn = document.getElementById('confirm-ok-btn');
+                const cancelBtn = document.getElementById('confirm-cancel-btn');
+
+                const cleanup = () => {
+                    modal.style.display = 'none';
+                    okBtn.removeEventListener('click', onOk);
+                    cancelBtn.removeEventListener('click', onCancel);
+                };
+
+                const onOk = () => { cleanup();
+                    resolve(true); };
+                const onCancel = () => { cleanup();
+                    resolve(false); };
+
+                okBtn.addEventListener('click', onOk);
+                cancelBtn.addEventListener('click', onCancel);
+                modal.addEventListener('click', function(e) {
+                    if (e.target === modal) {
+                        cleanup();
+                        resolve(false);
+                    }
+                }, { once: true });
+            });
+        }
+
+        // ===== 回收站系统 =====
+        let recycleBin = [];
+        const RECYCLE_DAYS = 3;
+
+        function cleanRecycleBin() {
+            const now = Date.now();
+            const limit = now - RECYCLE_DAYS * 24 * 60 * 60 * 1000;
+            recycleBin = recycleBin.filter(item => new Date(item.deletedAt).getTime() > limit);
+            updateRecycleBadge();
+        }
+
+        function addToRecycle(backup) {
+            recycleBin.push({
+                id: Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+                data: backup,
+                deletedAt: new Date().toISOString()
+            });
+            cleanRecycleBin();
+            updateRecycleBadge();
+        }
+
+        function updateRecycleBadge() {
+            document.getElementById('recycleCount').textContent = recycleBin.length;
+        }
+
+        function openRecycleBin() {
+            cleanRecycleBin();
+            const listDiv = document.getElementById('recycle-list');
+            listDiv.innerHTML = '';
+            if (recycleBin.length === 0) {
+                listDiv.innerHTML = '<div class="recycle-empty">回收站为空</div>';
+            } else {
+                const sorted = [...recycleBin].sort((a, b) => new Date(b.deletedAt) - new Date(a.deletedAt));
+                sorted.forEach((entry) => {
+                    const item = entry.data;
+                    const name = item.geo?.name || '未命名标记';
+                    const time = new Date(entry.deletedAt).toLocaleString('zh-CN');
+                    const div = document.createElement('div');
+                    div.className = 'recycle-item';
+                    div.innerHTML = `
+                        <span class="info">${name}</span>
+                        <span class="time">${time}</span>
+                        <div class="actions">
+                            <button class="primary small" onclick="restoreFromRecycle('${entry.id}')">恢复</button>
+                            <button class="danger small" onclick="permanentlyDelete('${entry.id}')">永久删除</button>
+                        </div>
+                    `;
+                    listDiv.appendChild(div);
+                });
+            }
+            document.getElementById('recycle-modal').style.display = 'flex';
+        }
+
+        function closeRecycleBin() {
+            document.getElementById('recycle-modal').style.display = 'none';
+        }
+
+        async function restoreFromRecycle(id) {
+            const index = recycleBin.findIndex(entry => entry.id === id);
+            if (index === -1) return;
+            const entry = recycleBin[index];
+            const backup = entry.data;
+            try {
+                const now = new Date().toISOString();
+                const insertData = {
+                    geo: backup.geo,
+                    note: backup.note,
+                    created_at: backup.created_at || now,
+                    updated_at: now,
+                    type: backup.type || 'repair',
+                    site: backup.site || 'lianhu'
+                };
+                const promise = supabaseClient.from(TABLE_NAME).insert([insertData]).select();
+                const { data, error } = await supabaseFetchWithTimeout(() => promise);
+                if (error) throw error;
+                if (data && data.length > 0) {
+                    const doc = data[0];
+                    const item = createMarkerItem(doc.geo, doc.note, doc.id, doc.created_at, doc.updated_at, doc
+                        .type || 'repair', doc.site || 'lianhu');
+                    markerList.push(item);
+                    const idx = markerList.length - 1;
+                    refreshMarkerInfoWindow(item, idx);
+                    updateMarkerIcon(item);
+                    applyFilterAndRenderMap();
+                    updateMarkerCountBadge();
+                    updateModeMarkerCount();
+                    recycleBin.splice(index, 1);
+                    updateRecycleBadge();
+                    showToast('标记已恢复');
+                    openRecycleBin();
+                }
+            } catch (err) {
+                showToast('恢复失败：' + err.message, 'error');
+            }
+        }
+
+        async function permanentlyDelete(id) {
+            const confirmed = await showConfirm('永久删除', '确定要永久删除此记录吗？此操作不可撤销。');
+            if (!confirmed) return;
+            const index = recycleBin.findIndex(entry => entry.id === id);
+            if (index === -1) return;
+            recycleBin.splice(index, 1);
+            updateRecycleBadge();
+            showToast('已永久删除');
+            openRecycleBin();
+        }
+
         // ===== Supabase 配置 =====
         const SUPABASE_URL = "https://cvfaoficzbvzqjpuykre.supabase.co";
         const SUPABASE_ANON_KEY =
@@ -827,7 +1172,7 @@
         let editingMarkerIndex = -1;
         let streetCenterCache = {};
         let lastHighlightMarker = null;
-        let filterStreet = '';
+        let filterStreet = ''; // 仅用于高亮和 UI 显示，不再过滤标记列表
         let pendingExcelData = null;
         let isProcessing = false;
         let clusterer = null;
@@ -847,10 +1192,6 @@
         // 当前模式
         let currentMode = 'repair';
         let currentSite = 'all';
-
-        // 回收站
-        let undoStack = [];
-        let redoStack = [];
 
         // 合并确认
         let pendingMergeResolve = null;
@@ -1052,7 +1393,7 @@
 
         function getRandomStreetColor() {
             const hue = Math.floor(Math.random() * 360);
-            return { strokeColor: `hsl(${hue},75%,40%)`, fillColor: `hsl(${hue},70%,60%)` };
+            return { strokeColor: `hsl(${hue},50%,50%)`, fillColor: `hsl(${hue},40%,70%)` };
         }
 
         function supabaseFetchWithTimeout(promiseFn, timeoutMs = REQUEST_TIMEOUT) {
@@ -1078,13 +1419,13 @@
 
         // ===== 品类相关 =====
         function getCategoryColor(category) {
-            if (!category) return '#3b82f6';
+            if (!category) return '#6b7280';
             let hash = 0;
             for (let i = 0; i < category.length; i++) {
                 hash = category.charCodeAt(i) + ((hash << 5) - hash);
             }
             const hue = Math.abs(hash % 360);
-            return `hsl(${hue}, 75%, 50%)`;
+            return `hsl(${hue}, 50%, 50%)`;
         }
 
         function getCategoryAbbr(category) {
@@ -1241,7 +1582,6 @@
             }
         }
 
-        // ===== 加载单个街道文件（修改：两步点击逻辑） =====
         async function loadSingleStreet(filename, version, site) {
             try {
                 const resp = await fetch("./geojson/" + filename, { cache: 'force-cache' });
@@ -1315,8 +1655,8 @@
                             maxLat = -Infinity;
                         validPolyList.forEach(path => {
                             path.forEach(point => {
-                                if (Array.isArray(point) && point.length >= 2 && !isNaN(point[0]) && !
-                                    isNaN(point[1])) {
+                                if (Array.isArray(point) && point.length >= 2 && !isNaN(point[0]) && !isNaN(
+                                    point[1])) {
                                     const lng = point[0],
                                         lat = point[1];
                                     if (lng < minLng) minLng = lng;
@@ -1355,23 +1695,21 @@
                     });
                     poly._streetName = stdName;
 
-                    // ===== 核心修改：两步点击逻辑 =====
+                    // 点击街道：仅高亮标记和定位，不隐藏其他标记
                     poly.on('click', function(e) {
                         if (isAddMarkerMode) {
-                            // 如果当前没有选中街道，或者选中的不是这个街道
                             if (!selectedStreetForAdd || selectedStreetForAdd !== poly._streetName) {
-                                // 选中该街道（高亮），不弹出对话框
                                 selectStreetForAdd(poly._streetName, poly);
                             } else {
-                                // 已经选中该街道，则弹出新增对话框
                                 const lnglat = e.lnglat;
                                 const lng = lnglat.getLng();
                                 const lat = lnglat.getLat();
                                 handleMapClickForAdd(lng, lat, poly._streetName);
                             }
                         } else {
-                            // 非添加模式，点击街道过滤
-                            setFilterStreet(poly._streetName);
+                            // 非添加模式：高亮该街道的标记，并定位到街道中心
+                            highlightStreet(poly._streetName);
+                            // 短暂闪烁多边形
                             poly.setOptions({ fillOpacity: 0.3, strokeWeight: 4 });
                             setTimeout(() => {
                                 poly.setOptions({ fillOpacity: 0.14, strokeWeight: 2 });
@@ -1395,7 +1733,7 @@
                         offset: new AMap.Pixel(0, 0),
                         style: {
                             fontSize: "11px",
-                            color: "#002266",
+                            color: "#374151",
                             backgroundColor: "rgba(255,255,255,0.86)",
                             padding: "1px 5px",
                             border: "none",
@@ -1469,6 +1807,8 @@
                 draggable: true,
                 cursor: 'move'
             });
+            // 存储街道名便于高亮
+            marker._street = geoObj.street || '';
 
             const created = createdAt ? formatTimestamp(createdAt) : '无';
             const updated = updatedAt ? formatTimestamp(updatedAt) : '无';
@@ -1484,8 +1824,8 @@
                 <p style="font-size:11px;margin:1px 0;">站点：${siteLabel}</p>
                 <hr style="margin:3px 0;"/>
                 <p style="font-size:11px;margin:1px 0;"><b>备注：</b>${noteText || '无备注'}</p>
-                <p style="font-size:10px;color:#64748b;margin:1px 0;">创建：${created}</p>
-                <p style="font-size:10px;color:#64748b;margin:1px 0;">更新：${updated}</p>
+                <p style="font-size:10px;color:#6b7280;margin:1px 0;">创建：${created}</p>
+                <p style="font-size:10px;color:#6b7280;margin:1px 0;">更新：${updated}</p>
                 <div style="margin-top:4px;">
                     <button class="edit-btn" style="font-size:11px;padding:2px 8px;" onclick="openEditModal(${markerList.length})">✏编辑</button>
                     <button class="edit-btn" style="font-size:11px;padding:2px 8px;margin-left:4px;" onclick="deleteMarkerItemByIndex(${markerList.length})">🗑删除</button>
@@ -1521,9 +1861,9 @@
                         .then(({ error }) => {
                             if (error) {
                                 console.error('拖拽后保存位置失败:', error);
-                                alert('保存位置失败，请重试或手动编辑。');
+                                showToast('保存位置失败，请重试或手动编辑', 'error');
                             } else {
-                                console.log('标记位置已更新');
+                                showToast('位置已更新');
                             }
                         });
                 }
@@ -1550,8 +1890,8 @@
                 <p style="font-size:11px;margin:1px 0;">站点：${siteLabel}</p>
                 <hr style="margin:3px 0;"/>
                 <p style="font-size:11px;margin:1px 0;"><b>备注：</b>${item.note || '无备注'}</p>
-                <p style="font-size:10px;color:#64748b;margin:1px 0;">创建：${created}</p>
-                <p style="font-size:10px;color:#64748b;margin:1px 0;">更新：${updated}</p>
+                <p style="font-size:10px;color:#6b7280;margin:1px 0;">创建：${created}</p>
+                <p style="font-size:10px;color:#6b7280;margin:1px 0;">更新：${updated}</p>
                 <div style="margin-top:4px;">
                     <button class="edit-btn" style="font-size:11px;padding:2px 8px;" onclick="openEditModal(${index})">✏编辑</button>
                     <button class="edit-btn" style="font-size:11px;padding:2px 8px;margin-left:4px;" onclick="deleteMarkerItemByIndex(${index})">🗑删除</button>
@@ -1566,19 +1906,70 @@
             item.marker.setContent(newContent);
         }
 
-        // ===== 删除标记 =====
+        // ===== 高亮街道标记（新函数） =====
+        function highlightStreet(streetName) {
+            if (!streetName) {
+                clearHighlight();
+                return;
+            }
+            filterStreet = streetName;
+            // 更新 UI 标识栏
+            const bar = document.getElementById('streetIdentifyBar');
+            bar.style.display = 'flex';
+            document.getElementById('identifiedStreetName').textContent = streetName;
+            const count = markerList.filter(m => {
+                if ((m.geo.street || '').trim() !== streetName) return false;
+                if (m.type !== currentMode) return false;
+                if (currentSite !== 'all' && m.site !== currentSite) return false;
+                return true;
+            }).length;
+            document.getElementById('identifiedStreetCount').textContent = `（${count}）`;
+
+            // 重新渲染以更新高亮样式
+            applyFilterAndRenderMap();
+
+            // 定位到街道中心
+            const center = streetCenterCache[streetName];
+            if (center) {
+                map.setCenter([center.lng, center.lat]);
+                map.setZoom(14);
+            }
+            showToast(`已高亮「${streetName}」的 ${count} 个标记`, 'info');
+        }
+
+        function clearHighlight() {
+            filterStreet = '';
+            document.getElementById('streetIdentifyBar').style.display = 'none';
+            document.getElementById('identifiedStreetName').textContent = '—';
+            document.getElementById('identifiedStreetCount').textContent = '';
+            applyFilterAndRenderMap();
+        }
+
+        // 保持原 setFilterStreet 兼容性，但改为调用 highlightStreet
+        function setFilterStreet(streetName) {
+            if (!streetName) { clearHighlight(); return; }
+            highlightStreet(streetName);
+        }
+
+        // 原 clearFilter 保持不变（调用 clearHighlight）
+        function clearFilter() {
+            clearHighlight();
+        }
+
+        // ===== 删除标记（回收站） =====
         async function deleteMarkerItemByIndex(index) {
             if (index < 0 || index >= markerList.length) return;
             const item = markerList[index];
             if (item.type !== currentMode) {
-                alert('当前模式下不能操作其他类型的标记');
+                showToast('当前模式下不能操作其他类型的标记', 'error');
                 return;
             }
             if (currentSite !== 'all' && item.site !== currentSite) {
-                alert('当前站点下不能操作其他站点的标记');
+                showToast('当前站点下不能操作其他站点的标记', 'error');
                 return;
             }
-            if (!confirm('确认删除此标记？')) return;
+            const confirmed = await showConfirm('确认删除', '确定要删除此标记吗？删除后可在回收站中恢复（保留3天）。');
+            if (!confirmed) return;
             const backup = {
                 id: item.id,
                 geo: { ...item.geo },
@@ -1590,9 +1981,8 @@
                 markerIndex: index
             };
             await deleteMarkerItem(item);
-            undoStack.push({ action: 'delete', data: backup });
-            redoStack = [];
-            updateUndoButton();
+            addToRecycle(backup);
+            showToast('已删除标记');
         }
 
         async function deleteMarkerItem(item) {
@@ -1613,62 +2003,7 @@
                 updateModeMarkerCount();
             } catch (err) {
                 console.error('删除标记失败:', err);
-                alert('删除标记失败：' + err.message);
-            }
-        }
-
-        // ===== 撤销 =====
-        async function undoDelete() {
-            if (undoStack.length === 0) return;
-            const action = undoStack.pop();
-            if (action.action === 'delete') {
-                const data = action.data;
-                try {
-                    const now = new Date().toISOString();
-                    const insertData = {
-                        geo: data.geo,
-                        note: data.note,
-                        created_at: data.created_at || now,
-                        updated_at: now,
-                        type: data.type || 'repair',
-                        site: data.site || 'lianhu'
-                    };
-                    const promise = supabaseClient.from(TABLE_NAME).insert([insertData]).select();
-                    const { data: newData, error } = await supabaseFetchWithTimeout(() => promise);
-                    if (error) {
-                        console.error('撤销插入失败，详细错误:', error);
-                        throw error;
-                    }
-                    if (newData && newData.length > 0) {
-                        const doc = newData[0];
-                        const item = createMarkerItem(doc.geo, doc.note, doc.id, doc.created_at, doc.updated_at, doc
-                            .type || 'repair', doc.site || 'lianhu');
-                        markerList.push(item);
-                        const idx = markerList.length - 1;
-                        refreshMarkerInfoWindow(item, idx);
-                        updateMarkerIcon(item);
-                        applyFilterAndRenderMap();
-                        updateMarkerCountBadge();
-                        updateModeMarkerCount();
-                        redoStack.push({ action: 'restore', data: { id: doc.id, index: idx } });
-                        updateUndoButton();
-                    }
-                } catch (err) {
-                    alert('撤销失败：' + err.message);
-                    undoStack.push(action);
-                }
-            }
-        }
-
-        function updateUndoButton() {
-            const btn = document.getElementById('undoBtn');
-            const count = document.getElementById('recycleCount');
-            if (undoStack.length > 0) {
-                btn.disabled = false;
-                count.textContent = undoStack.length;
-            } else {
-                btn.disabled = true;
-                count.textContent = '0';
+                showToast('删除标记失败：' + err.message, 'error');
             }
         }
 
@@ -1678,7 +2013,10 @@
             if (currentSite !== 'all') {
                 visibleItems = visibleItems.filter(item => item.site === currentSite);
             }
-            if (visibleItems.length === 0) { alert('当前筛选条件下没有标记可导出'); return; }
+            if (visibleItems.length === 0) {
+                showToast('当前筛选条件下没有标记可导出', 'info');
+                return;
+            }
             const data = visibleItems.map(item => ({
                 '名称': item.geo.name || '',
                 '区县': item.geo.district || '',
@@ -1703,6 +2041,7 @@
                 link.href = URL.createObjectURL(blob);
                 link.download = `标记_${new Date().toISOString().slice(0,10)}.csv`;
                 link.click();
+                showToast('CSV 导出成功');
             } else {
                 const out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
                 const blob = new Blob([out], { type: 'application/octet-stream' });
@@ -1710,6 +2049,7 @@
                 link.href = URL.createObjectURL(blob);
                 link.download = `标记_${new Date().toISOString().slice(0,10)}.xlsx`;
                 link.click();
+                showToast('Excel 导出成功');
             }
         }
 
@@ -1765,7 +2105,6 @@
                     markerList = [];
                     applyFilterAndRenderMap();
                     updateMarkerCountBadge();
-                    updateUndoButton();
                     return;
                 }
 
@@ -1836,11 +2175,11 @@
                 });
                 applyFilterAndRenderMap();
                 updateMarkerCountBadge();
-                updateUndoButton();
                 console.log(`✅ 从 Supabase 加载了 ${markerList.length} 个标记`);
+                showToast(`已加载 ${markerList.length} 个标记`, 'info');
             } catch (err) {
                 console.error('❌ 加载数据失败', err);
-                alert('加载数据失败：' + err.message);
+                showToast('加载数据失败：' + err.message, 'error');
                 _isMerging = false;
             }
         }
@@ -1860,7 +2199,7 @@
                     const siteLabel = SITE_CONFIG[doc.site]?.label || doc.site;
                     html += `<div class="merge-option">
                         <input type="radio" name="mergeSelect" value="${idx}" ${idx===0?'checked':''}>
-                        <div><strong>${doc.geo.name}</strong> <span style="font-size:10px;color:#64748b;">${typeLabel} | ${siteLabel}</span><br><span style="font-size:10px;">备注：${note}</span><br><span style="font-size:10px;color:#64748b;">创建：${created}</span></div>
+                        <div><strong>${doc.geo.name}</strong> <span style="font-size:10px;color:#6b7280;">${typeLabel} | ${siteLabel}</span><br><span style="font-size:10px;">备注：${note}</span><br><span style="font-size:10px;color:#6b7280;">创建：${created}</span></div>
                     </div>`;
                 });
                 listDiv.innerHTML = html;
@@ -1875,13 +2214,17 @@
         window.confirmMerge = function() {
             const modal = document.getElementById('mergeModal');
             const selected = document.querySelector('input[name="mergeSelect"]:checked');
-            if (!selected) { alert('请选择要保留的记录'); return; }
+            if (!selected) {
+                showToast('请选择要保留的记录', 'error');
+                return;
+            }
             const idx = parseInt(selected.value);
             modal.style.display = 'none';
             if (pendingMergeResolve) {
                 pendingMergeResolve(idx);
                 pendingMergeResolve = null;
             }
+            showToast('重复标记已合并');
         };
 
         window.rejectMerge = function() {
@@ -1891,33 +2234,29 @@
                 pendingMergeResolve('skip');
                 pendingMergeResolve = null;
             }
+            showToast('已跳过合并', 'info');
         };
 
-        // ===== 添加标记（通过"添加"按钮） =====
+        // ===== 添加标记 =====
         async function addNoteMarker() {
             const noteText = document.getElementById("noteInput").value.trim();
 
-            // 如果处于添加标记模式，引导用户操作
             if (isAddMarkerMode) {
                 if (!selectedStreetForAdd) {
-                    alert('请先点击街道选中目标区域，再次点击同一街道内部放置标记。');
+                    showToast('请先点击街道选中目标区域，再次点击同一街道内部放置标记', 'info');
                 } else {
-                    alert('请点击选中的街道内部任意位置完成标记添加。');
+                    showToast('请点击选中的街道内部任意位置完成标记添加', 'info');
                 }
                 return;
             }
 
-            // 如果尚未搜索位置，自动开启添加标记模式
             if (!currentGeo) {
-                const msg = '尚未搜索位置，自动开启「添加标记」模式。\n' +
-                    '请点击街道选中，再次点击同一街道内部放置标记。\n' +
-                    '（备注内容会自动带入）';
-                if (!confirm(msg)) return;
-                toggleAddMarkerMode();
+                const msg = '尚未搜索位置，自动开启「添加标记」模式。\n请点击街道选中，再次点击同一街道内部放置标记。';
+                const ok = await showConfirm('开启添加模式', msg);
+                if (ok) toggleAddMarkerMode();
                 return;
             }
 
-            // 有 currentGeo，正常走原有逻辑
             const geo = { ...currentGeo };
             if (!geo.category) {
                 const parts = (geo.name || '').split('｜');
@@ -1950,16 +2289,16 @@
                     updateMarkerIcon(item);
                     applyFilterAndRenderMap();
                     updateMarkerCountBadge();
-                    updateUndoButton();
                     document.getElementById("noteInput").value = '';
                     currentGeo = null;
                     if (tempSelectMarker) {
                         tempSelectMarker.remove();
                         tempSelectMarker = null;
                     }
+                    showToast('标记添加成功');
                 }
             } catch (err) {
-                alert('添加标记失败：' + err.message);
+                showToast('添加标记失败：' + err.message, 'error');
             }
         }
 
@@ -1971,11 +2310,11 @@
             }
             const item = markerList[index];
             if (item.type !== currentMode) {
-                alert('当前模式下不能编辑其他类型的标记');
+                showToast('当前模式下不能编辑其他类型的标记', 'error');
                 return;
             }
             if (currentSite !== 'all' && item.site !== currentSite) {
-                alert('当前站点下不能编辑其他站点的标记');
+                showToast('当前站点下不能编辑其他站点的标记', 'error');
                 return;
             }
             editingMarkerIndex = index;
@@ -1987,7 +2326,7 @@
             document.getElementById("editTypeSelect").value = item.type || 'repair';
             document.getElementById("editSiteSelect").value = item.site || 'lianhu';
             document.getElementById("editCreatedAt").textContent = item.created_at ? formatTimestamp(item.created_at) :
-            '无';
+                '无';
             document.getElementById("editModal").style.display = "flex";
             pendingAddPosition = null;
             pendingAddStreet = null;
@@ -2024,9 +2363,12 @@
             const type = document.getElementById("editTypeSelect").value;
             const site = document.getElementById("editSiteSelect").value;
 
-            if (!name) { alert('请输入点位名称'); return; }
+            if (!name) {
+                showToast('请输入点位名称', 'error');
+                return;
+            }
             if (!pendingAddPosition && editingMarkerIndex === -1) {
-                alert('未获取到新增位置，请重新点击地图');
+                showToast('未获取到新增位置，请重新点击地图', 'error');
                 return;
             }
 
@@ -2079,23 +2421,25 @@
                         updateMarkerIcon(item);
                         applyFilterAndRenderMap();
                         updateMarkerCountBadge();
-                        updateUndoButton();
                         document.getElementById("noteInput").value = '';
                         closeEditModal();
-                        alert('✅ 标记添加成功！');
+                        showToast('标记添加成功');
                     }
                 } catch (err) {
-                    alert('添加标记失败：' + err.message);
+                    showToast('添加标记失败：' + err.message, 'error');
                 }
                 return;
             }
 
             if (editingMarkerIndex < 0 || editingMarkerIndex >= markerList.length) {
-                alert("没有选中任何标记");
+                showToast('没有选中任何标记', 'error');
                 return;
             }
             const item = markerList[editingMarkerIndex];
-            if (!item.id) { alert('该标记缺少云端ID，无法更新'); return; }
+            if (!item.id) {
+                showToast('该标记缺少云端ID，无法更新', 'error');
+                return;
+            }
 
             item.geo.name = name;
             if (name.includes('｜')) {
@@ -2127,10 +2471,9 @@
                 closeEditModal();
                 applyFilterAndRenderMap();
                 updateMarkerCountBadge();
-                updateUndoButton();
-                alert('✅ 标记更新成功！');
+                showToast('标记更新成功');
             } catch (err) {
-                alert('更新失败：' + err.message);
+                showToast('更新失败：' + err.message, 'error');
             }
         }
 
@@ -2140,8 +2483,12 @@
             if (currentSite !== 'all') {
                 visibleItems = visibleItems.filter(item => item.site === currentSite);
             }
-            if (visibleItems.length === 0) { alert('当前筛选条件下没有标记可清除'); return; }
-            if (!confirm(`⚠️ 确定清除当前筛选条件下的所有 ${visibleItems.length} 个标记？`)) return;
+            if (visibleItems.length === 0) {
+                showToast('当前筛选条件下没有标记可清除', 'info');
+                return;
+            }
+            const confirmed = await showConfirm('确认清除', `⚠️ 确定清除当前筛选条件下的所有 ${visibleItems.length} 个标记？\n删除后可在回收站中恢复（保留3天）。`);
+            if (!confirmed) return;
             const backups = visibleItems.map((item, idx) => ({
                 id: item.id,
                 geo: { ...item.geo },
@@ -2153,7 +2500,10 @@
                 markerIndex: markerList.indexOf(item)
             }));
             const ids = visibleItems.map(item => item.id).filter(id => id != null);
-            if (ids.length === 0) { alert('缺少云端ID，无法删除'); return; }
+            if (ids.length === 0) {
+                showToast('缺少云端ID，无法删除', 'error');
+                return;
+            }
             try {
                 const promise = supabaseClient.from(TABLE_NAME).delete().in('id', ids);
                 const { error } = await supabaseFetchWithTimeout(() => promise);
@@ -2165,15 +2515,11 @@
                 if (lastHighlightMarker && toRemove.has(lastHighlightMarker._item)) lastHighlightMarker = null;
                 applyFilterAndRenderMap();
                 updateMarkerCountBadge();
-                for (let backup of backups) {
-                    undoStack.push({ action: 'delete', data: backup });
-                }
-                redoStack = [];
-                updateUndoButton();
-                alert(`✅ 已清除 ${ids.length} 个标记，可撤销恢复`);
+                backups.forEach(backup => addToRecycle(backup));
+                showToast(`已清除 ${ids.length} 个标记，可在回收站中恢复`);
                 clearFilter();
             } catch (err) {
-                alert('批量删除失败：' + err.message);
+                showToast('批量删除失败：' + err.message, 'error');
             }
         }
 
@@ -2181,7 +2527,10 @@
         async function deleteStreetMarkers() {
             const streetInput = document.getElementById('deleteStreetInput');
             const streetName = streetInput.value.trim();
-            if (!streetName) { alert('请输入街道名称'); return; }
+            if (!streetName) {
+                showToast('请输入街道名称', 'error');
+                return;
+            }
             const normalize = (s) => s.replace(/街道$/, '').trim();
             const target = normalize(streetName);
             let matchedItems = markerList.filter(item => {
@@ -2191,8 +2540,12 @@
             if (currentSite !== 'all') {
                 matchedItems = matchedItems.filter(item => item.site === currentSite);
             }
-            if (matchedItems.length === 0) { alert(`当前筛选条件下未找到精确匹配「${streetName}」的标记`); return; }
-            if (!confirm(`确定删除「${streetName}」的 ${matchedItems.length} 个标记？`)) return;
+            if (matchedItems.length === 0) {
+                showToast(`当前筛选条件下未找到精确匹配「${streetName}」的标记`, 'info');
+                return;
+            }
+            const confirmed = await showConfirm('确认删除', `确定删除「${streetName}」的 ${matchedItems.length} 个标记？\n删除后可在回收站中恢复。`);
+            if (!confirmed) return;
             const backups = matchedItems.map((item, idx) => ({
                 id: item.id,
                 geo: { ...item.geo },
@@ -2204,7 +2557,10 @@
                 markerIndex: markerList.indexOf(item)
             }));
             const ids = matchedItems.map(item => item.id).filter(id => id != null);
-            if (ids.length === 0) { alert('匹配的标记缺少云端ID'); return; }
+            if (ids.length === 0) {
+                showToast('匹配的标记缺少云端ID', 'error');
+                return;
+            }
             try {
                 const promise = supabaseClient.from(TABLE_NAME).delete().in('id', ids);
                 const { error } = await supabaseFetchWithTimeout(() => promise);
@@ -2216,20 +2572,16 @@
                 if (lastHighlightMarker && toRemove.has(lastHighlightMarker._item)) lastHighlightMarker = null;
                 applyFilterAndRenderMap();
                 updateMarkerCountBadge();
-                for (let backup of backups) {
-                    undoStack.push({ action: 'delete', data: backup });
-                }
-                redoStack = [];
-                updateUndoButton();
-                alert(`✅ 已删除「${streetName}」的 ${ids.length} 个标记，可撤销恢复`);
+                backups.forEach(backup => addToRecycle(backup));
+                showToast(`已删除「${streetName}」的 ${ids.length} 个标记，可在回收站中恢复`);
                 streetInput.value = '';
                 if (filterStreet === streetName) clearFilter();
             } catch (err) {
-                alert('批量删除失败：' + err.message);
+                showToast('批量删除失败：' + err.message, 'error');
             }
         }
 
-        // ===== 应用过滤 & 聚合 =====
+        // ===== 应用过滤 & 聚合（修改：不再根据 filterStreet 过滤标记，仅高亮） =====
         function applyFilterAndRenderMap() {
             if (clusterer) {
                 clusterer.setMap(null);
@@ -2237,19 +2589,29 @@
             }
             markerList.forEach(item => item.marker.setMap(null));
 
+            // 始终按模式和站点过滤
             let visibleItems = markerList.filter(item => item.type === currentMode);
             if (currentSite !== 'all') {
                 visibleItems = visibleItems.filter(item => item.site === currentSite);
             }
-            if (filterStreet) {
-                visibleItems = visibleItems.filter(item => {
-                    const s = (item.geo.street || '').trim();
-                    return s === filterStreet;
-                });
-            }
+            // 不再根据 filterStreet 过滤，所有可见标记都显示
 
             visibleItems.forEach(item => item.marker.setMap(map));
 
+            // 高亮处理：为匹配 filterStreet 的标记添加高亮类
+            const highlightStreetName = filterStreet.trim();
+            visibleItems.forEach(item => {
+                const contentDiv = item.marker.getContent();
+                if (!contentDiv) return;
+                const street = (item.geo.street || '').trim();
+                if (highlightStreetName && street === highlightStreetName) {
+                    contentDiv.classList.add('highlighted');
+                } else {
+                    contentDiv.classList.remove('highlighted');
+                }
+            });
+
+            // 聚合：仅当没有高亮街道时启用聚合（高亮时为了突出显示单个街道标记，禁用聚合）
             if (!filterStreet && visibleItems.length > 10) {
                 const markers = visibleItems.map(item => item.marker);
                 AMap.plugin('AMap.MarkerClusterer', () => {
@@ -2260,7 +2622,7 @@
                             const marker = new AMap.Marker({
                                 position: context.latLng,
                                 label: {
-                                    content: `<div style="background:#2563eb;color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;box-shadow:0 2px 6px rgba(0,0,0,0.3);">${count}</div>`,
+                                    content: `<div style="background:#4b5563;color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;box-shadow:0 2px 6px rgba(0,0,0,0.3);">${count}</div>`,
                                     direction: 'center'
                                 }
                             });
@@ -2289,6 +2651,7 @@
                 });
             }
             updateModeMarkerCount();
+            updateIdentifiedStreetCount();
         }
 
         // ===== 搜索 =====
@@ -2297,7 +2660,10 @@
             const detailDom = document.getElementById("detailBox");
             const listDom = document.getElementById("resultList");
             listDom.innerHTML = "";
-            if (!keyword) { alert("请输入地点/街道名称"); return; }
+            if (!keyword) {
+                showToast('请输入地点/街道名称', 'error');
+                return;
+            }
 
             const matchStreetName = Object.keys(streetCenterCache).find(name => name.includes(keyword) || keyword
             .includes(name));
@@ -2324,7 +2690,8 @@
                     map: map
                 });
                 detailDom.innerText = `【街道定位】${matchStreetName}  (${center.lng.toFixed(4)},${center.lat.toFixed(4)})`;
-                setFilterStreet(matchStreetName);
+                // 高亮该街道
+                highlightStreet(matchStreetName);
                 return;
             }
 
@@ -2434,17 +2801,17 @@
 
                                 const streetName = findStreetByLngLat(item.lng, item.lat);
                                 if (streetName) {
-                                    setFilterStreet(streetName);
+                                    highlightStreet(streetName);
                                 } else {
                                     if (item.street && item.street.trim()) {
                                         const matched = Object.keys(streetCenterCache).find(
                                             s => s.includes(item.street) || item.street.includes(s)
                                         );
-                                        if (matched) setFilterStreet(matched);
-                                        else { clearFilter();
+                                        if (matched) highlightStreet(matched);
+                                        else { clearHighlight();
                                             detailDom.innerText += '\n⚠️ 无法识别街道'; }
                                     } else {
-                                        clearFilter();
+                                        clearHighlight();
                                         detailDom.innerText += '\n⚠️ 无法识别街道';
                                     }
                                 }
@@ -2454,42 +2821,6 @@
                     });
                 });
             });
-        }
-
-        function setFilterStreet(streetName) {
-            if (!streetName) { clearFilter(); return; }
-            filterStreet = streetName;
-            const bar = document.getElementById('streetIdentifyBar');
-            bar.style.display = 'flex';
-            document.getElementById('identifiedStreetName').textContent = streetName;
-            const count = markerList.filter(m => {
-                if ((m.geo.street || '').trim() !== streetName) return false;
-                if (m.type !== currentMode) return false;
-                if (currentSite !== 'all' && m.site !== currentSite) return false;
-                return true;
-            }).length;
-            document.getElementById('identifiedStreetCount').textContent = `（${count}）`;
-            if (lastHighlightMarker) {
-                lastHighlightMarker.setIcon(ICON_NORMAL);
-                lastHighlightMarker = null;
-            }
-            document.getElementById('noteSearchResultBox').innerHTML = '';
-            applyFilterAndRenderMap();
-            updateMarkerCountBadge();
-        }
-
-        function clearFilter() {
-            filterStreet = '';
-            document.getElementById('noteSearchResultBox').innerHTML = '';
-            document.getElementById('streetIdentifyBar').style.display = 'none';
-            document.getElementById('identifiedStreetName').textContent = '—';
-            document.getElementById('identifiedStreetCount').textContent = '';
-            if (lastHighlightMarker) {
-                lastHighlightMarker.setIcon(ICON_NORMAL);
-                lastHighlightMarker = null;
-            }
-            applyFilterAndRenderMap();
-            updateMarkerCountBadge();
         }
 
         // ===== 备注搜索 =====
@@ -2543,8 +2874,8 @@
                     if (lastHighlightMarker) lastHighlightMarker.setIcon(ICON_NORMAL);
                     const contentDiv = hit.item.marker.getContent();
                     if (contentDiv) {
-                        contentDiv.style.border = '3px solid #ffaa00';
-                        contentDiv.style.boxShadow = '0 0 12px rgba(255,170,0,0.8)';
+                        contentDiv.style.border = '3px solid #9ca3af';
+                        contentDiv.style.boxShadow = '0 0 12px rgba(156,163,175,0.8)';
                     }
                     if (lastHighlightMarker && lastHighlightMarker !== hit.item.marker) {
                         const oldDiv = lastHighlightMarker.getContent();
@@ -2567,12 +2898,14 @@
             map.setCity("西安市");
             map.setCenter([108.95, 34.27]);
             map.setZoom(10);
+            showToast('已定位至西安');
         }
 
         function toggleSimpleMap() {
             isSimpleMode = !isSimpleMode;
             map.setFeatures(isSimpleMode ? ['bg', 'road'] : ['bg', 'road', 'point', 'building']);
-            document.getElementById("toggleSimpleBtn").innerText = "极简";
+            document.getElementById("toggleSimpleBtn").innerText = isSimpleMode ? '详细' : '极简';
+            showToast(isSimpleMode ? '已切换至极简模式' : '已切换至详细模式', 'info');
         }
 
         // ===== 添加标记模式核心功能 =====
@@ -2591,11 +2924,12 @@
                 statusEl.innerHTML = '🎯 点击街道选中 → 再次点击同一街道放置标记';
                 indicator.className = 'mode-indicator on';
                 clearSelectedStreet();
-                if (filterStreet) clearFilter();
+                if (filterStreet) clearHighlight();
                 map.setDefaultCursor('crosshair');
                 document.getElementById('wrap').classList.add('add-mode-active');
                 if (tempClickMarker) { tempClickMarker.remove();
                     tempClickMarker = null; }
+                showToast('添加模式已开启，请点击街道选择目标区域', 'info');
             } else {
                 toggleBtn.className = 'outline small';
                 toggleBtn.style.flex = '1';
@@ -2610,6 +2944,7 @@
                 if (document.getElementById('editModal').style.display === 'flex') {
                     closeEditModal();
                 }
+                showToast('已退出添加模式', 'info');
             }
         }
 
@@ -2638,7 +2973,7 @@
             }
 
             if (!polygon) {
-                alert('未找到对应的街道多边形，请重试');
+                showToast('未找到对应的街道多边形，请重试', 'error');
                 return;
             }
 
@@ -2648,17 +2983,18 @@
             highlightedPolygonOrigOpts = {
                 fillOpacity: polygon.getOptions().fillOpacity || 0.14,
                 strokeWeight: polygon.getOptions().strokeWeight || 2,
-                strokeColor: polygon.getOptions().strokeColor || '#3b82f6'
+                strokeColor: polygon.getOptions().strokeColor || '#6b7280'
             };
             polygon.setOptions({
                 fillOpacity: 0.45,
                 strokeWeight: 5,
-                strokeColor: '#ff6b6b',
+                strokeColor: '#4b5563',
                 strokeStyle: 'solid'
             });
 
             const statusEl = document.getElementById('addModeStatus');
             statusEl.innerHTML = `📍 已选中：<strong class="highlight-street">${streetName}</strong>，再次点击该街道内部放置标记`;
+            showToast(`已选中街道：${streetName}，点击街道内部放置标记`, 'info');
         }
 
         function clearSelectedStreet() {
@@ -2667,7 +3003,7 @@
                 highlightedPolygon.setOptions({
                     fillOpacity: opts.fillOpacity,
                     strokeWeight: opts.strokeWeight,
-                    strokeColor: opts.strokeColor || '#3b82f6',
+                    strokeColor: opts.strokeColor || '#6b7280',
                     strokeStyle: 'solid'
                 });
                 highlightedPolygon = null;
@@ -2684,18 +3020,17 @@
 
         function handleMapClickForAdd(lng, lat, streetName) {
             if (!streetName) {
-                alert('请先点击街道选择目标区域');
+                showToast('请先点击街道选择目标区域', 'error');
                 return;
             }
 
-            // 显示临时标记（反馈）
             if (tempClickMarker) tempClickMarker.remove();
             const contentDiv = document.createElement('div');
             contentDiv.className = 'temp-marker';
             contentDiv.style.width = '20px';
             contentDiv.style.height = '20px';
-            contentDiv.style.background = 'rgba(255, 0, 0, 0.4)';
-            contentDiv.style.border = '2px solid #ff0000';
+            contentDiv.style.background = 'rgba(160,160,160,0.4)';
+            contentDiv.style.border = '2px solid #6b7280';
             contentDiv.style.borderRadius = '50%';
             contentDiv.style.pointerEvents = 'none';
             tempClickMarker = new AMap.Marker({
@@ -2711,7 +3046,6 @@
                 }
             }, 2000);
 
-            // 打开新增标记对话框（不取消选中，方便连续添加）
             openAddMarkerModal(lng, lat, streetName);
         }
 
@@ -2764,7 +3098,7 @@
                     const sheet = workbook.Sheets[sheetName];
                     const jsonRows = XLSX.utils.sheet_to_json(sheet);
                     if (!jsonRows || jsonRows.length === 0) {
-                        alert('Excel为空');
+                        showToast('Excel为空', 'error');
                         e.target.value = '';
                         document.getElementById('fileStatusRow').style.display = 'none';
                         return;
@@ -2775,8 +3109,9 @@
                     document.getElementById('btnStartRecognize').disabled = false;
                     document.getElementById('btnStartRecognize').textContent = '▶ 识别';
                     document.getElementById('progressArea').style.display = 'none';
+                    showToast(`已加载 ${jsonRows.length} 行数据，点击「识别」开始处理`, 'info');
                 } catch (err) {
-                    alert('解析Excel失败：' + err.message);
+                    showToast('解析Excel失败：' + err.message, 'error');
                     e.target.value = '';
                     document.getElementById('fileStatusRow').style.display = 'none';
                 }
@@ -2792,19 +3127,20 @@
             document.getElementById('progressBar').style.width = '0%';
             document.getElementById('progressBar').className = 'progress-bar';
             document.getElementById('progressText').textContent = '已取消';
+            showToast('已取消导入', 'info');
         }
 
         async function startExcelRecognition() {
             if (isProcessing) {
-                alert('正在处理中，请稍候…');
+                showToast('正在处理中，请稍候…', 'info');
                 return;
             }
             if (!pendingExcelData || pendingExcelData.length === 0) {
-                alert('请先上传Excel文件');
+                showToast('请先上传Excel文件', 'error');
                 return;
             }
             if (Object.keys(streetCenterCache).length === 0) {
-                alert('请先切换站点加载街道数据，否则无法准确识别位置。');
+                showToast('请先切换站点加载街道数据，否则无法准确识别位置', 'error');
                 return;
             }
 
@@ -2849,12 +3185,12 @@
                 progressBar.className = 'progress-bar done';
                 progressText.textContent = `✅ 完成！共 ${result?.count || 0} 个标记`;
                 updateMarkerCountBadge();
-                alert(`✅ Excel 识别完成！共生成/更新 ${result?.count || 0} 个标记`);
+                showToast(`Excel 识别完成！共生成/更新 ${result?.count || 0} 个标记`);
 
             } catch (err) {
                 console.error('识别失败:', err);
                 progressText.textContent = `❌ 失败：${err.message}`;
-                alert('识别失败：' + err.message);
+                showToast('识别失败：' + err.message, 'error');
             } finally {
                 isProcessing = false;
                 btn.disabled = false;
@@ -2907,6 +3243,7 @@
             const groupKeys = Object.keys(groupMap);
             if (groupKeys.length === 0) {
                 onProgress && onProgress({ status: '⚠️ 没有有效分组', done: true, count: 0 });
+                showToast('没有有效分组，请检查Excel格式', 'error');
                 return { count: 0 };
             }
 
@@ -2975,6 +3312,7 @@
             const validGroupKeys = Object.keys(groupMap);
             if (validGroupKeys.length === 0) {
                 onProgress && onProgress({ status: '❌ 没有有效街道', done: true, count: 0 });
+                showToast('没有有效街道，请检查数据', 'error');
                 return { count: 0 };
             }
 
@@ -3107,7 +3445,6 @@
             });
             applyFilterAndRenderMap();
             updateMarkerCountBadge();
-            updateUndoButton();
 
             onProgress && onProgress({
                 status: `✅ 完成`,
@@ -3150,10 +3487,6 @@
 
         // ===== 快捷键 =====
         document.addEventListener('keydown', function(e) {
-            if (e.ctrlKey && !e.shiftKey && e.key === 'z') {
-                e.preventDefault();
-                undoDelete();
-            }
             if (e.ctrlKey && e.shiftKey && e.key === 'Z') {
                 e.preventDefault();
                 loadFromCloud();
@@ -3169,10 +3502,15 @@
                     pendingMergeResolve = null;
                     return;
                 }
+                if (document.getElementById('recycle-modal').style.display === 'flex') {
+                    closeRecycleBin();
+                    return;
+                }
                 if (isAddMarkerMode && selectedStreetForAdd) {
                     clearSelectedStreet();
                     const statusEl = document.getElementById('addModeStatus');
                     statusEl.innerHTML = '🎯 已取消选中，请重新点击街道选择目标';
+                    showToast('已取消街道选中', 'info');
                     return;
                 }
                 if (isAddMarkerMode) {
@@ -3205,9 +3543,6 @@
                 features: ['bg', 'road', 'point', 'building']
             });
 
-            // 移除了 map 的 click 事件处理（添加标记逻辑已移至街道多边形 click 中）
-            // 地图 click 保留为空（可扩展其他功能）
-
             document.getElementById("excelFileInput").addEventListener("change", handleExcelImport);
 
             document.getElementById('siteAllBtn').className = 'primary small';
@@ -3223,9 +3558,10 @@
 
             setMode('repair');
             document.getElementById('modeIndicator').className = 'mode-indicator off';
+            updateRecycleBadge();
 
-            console.log('✅ 应用初始化完成');
-            console.log('📌 提示：开启添加标记模式后，点击街道选中（高亮），再次点击同一街道内部即可放置标记。');
+            console.log('✅ 应用初始化完成（点击街道仅高亮，不隐藏其他标记）');
+            console.log('📌 提示：点击街道会高亮该街道的标记并定位，其他标记仍然可见。');
         };
     </script>
 </body>
