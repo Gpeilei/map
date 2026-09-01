@@ -781,7 +781,7 @@
         }
     }
 
-    // ===== 加载单个街道文件 =====
+    // ===== 加载单个街道文件（关键修改：添加 bubble: true） =====
     async function loadSingleStreet(filename, version, site) {
         try {
             const resp = await fetch("./geojson/" + filename, { cache: 'force-cache' });
@@ -867,19 +867,23 @@
             const polyObjects = [];
             validPolyList.forEach(pathArr => {
                 const colorOpt = getRandomStreetColor();
+                // ===== 关键修改：添加 bubble: true 允许事件冒泡 =====
                 const poly = new AMap.Polygon({
                     path: pathArr,
                     strokeColor: colorOpt.strokeColor,
                     strokeWeight: 2,
                     fillColor: colorOpt.fillColor,
                     fillOpacity: 0.14,
-                    zIndex: 10
+                    zIndex: 10,
+                    bubble: true   // 允许点击事件冒泡到地图
                 });
                 poly._streetName = stdName;
                 // ===== 街道点击事件：支持添加标记模式 =====
                 poly.on('click', function(e) {
                     if (isAddMarkerMode) {
                         selectStreetForAdd(poly._streetName, poly);
+                        // 阻止地图点击事件触发（但 bubble:true 会冒泡，我们通过状态控制）
+                        // 不需要阻止冒泡，因为地图点击事件会检查 selectedStreetForAdd
                     } else {
                         setFilterStreet(poly._streetName);
                         poly.setOptions({ fillOpacity: 0.3, strokeWeight: 4 });
@@ -2117,7 +2121,6 @@
             map.setDefaultCursor('');
             document.getElementById('wrap').classList.remove('add-mode-active');
             if (tempClickMarker) { tempClickMarker.remove(); tempClickMarker = null; }
-            // 关闭可能打开的模态框（新增弹窗）
             if (document.getElementById('editModal').style.display === 'flex') {
                 closeEditModal();
             }
