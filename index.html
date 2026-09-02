@@ -45,7 +45,6 @@
             display: flex;
             flex-direction: column;
             gap: 8px;
-            /* 滚动条样式 */
             scrollbar-width: thin;
             scrollbar-color: #d1d5db #f3f4f6;
         }
@@ -521,31 +520,69 @@
             background: #9ca3af;
         }
 
-        /* ===== 自定义标记 ===== */
+        /* ===== 自定义标记 - 专业版样式 ===== */
         .custom-marker-label {
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 30px;
-            height: 30px;
+            width: 32px;
+            height: 32px;
             border-radius: 50%;
             color: #fff;
-            font-size: 14px;
-            font-weight: bold;
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-            border: 2px solid #fff;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+            font-size: 13px;
+            font-weight: 700;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+            border: 2px solid rgba(255, 255, 255, 0.95);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.4);
             pointer-events: none;
             user-select: none;
-            cursor: move;
             transition: all 0.2s ease;
+            /* 背景颜色由 JS 动态设置，此处作为 fallback */
+            background: radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.25) 0%, #6b7280 100%);
         }
+        /* 高亮态 - 金色聚焦 */
         .custom-marker-label.highlighted {
-            border: 3px solid #ffaa00 !important;
-            box-shadow: 0 0 16px rgba(255, 170, 0, 0.8) !important;
+            border: 3px solid #fbbf24 !important;
+            box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.4), 0 4px 16px rgba(251, 191, 36, 0.6) !important;
             transform: scale(1.15);
             z-index: 100;
         }
+
+        /* ===== 临时定位标记 - 纯几何脉冲环 ===== */
+        .temp-location-marker {
+            width: 34px;
+            height: 34px;
+            border: 4px solid #3b82f6;
+            border-radius: 50%;
+            background: rgba(59, 130, 246, 0.08);
+            box-shadow: 0 0 0 6px rgba(59, 130, 246, 0.1);
+            position: relative;
+            pointer-events: none;
+            animation: pulse-ring 2s ease-out infinite;
+            user-select: none;
+        }
+        .temp-location-marker::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 8px;
+            height: 8px;
+            background: #3b82f6;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 12px rgba(59, 130, 246, 0.5);
+        }
+        @keyframes pulse-ring {
+            0% {
+                box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+            }
+            100% {
+                box-shadow: 0 0 0 20px rgba(59, 130, 246, 0);
+            }
+        }
+
+        /* ===== 临时添加标记（点击街道时） ===== */
         .temp-marker {
             background: rgba(160, 160, 160, 0.4);
             border: 2px solid #6b7280;
@@ -976,7 +1013,20 @@
                 </div>
             </div>
 
-            <!-- 师傅列表卡片已删除 -->
+            <!-- ===== 6. 搜索（备注/品类） ===== -->
+            <div class="section">
+                <div class="section-header open" onclick="toggleSection(this)">
+                    <span>🔍 搜索师傅</span>
+                    <span class="arrow">▶</span>
+                </div>
+                <div class="section-body">
+                    <div class="flex-row gap-1">
+                        <input id="noteSearchInput" placeholder="品类 / 师傅名" style="flex:1;min-width:60px;" />
+                        <button onclick="searchExistNoteMarker()" class="primary small">搜索</button>
+                    </div>
+                    <div id="noteSearchResultBox" class="info-box" style="font-size:11px;min-height:20px;max-height:100px;overflow-y:auto;"></div>
+                </div>
+            </div>
 
         </div>
 
@@ -1042,7 +1092,7 @@
     </div>
 
     <!-- ============================================================ -->
-    <!-- ===== JavaScript（优化：联合过滤 + 删除师傅列表） ===== -->
+    <!-- ===== JavaScript（联合筛选自动展开备注框 + 恢复搜索） ===== -->
     <!-- ============================================================ -->
     <script>
         // ===== Toast 系统 =====
@@ -1255,8 +1305,8 @@
         let editingMarkerIndex = -1;
         let streetCenterCache = {};
         let lastHighlightMarker = null;
-        let filterStreet = ''; // 高亮街道
-        let filterCategory = ''; // 高亮品类
+        let filterStreet = '';
+        let filterCategory = '';
         let pendingExcelData = null;
         let isProcessing = false;
         let clusterer = null;
@@ -1264,6 +1314,12 @@
         let streetTextMarkers = [];
         let _isMerging = false;
         let loadVersion = 0;
+
+        // 临时定位标记（地址解析用）
+        let tempLocationMarker = null;
+
+        // 已打开的 InfoWindow 列表（用于自动展开）
+        let autoOpenedInfoWindows = [];
 
         // ===== 添加标记模式状态 =====
         let isAddMarkerMode = false;
@@ -1522,12 +1578,15 @@
             return letter ? letter[0].toUpperCase() : '点';
         }
 
+        // 创建专业版标记内容
         function createMarkerIconContent(category) {
             const abbr = getCategoryAbbr(category);
             const color = getCategoryColor(category);
             const div = document.createElement('div');
             div.className = 'custom-marker-label';
-            div.style.backgroundColor = color;
+            // 使用 CSS 自定义属性实现渐变背景
+            div.style.setProperty('--marker-color', color);
+            div.style.backgroundColor = color; // fallback
             div.textContent = abbr;
             return div;
         }
@@ -1558,6 +1617,7 @@
             }
             clearFilter();
             clearCategoryFilter();
+            clearTempLocationMarker(); // 切换模式时清除临时定位标记
             applyFilterAndRenderMap();
             updateModeMarkerCount();
             updateCategoryTags();
@@ -1578,6 +1638,7 @@
             filterStreet = '';
             filterCategory = '';
             clearCategoryFilter();
+            clearTempLocationMarker(); // 切换站点时清除临时定位标记
 
             const allBtn = document.getElementById('siteAllBtn');
             const lianhuBtn = document.getElementById('siteLianhuBtn');
@@ -1866,7 +1927,7 @@
             const marker = new AMap.Marker({
                 position: [geoObj.lng, geoObj.lat],
                 content: contentDiv,
-                offset: new AMap.Pixel(-15, -15),
+                offset: new AMap.Pixel(-16, -16),
                 map: map,
                 draggable: true,
                 cursor: 'move'
@@ -1967,6 +2028,38 @@
             item.marker.setContent(newContent);
         }
 
+        // ===== 自动展开符合条件的标记的 InfoWindow =====
+        function autoOpenMarkersInfoWindow() {
+            autoOpenedInfoWindows.forEach(win => win.close());
+            autoOpenedInfoWindows = [];
+
+            let items = markerList.filter(m => {
+                if (m.type !== currentMode) return false;
+                if (currentSite !== 'all' && m.site !== currentSite) return false;
+                if (filterStreet && (m.geo.street || '').trim() !== filterStreet) return false;
+                if (filterCategory && getCategoryFromItem(m) !== filterCategory) return false;
+                return true;
+            });
+
+            if (items.length === 0) return;
+
+            items.forEach(item => {
+                if (item.infoWin.getIsOpen()) {
+                    item.infoWin.close();
+                }
+                item.infoWin.open(map, item.marker.getPosition());
+                autoOpenedInfoWindows.push(item.infoWin);
+            });
+
+            let sumLng = 0,
+                sumLat = 0;
+            items.forEach(it => { sumLng += it.geo.lng;
+                sumLat += it.geo.lat; });
+            const center = { lng: sumLng / items.length, lat: sumLat / items.length };
+            map.setCenter([center.lng, center.lat]);
+            map.setZoom(14);
+        }
+
         // ===== 高亮街道（清除品类高亮） =====
         function highlightStreet(streetName) {
             if (!streetName) {
@@ -1974,11 +2067,10 @@
                 return;
             }
             filterStreet = streetName;
-            filterCategory = ''; // 清除品类高亮
+            filterCategory = '';
             document.getElementById('categoryIdentifyBar').style.display = 'none';
             document.getElementById('identifiedCategoryName').textContent = '—';
             document.getElementById('identifiedCategoryCount').textContent = '';
-            // 更新UI
             const bar = document.getElementById('streetIdentifyBar');
             bar.style.display = 'flex';
             document.getElementById('identifiedStreetName').textContent = streetName;
@@ -1995,7 +2087,6 @@
                 map.setCenter([center.lng, center.lat]);
                 map.setZoom(14);
             }
-            // 更新品类标签
             updateCategoryTags();
             showToast(`已高亮「${streetName}」的 ${count} 个标记`, 'info');
         }
@@ -2005,6 +2096,8 @@
             document.getElementById('streetIdentifyBar').style.display = 'none';
             document.getElementById('identifiedStreetName').textContent = '—';
             document.getElementById('identifiedStreetCount').textContent = '';
+            autoOpenedInfoWindows.forEach(win => win.close());
+            autoOpenedInfoWindows = [];
             applyFilterAndRenderMap();
             updateCategoryTags();
         }
@@ -2016,12 +2109,9 @@
                 return;
             }
             filterCategory = category;
-            // 不清除 filterStreet，保留街道高亮
-            // 更新UI
             const bar = document.getElementById('categoryIdentifyBar');
             bar.style.display = 'flex';
             document.getElementById('identifiedCategoryName').textContent = category;
-            // 计算符合条件（街道+品类）的数量
             let count = markerList.filter(m => {
                 if (getCategoryFromItem(m) !== category) return false;
                 if (m.type !== currentMode) return false;
@@ -2031,7 +2121,6 @@
             }).length;
             document.getElementById('identifiedCategoryCount').textContent = `（${count}）`;
             applyFilterAndRenderMap();
-            // 定位到该品类标记的中心（如果存在）
             const items = markerList.filter(m => {
                 if (getCategoryFromItem(m) !== category) return false;
                 if (m.type !== currentMode) return false;
@@ -2050,6 +2139,10 @@
             }
             updateCategoryTags();
             showToast(`已高亮「${category}」品类的 ${count} 个师傅${filterStreet ? '（当前街道）' : ''}`, 'info');
+
+            if (filterStreet && filterCategory) {
+                autoOpenMarkersInfoWindow();
+            }
         }
 
         function clearCategoryFilter() {
@@ -2057,6 +2150,8 @@
             document.getElementById('categoryIdentifyBar').style.display = 'none';
             document.getElementById('identifiedCategoryName').textContent = '—';
             document.getElementById('identifiedCategoryCount').textContent = '';
+            autoOpenedInfoWindows.forEach(win => win.close());
+            autoOpenedInfoWindows = [];
             applyFilterAndRenderMap();
             updateCategoryTags();
         }
@@ -2065,13 +2160,13 @@
         function clearFilter() {
             clearHighlight();
             clearCategoryFilter();
+            clearTempLocationMarker(); // 清除高亮时也清除临时定位标记
         }
 
         // ===== 品类标签动态生成（考虑街道过滤） =====
         function updateCategoryTags() {
             const container = document.getElementById('categoryTags');
             container.innerHTML = '';
-            // 获取当前筛选条件下的所有标记
             let items = markerList.filter(m => m.type === currentMode);
             if (currentSite !== 'all') {
                 items = items.filter(m => m.site === currentSite);
@@ -2090,7 +2185,6 @@
                 container.innerHTML = '<span class="text-xs text-muted">暂无品类数据</span>';
                 return;
             }
-            // 按数量排序
             const sorted = Array.from(categoryMap.entries()).sort((a, b) => b[1] - a[1]);
             sorted.forEach(([cat, count]) => {
                 const tag = document.createElement('span');
@@ -2108,32 +2202,78 @@
             });
         }
 
-        // ===== 地址解析（智能提取街道） =====
+        // ===== 清除临时定位标记（无弹窗） =====
+        function clearTempLocationMarker() {
+            if (tempLocationMarker) {
+                tempLocationMarker.setMap(null);
+                tempLocationMarker = null;
+            }
+        }
+
+        // ===== 新增：查找最近标记 =====
+        function findNearestMarker(lng, lat) {
+            let nearest = null;
+            let minDist = Infinity;
+            const candidates = markerList.filter(item => {
+                if (item.type !== currentMode) return false;
+                if (currentSite !== 'all' && item.site !== currentSite) return false;
+                return true;
+            });
+            if (candidates.length === 0) return null;
+            for (let item of candidates) {
+                const dx = item.geo.lng - lng;
+                const dy = item.geo.lat - lat;
+                const dist = Math.sqrt(dx * dx + dy * dy) * 111000;
+                if (dist < minDist) {
+                    minDist = dist;
+                    nearest = item;
+                }
+            }
+            return nearest ? { item: nearest, distance: minDist } : null;
+        }
+
+        // ===== 显示临时定位标记（无弹窗，样式为脉冲环） =====
+        function showTempLocationMarker(lng, lat) {
+            clearTempLocationMarker();
+
+            // 创建自定义标记内容 - 纯几何脉冲环
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'temp-location-marker';
+
+            const marker = new AMap.Marker({
+                position: [lng, lat],
+                content: contentDiv,
+                offset: new AMap.Pixel(-17, -17),
+                map: map,
+                zIndex: 999,
+                bubble: true
+            });
+
+            // 点击标记时清除自身（方便用户）
+            marker.on('click', function() {
+                clearTempLocationMarker();
+                showToast('已清除定位标记', 'info');
+            });
+
+            tempLocationMarker = marker;
+
+            // 将地图移动到该位置
+            map.setCenter([lng, lat]);
+            map.setZoom(15);
+        }
+
+        // ===== 地址解析（修改版：显示临时标记，无弹窗） =====
         function parseAddress() {
             const input = document.getElementById('addressInput').value.trim();
             if (!input) {
                 showToast('请输入详细地址', 'error');
                 return;
             }
-            // 尝试从地址中提取街道名
-            const streetMatch = input.match(/([\u4e00-\u9fa5]{2,}街道)/);
-            let streetName = streetMatch ? streetMatch[1] : null;
-            if (streetName && streetCenterCache[streetName]) {
-                highlightStreet(streetName);
-                showToast(`识别到街道：${streetName}`, 'info');
-                return;
-            }
-            // 模糊匹配
-            if (streetName) {
-                const fuzzy = Object.keys(streetCenterCache).find(s => s.includes(streetName.replace('街道', '')) || streetName
-                    .includes(s.replace('街道', '')));
-                if (fuzzy) {
-                    highlightStreet(fuzzy);
-                    showToast(`识别到街道：${fuzzy}`, 'info');
-                    return;
-                }
-            }
-            // 使用高德地理编码
+
+            // 清除之前的临时标记
+            clearTempLocationMarker();
+
+            // 使用高德地理编码获取精确位置
             AMap.plugin('AMap.Geocoder', () => {
                 const geocoder = new AMap.Geocoder();
                 geocoder.getLocation(input, (status, result) => {
@@ -2141,15 +2281,59 @@
                         const loc = result.geocodes[0];
                         const lng = loc.location.getLng();
                         const lat = loc.location.getLat();
-                        const street = findStreetByLngLat(lng, lat);
+                        const address = loc.formattedAddress || input;
+
+                        // 查找所属街道
+                        let street = findStreetByLngLat(lng, lat);
+                        if (!street) {
+                            const streetMatch = input.match(/([\u4e00-\u9fa5]{2,}街道)/);
+                            if (streetMatch) {
+                                const extracted = streetMatch[1];
+                                const fuzzy = Object.keys(streetCenterCache).find(s =>
+                                    s.includes(extracted.replace('街道', '')) ||
+                                    extracted.includes(s.replace('街道', ''))
+                                );
+                                if (fuzzy) street = fuzzy;
+                            }
+                        }
+
+                        // 高亮街道（如果找到了）
                         if (street) {
                             highlightStreet(street);
-                            showToast(`定位到街道：${street}`, 'info');
                         } else {
-                            showToast('未找到对应街道，请手动选择', 'error');
+                            clearHighlight();
                         }
+
+                        // 显示临时定位标记（无弹窗）
+                        showTempLocationMarker(lng, lat);
+
+                        // 定位到该位置
+                        map.setCenter([lng, lat]);
+                        map.setZoom(15);
+
+                        showToast(`📍 已定位到：${address}`, 'info');
                     } else {
-                        showToast('地址解析失败，请检查输入', 'error');
+                        // 地理编码失败，尝试从地址中提取街道名进行模糊匹配
+                        const streetMatch = input.match(/([\u4e00-\u9fa5]{2,}街道)/);
+                        if (streetMatch) {
+                            const streetName = streetMatch[1];
+                            const fuzzy = Object.keys(streetCenterCache).find(s =>
+                                s.includes(streetName.replace('街道', '')) ||
+                                streetName.includes(s.replace('街道', ''))
+                            );
+                            if (fuzzy) {
+                                const center = streetCenterCache[fuzzy];
+                                if (center) {
+                                    showTempLocationMarker(center.lng, center.lat);
+                                    highlightStreet(fuzzy);
+                                    map.setCenter([center.lng, center.lat]);
+                                    map.setZoom(14);
+                                    showToast(`识别到街道：${fuzzy}（已定位到街道中心）`, 'info');
+                                    return;
+                                }
+                            }
+                        }
+                        showToast('地址解析失败，请检查输入或尝试更完整的地址', 'error');
                     }
                 });
             });
@@ -2784,10 +2968,8 @@
             if (currentSite !== 'all') {
                 visibleItems = visibleItems.filter(item => item.site === currentSite);
             }
-            // 所有标记都显示
             visibleItems.forEach(item => item.marker.setMap(map));
 
-            // 高亮处理：同时满足街道和品类条件（如果两者都设定了）
             const highlightStreetName = filterStreet.trim();
             const highlightCategoryName = filterCategory.trim();
             visibleItems.forEach(item => {
@@ -2810,7 +2992,6 @@
                 }
             });
 
-            // 聚合：仅当没有高亮条件时启用
             if (!filterStreet && !filterCategory && visibleItems.length > 10) {
                 const markers = visibleItems.map(item => item.marker);
                 AMap.plugin('AMap.MarkerClusterer', () => {
@@ -2851,177 +3032,31 @@
             }
             updateModeMarkerCount();
             updateIdentifiedStreetCount();
-            // 更新品类标签（数量可能变化）
             updateCategoryTags();
+
+            if (filterStreet && filterCategory) {
+                autoOpenMarkersInfoWindow();
+            } else {
+                autoOpenedInfoWindows.forEach(win => win.close());
+                autoOpenedInfoWindows = [];
+            }
         }
 
-        // ===== 搜索（保留原有功能） =====
-        function universalSearch() {
-            const keyword = document.getElementById("addressInput").value.trim();
-            const detailDom = document.getElementById("detailBox");
-            const listDom = document.getElementById("resultList");
-            listDom.innerHTML = "";
-            if (!keyword) {
-                showToast('请输入地点/街道名称', 'error');
-                return;
-            }
-            const matchStreetName = Object.keys(streetCenterCache).find(name => name.includes(keyword) || keyword
-            .includes(name));
-            if (matchStreetName) {
-                const center = streetCenterCache[matchStreetName];
-                currentGeo = {
-                    type: "street",
-                    name: matchStreetName,
-                    address: matchStreetName,
-                    lng: center.lng,
-                    lat: center.lat,
-                    province: "陕西省",
-                    city: "西安市",
-                    district: "",
-                    street: matchStreetName,
-                    category: ""
-                };
-                map.setCenter([center.lng, center.lat]);
-                map.setZoom(13);
-                if (tempSelectMarker) tempSelectMarker.remove();
-                tempSelectMarker = new AMap.Marker({
-                    position: [center.lng, center.lat],
-                    icon: ICON_HIGHLIGHT,
-                    map: map
-                });
-                detailDom.innerText = `【街道定位】${matchStreetName}  (${center.lng.toFixed(4)},${center.lat.toFixed(4)})`;
-                highlightStreet(matchStreetName);
-                return;
-            }
-            detailDom.innerText = "正在搜索...";
-            AMap.plugin(['AMap.PlaceSearch', 'AMap.Geocoder'], function() {
-                const placeSearch = new AMap.PlaceSearch({ city: "西安市", citylimit: true, pageSize: 6 });
-                const geocoder = new AMap.Geocoder();
-                placeSearch.search(keyword, function(statusPoi, resPoi) {
-                    let allResult = [];
-                    if (statusPoi === "complete" && resPoi.poiList && resPoi.poiList.pois.length > 0) {
-                        resPoi.poiList.pois.forEach(p => {
-                            allResult.push({
-                                type: "poi",
-                                name: p.name,
-                                address: p.address,
-                                lng: p.location.lng,
-                                lat: p.location.lat,
-                                province: p.pname,
-                                city: p.cityname,
-                                district: p.adname,
-                                street: p.address,
-                                category: p.type || ""
-                            });
-                        });
-                    }
-                    geocoder.getLocation(keyword, function(statusGeo, resGeo) {
-                        if (statusGeo === "complete" && resGeo.geocodes.length > 0) {
-                            resGeo.geocodes.forEach(g => {
-                                allResult.push({
-                                    type: "geo",
-                                    name: g.formattedAddress,
-                                    address: g.formattedAddress,
-                                    lng: g.location.lng,
-                                    lat: g.location.lat,
-                                    province: g.province,
-                                    city: g.city,
-                                    district: g.district,
-                                    street: g.street,
-                                    category: ""
-                                });
-                            });
-                        }
-                        const DIST_THRESHOLD_M = 150;
-
-                        function calcDistance(lng1, lat1, lng2, lat2) {
-                            const R = 6371000;
-                            const rad = Math.PI / 180;
-                            const dLat = (lat2 - lat1) * rad;
-                            const dLng = (lng2 - lng1) * rad;
-                            const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math
-                                .sin(dLng / 2) ** 2;
-                            return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-                        }
-                        const groups = [];
-                        allResult.forEach(item => {
-                            let findGroup = null;
-                            for (let g of groups) {
-                                const first = g[0];
-                                const dist = calcDistance(first.lng, first.lat, item.lng, item.lat);
-                                if ((first.name.includes(item.name) || item.name.includes(first.name)) &&
-                                    dist <= DIST_THRESHOLD_M) {
-                                    findGroup = g;
-                                    break;
-                                }
-                            }
-                            if (findGroup) findGroup.push(item);
-                            else groups.push([item]);
-                        });
-                        const unique = groups.map(group => {
-                            const poiItem = group.find(x => x.type === "poi");
-                            return poiItem ? poiItem : group[0];
-                        });
-                        if (unique.length === 0) {
-                            detailDom.innerText = "未找到位置，请输入更完整地址或先加载街道数据";
-                            return;
-                        }
-                        detailDom.innerText = `共找到${unique.length}条结果，点击选择`;
-                        unique.forEach((item, idx) => {
-                            const div = document.createElement("div");
-                            div.className = "result-item";
-                            const tag = item.type === "poi" ? "【POI】" : "【地址】";
-                            div.innerText = `${idx+1}.${tag}${item.name}`;
-                            div.onclick = () => {
-                                currentGeo = item;
-                                if (!currentGeo.category) {
-                                    const parts = (currentGeo.name || '').split('｜');
-                                    if (parts.length === 2) currentGeo.category = parts[1];
-                                    else currentGeo.category = '';
-                                }
-                                map.setCenter([item.lng, item.lat]);
-                                map.setZoom(16);
-                                if (tempSelectMarker) tempSelectMarker.remove();
-                                tempSelectMarker = new AMap.Marker({
-                                    position: [item.lng, item.lat],
-                                    icon: ICON_HIGHLIGHT,
-                                    map: map
-                                });
-                                detailDom.innerText =
-                                    `名称：${item.name}\n地址：${item.province||""}${item.city||""}${item.district||""}${item.street||""}\n经纬度：${item.lng.toFixed(4)},${item.lat.toFixed(4)}`;
-                                const streetName = findStreetByLngLat(item.lng, item.lat);
-                                if (streetName) {
-                                    highlightStreet(streetName);
-                                } else {
-                                    if (item.street && item.street.trim()) {
-                                        const matched = Object.keys(streetCenterCache).find(
-                                            s => s.includes(item.street) || item.street.includes(s)
-                                        );
-                                        if (matched) highlightStreet(matched);
-                                        else { clearHighlight();
-                                            detailDom.innerText += '\n⚠️ 无法识别街道'; }
-                                    } else {
-                                        clearHighlight();
-                                        detailDom.innerText += '\n⚠️ 无法识别街道';
-                                    }
-                                }
-                            };
-                            listDom.appendChild(div);
-                        });
-                    });
-                });
-            });
-        }
-
-        // ===== 备注搜索（保留） =====
+        // ===== 搜索（备注/品类） =====
         function searchExistNoteMarker() {
             const keywordInput = document.getElementById("noteSearchInput").value.trim().toLowerCase();
             const boxDom = document.getElementById("noteSearchResultBox");
-            if (!keywordInput) { boxDom.innerText = "请输入品类/师傅名"; return; }
+            if (!keywordInput) {
+                boxDom.innerText = "请输入品类/师傅名";
+                return;
+            }
             if (lastHighlightMarker) {
                 lastHighlightMarker.setIcon(ICON_NORMAL);
                 lastHighlightMarker = null;
             }
+            autoOpenedInfoWindows.forEach(win => win.close());
+            autoOpenedInfoWindows = [];
+
             const hitList = [];
             markerList.forEach((item, idx) => {
                 if (item.type !== currentMode) return;
@@ -3047,6 +3082,7 @@
                 }
                 if (isMatch) hitList.push({ idx, item });
             });
+
             if (hitList.length === 0) {
                 let msg = `未找到匹配「${keywordInput}」`;
                 if (filterStreet) msg += `（街道：${filterStreet}）`;
@@ -3054,6 +3090,7 @@
                 boxDom.innerText = msg;
                 return;
             }
+
             boxDom.innerHTML = `<div>共 ${hitList.length} 条，点击定位</div>`;
             hitList.forEach(hit => {
                 const div = document.createElement("div");
@@ -3065,6 +3102,7 @@
                         .remove('active'));
                     this.classList.add('active');
                     this.scrollIntoView({ block: 'center', behavior: 'smooth' });
+
                     if (lastHighlightMarker) lastHighlightMarker.setIcon(ICON_NORMAL);
                     const contentDiv = hit.item.marker.getContent();
                     if (contentDiv) {
@@ -3081,7 +3119,9 @@
                     lastHighlightMarker = hit.item.marker;
                     const pos = hit.item.marker.getPosition();
                     map.setZoomAndCenter(16, pos);
-                    setTimeout(() => hit.item.infoWin.open(map, pos), 350);
+                    hit.item.infoWin.open(map, pos);
+                    autoOpenedInfoWindows.forEach(win => win.close());
+                    autoOpenedInfoWindows = [];
                 };
                 boxDom.appendChild(div);
             });
@@ -3146,6 +3186,7 @@
                 toggleAddMarkerMode();
             }
             clearSelectedStreet();
+            clearTempLocationMarker();
             if (tempClickMarker) { tempClickMarker.remove();
                 tempClickMarker = null; }
             if (document.getElementById('editModal').style.display === 'flex') {
@@ -3673,6 +3714,12 @@
                     cancelAddMarkerMode();
                     return;
                 }
+                // 按 Esc 清除临时定位标记
+                if (tempLocationMarker) {
+                    clearTempLocationMarker();
+                    showToast('已清除定位标记', 'info');
+                    return;
+                }
             }
             if (e.ctrlKey && e.key === 's') {
                 e.preventDefault();
@@ -3693,7 +3740,6 @@
 
         // ===== 初始化 =====
         window.onload = function() {
-            // 加载回收站持久化数据
             loadRecycleFromStorage();
 
             map = new AMap.Map("map", {
@@ -3720,8 +3766,8 @@
             updateRecycleBadge();
             updateCategoryTags();
 
-            console.log('✅ 应用初始化完成（联合过滤 + 回收站持久化）');
-            console.log('📌 提示：先定位街道，再点击品类标签即可实现联合筛选。');
+            console.log('✅ 应用初始化完成（专业标记样式 + 无弹窗临时定位）');
+            console.log('📌 提示：输入地址点击「解析定位」显示蓝色脉冲环，点击标记或按Esc清除。');
         };
     </script>
 </body>
