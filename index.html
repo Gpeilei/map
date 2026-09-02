@@ -38,13 +38,13 @@
         #sidebar {
             width: 420px;
             min-width: 420px;
-            background: #ffffff;
-            padding: 12px 14px 16px;
+            background: #f9fafb;
+            padding: 10px 12px 16px;
             overflow-y: auto;
             border-right: 1px solid #e5e7eb;
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 6px;
             scrollbar-width: thin;
             scrollbar-color: #d1d5db #f3f4f6;
         }
@@ -67,20 +67,20 @@
             background: #e5e7eb;
         }
 
-        /* ===== 卡片系统 ===== */
+        /* ===== 精简卡片系统 ===== */
         .section {
             background: #ffffff;
             border-radius: 6px;
-            border: 1px solid #e5e7eb;
             overflow: hidden;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
             flex-shrink: 0;
         }
         .section-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 6px 10px;
-            background: #f9fafb;
+            padding: 5px 10px;
+            background: #f3f4f6;
             border-bottom: 1px solid #e5e7eb;
             cursor: pointer;
             user-select: none;
@@ -90,7 +90,7 @@
             transition: background 0.15s;
         }
         .section-header:hover {
-            background: #f3f4f6;
+            background: #e5e7eb;
         }
         .section-header .arrow {
             font-size: 10px;
@@ -101,10 +101,10 @@
             transform: rotate(90deg);
         }
         .section-body {
-            padding: 8px 10px;
+            padding: 6px 10px 8px;
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 5px;
         }
         .section-body.hidden {
             display: none;
@@ -113,29 +113,29 @@
         /* ===== 通用组件 ===== */
         .flex-row {
             display: flex;
-            gap: 5px;
+            gap: 4px;
             align-items: center;
             flex-wrap: wrap;
         }
         .flex-col {
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: 3px;
         }
         .flex-1 {
             flex: 1;
         }
         .gap-1 {
-            gap: 4px;
+            gap: 3px;
         }
         .gap-2 {
-            gap: 8px;
+            gap: 6px;
         }
         .mt-1 {
-            margin-top: 4px;
+            margin-top: 3px;
         }
         .mb-1 {
-            margin-bottom: 4px;
+            margin-bottom: 3px;
         }
         .text-xs {
             font-size: 11px;
@@ -174,9 +174,9 @@
         /* ===== 按钮 ===== */
         button {
             font-family: inherit;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 500;
-            padding: 4px 10px;
+            padding: 3px 8px;
             border: none;
             border-radius: 4px;
             background: #f3f4f6;
@@ -186,10 +186,10 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 4px;
+            gap: 3px;
             white-space: nowrap;
             line-height: 1.4;
-            min-height: 28px;
+            min-height: 26px;
         }
         button:hover {
             background: #e5e7eb;
@@ -240,9 +240,9 @@
             background: #f3f4f6;
         }
         button.small {
-            font-size: 11px;
-            padding: 2px 8px;
-            min-height: 24px;
+            font-size: 10px;
+            padding: 2px 6px;
+            min-height: 22px;
         }
         button.block {
             width: 100%;
@@ -271,9 +271,9 @@
             background: #f3f4f6;
             border: 1px solid #d1d5db;
             border-radius: 12px;
-            padding: 0 10px;
-            line-height: 24px;
-            font-size: 11px;
+            padding: 0 8px;
+            line-height: 22px;
+            font-size: 10px;
             cursor: pointer;
             transition: all 0.15s;
         }
@@ -291,8 +291,8 @@
         textarea,
         select {
             font-family: inherit;
-            font-size: 12px;
-            padding: 4px 8px;
+            font-size: 11px;
+            padding: 3px 6px;
             border: 1px solid #d1d5db;
             border-radius: 4px;
             background: #f9fafb;
@@ -301,7 +301,7 @@
             outline: none;
             transition: border 0.15s, box-shadow 0.15s;
             line-height: 1.4;
-            min-height: 28px;
+            min-height: 26px;
         }
         input:focus,
         textarea:focus,
@@ -312,38 +312,38 @@
         }
         textarea {
             resize: vertical;
-            min-height: 24px;
-            font-size: 12px;
+            min-height: 22px;
+            font-size: 11px;
         }
         select {
             appearance: auto;
-            padding-right: 20px;
+            padding-right: 16px;
         }
 
         /* ===== 文件上传 ===== */
         .file-upload-wrapper {
             display: flex;
-            gap: 5px;
+            gap: 4px;
             align-items: center;
             flex-wrap: wrap;
         }
         .file-upload-wrapper input[type="file"] {
-            padding: 3px 0;
+            padding: 2px 0;
             border: none;
             background: transparent;
-            font-size: 11px;
+            font-size: 10px;
             color: #4b5563;
             flex: 1;
             min-height: auto;
         }
         .file-name-tag {
             background: #f3f4f6;
-            padding: 0 10px;
+            padding: 0 8px;
             border-radius: 12px;
-            font-size: 11px;
+            font-size: 10px;
             color: #374151;
-            line-height: 24px;
-            max-width: 160px;
+            line-height: 22px;
+            max-width: 140px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -353,22 +353,22 @@
         .progress-area {
             background: #f9fafb;
             border-radius: 4px;
-            padding: 4px 8px;
+            padding: 3px 6px;
             border: 1px solid #e5e7eb;
             display: none;
         }
         .progress-area .progress-text {
-            font-size: 11px;
+            font-size: 10px;
             color: #374151;
             line-height: 1.3;
-            min-height: 18px;
+            min-height: 16px;
         }
         .progress-area .progress-track {
             width: 100%;
             height: 3px;
             background: #e5e7eb;
             border-radius: 2px;
-            margin-top: 3px;
+            margin-top: 2px;
             overflow: hidden;
         }
         .progress-area .progress-bar {
@@ -384,12 +384,12 @@
 
         /* ===== 结果列表 & 信息框 ===== */
         .result-item {
-            padding: 2px 8px;
+            padding: 2px 6px;
             background: #f9fafb;
             margin: 2px 0;
             border-radius: 4px;
             cursor: pointer;
-            font-size: 12px;
+            font-size: 11px;
             transition: background 0.1s;
             border-left: 2px solid transparent;
         }
@@ -402,46 +402,46 @@
         }
         .info-box {
             background: #f9fafb;
-            padding: 4px 8px;
+            padding: 3px 6px;
             border-radius: 4px;
-            font-size: 11px;
+            font-size: 10px;
             white-space: pre-wrap;
             line-height: 1.4;
             border: 1px solid #e5e7eb;
             color: #374151;
-            min-height: 24px;
+            min-height: 20px;
         }
 
         /* ===== 街道识别栏 ===== */
         #streetIdentifyBar {
             background: #f3f4f6;
             border-radius: 4px;
-            padding: 3px 8px;
-            font-size: 11px;
+            padding: 2px 6px;
+            font-size: 10px;
             color: #374151;
             border: 1px solid #e5e7eb;
             display: none;
             align-items: center;
-            gap: 6px;
+            gap: 4px;
             flex-wrap: wrap;
         }
         #streetIdentifyBar .badge-street {
             background: #4b5563;
             color: #fff;
-            padding: 0 10px;
+            padding: 0 8px;
             border-radius: 12px;
-            font-size: 10px;
+            font-size: 9px;
             font-weight: 500;
-            line-height: 20px;
+            line-height: 18px;
         }
         #streetIdentifyBar .clear-filter-btn {
             background: transparent;
             color: #6b7280;
             border: none;
             cursor: pointer;
-            font-size: 10px;
-            padding: 0 4px;
-            line-height: 20px;
+            font-size: 9px;
+            padding: 0 2px;
+            line-height: 18px;
         }
         #streetIdentifyBar .clear-filter-btn:hover {
             color: #9ca3af;
@@ -452,32 +452,32 @@
         #categoryIdentifyBar {
             background: #f3f4f6;
             border-radius: 4px;
-            padding: 3px 8px;
-            font-size: 11px;
+            padding: 2px 6px;
+            font-size: 10px;
             color: #374151;
             border: 1px solid #e5e7eb;
             display: none;
             align-items: center;
-            gap: 6px;
+            gap: 4px;
             flex-wrap: wrap;
         }
         #categoryIdentifyBar .badge-category {
             background: #4b5563;
             color: #fff;
-            padding: 0 10px;
+            padding: 0 8px;
             border-radius: 12px;
-            font-size: 10px;
+            font-size: 9px;
             font-weight: 500;
-            line-height: 20px;
+            line-height: 18px;
         }
         #categoryIdentifyBar .clear-filter-btn {
             background: transparent;
             color: #6b7280;
             border: none;
             cursor: pointer;
-            font-size: 10px;
-            padding: 0 4px;
-            line-height: 20px;
+            font-size: 9px;
+            padding: 0 2px;
+            line-height: 18px;
         }
         #categoryIdentifyBar .clear-filter-btn:hover {
             color: #9ca3af;
@@ -486,10 +486,10 @@
 
         /* ===== 添加模式状态 ===== */
         #addModeStatus {
-            font-size: 11px;
+            font-size: 10px;
             color: #374151;
             background: #f3f4f6;
-            padding: 4px 8px;
+            padding: 3px 6px;
             border-radius: 4px;
             border: 1px solid #e5e7eb;
             text-align: center;
@@ -506,10 +506,10 @@
         }
         .mode-indicator {
             display: inline-block;
-            width: 7px;
-            height: 7px;
+            width: 6px;
+            height: 6px;
             border-radius: 50%;
-            margin-right: 3px;
+            margin-right: 2px;
             vertical-align: middle;
             flex-shrink: 0;
         }
@@ -537,10 +537,8 @@
             pointer-events: none;
             user-select: none;
             transition: all 0.2s ease;
-            /* 背景颜色由 JS 动态设置，此处作为 fallback */
             background: radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.25) 0%, #6b7280 100%);
         }
-        /* 高亮态 - 金色聚焦 */
         .custom-marker-label.highlighted {
             border: 3px solid #fbbf24 !important;
             box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.4), 0 4px 16px rgba(251, 191, 36, 0.6) !important;
@@ -605,12 +603,12 @@
 
         /* ===== 拖拽提示 ===== */
         .dragging-hint {
-            font-size: 10px;
+            font-size: 9px;
             color: #9ca3af;
             background: #f3f4f6;
-            padding: 0 8px;
+            padding: 0 6px;
             border-radius: 10px;
-            line-height: 18px;
+            line-height: 16px;
             white-space: nowrap;
         }
 
@@ -632,44 +630,44 @@
             width: 420px;
             max-width: 92vw;
             background: #fff;
-            padding: 24px 28px;
+            padding: 20px 24px;
             border-radius: 12px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
             max-height: 80vh;
             overflow-y: auto;
         }
         .modal-box h4 {
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 600;
-            margin-bottom: 16px;
+            margin-bottom: 14px;
             color: #1f2937;
         }
         .modal-row {
-            margin: 10px 0;
+            margin: 8px 0;
         }
         .modal-row label {
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 500;
             color: #374151;
             display: block;
-            margin-bottom: 3px;
+            margin-bottom: 2px;
         }
         .modal-btn-group {
             display: flex;
-            gap: 10px;
-            margin-top: 16px;
+            gap: 8px;
+            margin-top: 14px;
             justify-content: flex-end;
         }
         .modal-btn-group button {
-            min-width: 72px;
+            min-width: 64px;
             justify-content: center;
         }
         .merge-option {
             display: flex;
             align-items: flex-start;
-            gap: 8px;
-            padding: 6px 8px;
-            margin: 4px 0;
+            gap: 6px;
+            padding: 4px 6px;
+            margin: 3px 0;
             background: #f9fafb;
             border-radius: 4px;
             border: 1px solid #e5e7eb;
@@ -682,9 +680,9 @@
 
         /* ===== 快捷提示 ===== */
         .shortcut-hint {
-            font-size: 10px;
+            font-size: 9px;
             color: #9ca3af;
-            margin-top: 2px;
+            margin-top: 1px;
         }
 
         /* ===== Toast 通知（纯提示） ===== */
@@ -704,9 +702,9 @@
             pointer-events: auto;
             background: rgba(60, 60, 60, 0.92);
             color: #ffffff;
-            padding: 14px 32px;
+            padding: 12px 28px;
             border-radius: 10px;
-            font-size: 15px;
+            font-size: 14px;
             font-weight: 500;
             max-width: 80vw;
             text-align: center;
@@ -715,7 +713,7 @@
             backdrop-filter: blur(4px);
             letter-spacing: 0.3px;
             line-height: 1.5;
-            min-width: 120px;
+            min-width: 100px;
         }
         .toast-message.error {
             background: rgba(180, 60, 60, 0.92);
@@ -724,8 +722,8 @@
             background: rgba(80, 80, 80, 0.88);
         }
         .toast-message .toast-icon {
-            margin-right: 8px;
-            font-size: 17px;
+            margin-right: 6px;
+            font-size: 16px;
         }
 
         @keyframes toastFadeIn {
@@ -752,14 +750,14 @@
             animation: toastFadeOut 0.25s ease-in forwards;
         }
 
-        /* ===== 确认对话框（自定义，灰白主题） ===== */
+        /* ===== 确认对话框 ===== */
         #confirm-modal .modal-box {
             width: 380px;
         }
         #confirm-modal .confirm-message {
-            font-size: 14px;
+            font-size: 13px;
             color: #1f2937;
-            padding: 8px 0;
+            padding: 6px 0;
             line-height: 1.6;
             white-space: pre-wrap;
         }
@@ -787,9 +785,9 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 6px 8px;
+            padding: 4px 6px;
             border-bottom: 1px solid #f3f4f6;
-            font-size: 12px;
+            font-size: 11px;
         }
         .recycle-item .info {
             flex: 1;
@@ -799,19 +797,19 @@
         }
         .recycle-item .time {
             color: #9ca3af;
-            font-size: 10px;
-            margin-right: 10px;
+            font-size: 9px;
+            margin-right: 8px;
             flex-shrink: 0;
         }
         .recycle-item .actions button {
-            font-size: 10px;
-            padding: 2px 6px;
-            min-height: 20px;
+            font-size: 9px;
+            padding: 2px 4px;
+            min-height: 18px;
         }
         .recycle-empty {
             text-align: center;
             color: #9ca3af;
-            padding: 20px 0;
+            padding: 16px 0;
         }
 
         /* ===== 响应式 ===== */
@@ -822,7 +820,7 @@
                 height: 50vh;
                 border-right: none;
                 border-bottom: 1px solid #e5e7eb;
-                padding: 10px 12px;
+                padding: 8px 10px;
             }
             #wrap {
                 flex-direction: column;
@@ -831,12 +829,12 @@
                 height: 50vh;
             }
             .toast-message {
-                font-size: 14px;
-                padding: 12px 24px;
+                font-size: 13px;
+                padding: 10px 20px;
                 max-width: 90vw;
             }
             .modal-box {
-                padding: 20px;
+                padding: 16px;
             }
         }
 
@@ -856,10 +854,10 @@
             justify-content: space-between;
         }
         .gap-1 {
-            gap: 4px;
+            gap: 3px;
         }
         .gap-2 {
-            gap: 8px;
+            gap: 6px;
         }
         .flex-wrap {
             flex-wrap: wrap;
@@ -878,9 +876,9 @@
         <div id="sidebar">
 
             <!-- ===== 顶部状态栏 ===== -->
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:2px 0 4px;border-bottom:1px solid #e5e7eb;flex-wrap:wrap;gap:4px;">
-                <span style="font-weight:600;font-size:14px;color:#1f2937;">📍 地图标记</span>
-                <span style="font-size:11px;color:#6b7280;display:flex;gap:10px;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:2px 0 4px;border-bottom:1px solid #e5e7eb;flex-wrap:wrap;gap:2px;">
+                <span style="font-weight:600;font-size:13px;color:#1f2937;">📍 地图标记</span>
+                <span style="font-size:10px;color:#6b7280;display:flex;gap:6px;flex-wrap:wrap;">
                     <span>模式: <strong id="currentModeLabel" style="color:#1f2937;">家修</strong></span>
                     <span>站点: <strong id="currentSiteLabel" style="color:#1f2937;">全部</strong></span>
                     <span>标记: <strong id="modeMarkerCount" style="color:#4b5563;">0</strong></span>
@@ -888,7 +886,7 @@
                 </span>
             </div>
 
-            <!-- ===== 1. 模式 + 站点 ===== -->
+            <!-- ===== 面板1: 模式 · 站点 (默认展开) ===== -->
             <div class="section">
                 <div class="section-header open" onclick="toggleSection(this)">
                     <span>模式 · 站点</span>
@@ -911,10 +909,10 @@
                 </div>
             </div>
 
-            <!-- ===== 2. 地图工具 ===== -->
+            <!-- ===== 面板2: 地图工具（合并了原地址定位和品类筛选） ===== -->
             <div class="section">
                 <div class="section-header open" onclick="toggleSection(this)">
-                    <span>地图工具</span>
+                    <span>📍 地图工具</span>
                     <span class="arrow">▶</span>
                 </div>
                 <div class="section-body">
@@ -928,73 +926,46 @@
                     </div>
                     <div id="addModeStatus">🎯 点击街道选中 → 再次点击同一街道放置标记</div>
                     <div class="shortcut-hint">Ctrl+Shift+Z 重做 · Esc 取消</div>
-                </div>
-            </div>
 
-            <!-- ===== 3. 地址定位 & 品类筛选（联合过滤） ===== -->
-            <div class="section">
-                <div class="section-header open" onclick="toggleSection(this)">
-                    <span>📍 地址定位 · 品类筛选</span>
-                    <span class="arrow">▶</span>
-                </div>
-                <div class="section-body">
-                    <!-- 智能地址解析 -->
-                    <div class="flex-row gap-1">
+                    <!-- 地址定位 & 品类筛选（原面板3内容） -->
+                    <div class="flex-row gap-1" style="margin-top:2px;">
                         <input id="addressInput" placeholder="粘贴客户完整地址，自动识别街道" style="flex:1;min-width:60px;" />
                         <button onclick="parseAddress()" class="primary small">解析定位</button>
                     </div>
-                    <!-- 当前高亮显示（街道 + 品类） -->
                     <div id="streetIdentifyBar">
                         <span>📍</span>
                         <span class="badge-street" id="identifiedStreetName">—</span>
-                        <span style="color:#6b7280;font-size:10px;" id="identifiedStreetCount"></span>
+                        <span style="color:#6b7280;font-size:9px;" id="identifiedStreetCount"></span>
                         <button class="clear-filter-btn" onclick="clearFilter()">✕ 清除</button>
                     </div>
                     <div id="categoryIdentifyBar">
                         <span>🏷️</span>
                         <span class="badge-category" id="identifiedCategoryName">—</span>
-                        <span style="color:#6b7280;font-size:10px;" id="identifiedCategoryCount"></span>
+                        <span style="color:#6b7280;font-size:9px;" id="identifiedCategoryCount"></span>
                         <button class="clear-filter-btn" onclick="clearCategoryFilter()">✕ 清除</button>
                     </div>
-                    <!-- 品类快速筛选标签 -->
                     <div>
-                        <div class="text-xs" style="margin-bottom:2px;">快速筛选品类：</div>
-                        <div id="categoryTags" class="flex-row gap-1" style="max-height:60px;overflow-y:auto;"></div>
+                        <div class="text-xs" style="margin-bottom:1px;">快速筛选品类：</div>
+                        <div id="categoryTags" class="flex-row gap-1" style="max-height:48px;overflow-y:auto;"></div>
                     </div>
                 </div>
             </div>
 
-            <!-- ===== 4. 数据导入 ===== -->
-            <div class="section">
-                <div class="section-header open" onclick="toggleSection(this)">
-                    <span>数据导入</span>
-                    <span class="arrow">▶</span>
-                </div>
-                <div class="section-body">
-                    <div class="file-upload-wrapper">
-                        <input id="excelFileInput" type="file" accept=".xlsx,.xls" style="flex:1;min-width:60px;" />
-                    </div>
-                    <div id="fileStatusRow" class="flex-row" style="display:none;gap:4px;">
-                        <span class="file-name-tag" id="selectedFileName">未选择</span>
-                        <button id="btnStartRecognize" onclick="startExcelRecognition()" class="success small">识别</button>
-                        <button onclick="cancelPendingFile()" class="outline small" style="color:#9ca3af;">✕</button>
-                    </div>
-                    <div class="progress-area" id="progressArea">
-                        <div class="progress-text" id="progressText">等待开始…</div>
-                        <div class="progress-track"><div class="progress-bar" id="progressBar"></div></div>
-                    </div>
-                    <div class="text-xs text-muted">表头：街道、品类、姓名1… 同街道同品类合并</div>
-                    <div class="text-xs" style="color:#6b7280;margin-top:1px;" id="importErrorHint"></div>
-                </div>
-            </div>
-
-            <!-- ===== 5. 标记管理 ===== -->
+            <!-- ===== 面板3: 标记管理（合并了原数据导入、搜索师傅、标记管理） ===== -->
             <div class="section">
                 <div class="section-header open" onclick="toggleSection(this)">
                     <span>标记管理 <span class="badge" id="markerCountBadge">0</span></span>
                     <span class="arrow">▶</span>
                 </div>
                 <div class="section-body">
+                    <!-- 搜索师傅 -->
+                    <div class="flex-row gap-1">
+                        <input id="noteSearchInput" placeholder="品类 / 师傅名" style="flex:1;min-width:60px;" />
+                        <button onclick="searchExistNoteMarker()" class="primary small">搜索</button>
+                    </div>
+                    <div id="noteSearchResultBox" class="info-box" style="font-size:10px;min-height:18px;max-height:80px;overflow-y:auto;"></div>
+
+                    <!-- 标记操作 -->
                     <div class="flex-row gap-1">
                         <input id="deleteStreetInput" placeholder="删除街道（精确）" style="flex:1;min-width:60px;" />
                         <button onclick="deleteStreetMarkers()" class="danger small">删除</button>
@@ -1005,26 +976,28 @@
                         <button onclick="exportData('csv')" class="outline small" style="flex:1;">📄 CSV</button>
                         <button onclick="openRecycleBin()" class="outline small" id="recycleBtn" style="flex:1;">🗑 回收站 (<span id="recycleCount">0</span>)</button>
                     </div>
-                    <div class="flex-row gap-1" style="margin-top:2px;">
+                    <div class="flex-row gap-1" style="margin-top:1px;">
                         <input id="noteInput" placeholder="备注（逗号分隔）" style="flex:1;min-width:60px;" />
                         <button id="addNoteBtn" onclick="addNoteMarker()" class="primary small">添加</button>
                         <button onclick="loadFromCloud()" class="outline small">刷新</button>
                     </div>
-                </div>
-            </div>
 
-            <!-- ===== 6. 搜索（备注/品类） ===== -->
-            <div class="section">
-                <div class="section-header open" onclick="toggleSection(this)">
-                    <span>🔍 搜索师傅</span>
-                    <span class="arrow">▶</span>
-                </div>
-                <div class="section-body">
-                    <div class="flex-row gap-1">
-                        <input id="noteSearchInput" placeholder="品类 / 师傅名" style="flex:1;min-width:60px;" />
-                        <button onclick="searchExistNoteMarker()" class="primary small">搜索</button>
+                    <!-- 数据导入（原面板4） -->
+                    <div style="margin-top:3px;border-top:1px solid #e5e7eb;padding-top:4px;">
+                        <div class="file-upload-wrapper">
+                            <input id="excelFileInput" type="file" accept=".xlsx,.xls" style="flex:1;min-width:60px;" />
+                        </div>
+                        <div id="fileStatusRow" class="flex-row" style="display:none;gap:3px;">
+                            <span class="file-name-tag" id="selectedFileName">未选择</span>
+                            <button id="btnStartRecognize" onclick="startExcelRecognition()" class="success small">识别</button>
+                            <button onclick="cancelPendingFile()" class="outline small" style="color:#9ca3af;">✕</button>
+                        </div>
+                        <div class="progress-area" id="progressArea">
+                            <div class="progress-text" id="progressText">等待开始…</div>
+                            <div class="progress-track"><div class="progress-bar" id="progressBar"></div></div>
+                        </div>
+                        <div class="text-xs text-muted">表头：街道、品类、姓名1… 同街道同品类合并</div>
                     </div>
-                    <div id="noteSearchResultBox" class="info-box" style="font-size:11px;min-height:20px;max-height:100px;overflow-y:auto;"></div>
                 </div>
             </div>
 
@@ -1053,7 +1026,7 @@
     <div class="modal-mask" id="recycle-modal">
         <div class="modal-box">
             <h4>🗑 回收站（最近3天）</h4>
-            <div id="recycle-list" style="max-height:300px;overflow-y:auto;margin:8px 0;">
+            <div id="recycle-list" style="max-height:300px;overflow-y:auto;margin:6px 0;">
                 <div class="recycle-empty">回收站为空</div>
             </div>
             <div class="modal-btn-group">
@@ -1092,7 +1065,7 @@
     </div>
 
     <!-- ============================================================ -->
-    <!-- ===== JavaScript（联合筛选自动展开备注框 + 恢复搜索） ===== -->
+    <!-- ===== JavaScript（完整功能，保持不变） ===== -->
     <!-- ============================================================ -->
     <script>
         // ===== Toast 系统 =====
@@ -1578,15 +1551,13 @@
             return letter ? letter[0].toUpperCase() : '点';
         }
 
-        // 创建专业版标记内容
         function createMarkerIconContent(category) {
             const abbr = getCategoryAbbr(category);
             const color = getCategoryColor(category);
             const div = document.createElement('div');
             div.className = 'custom-marker-label';
-            // 使用 CSS 自定义属性实现渐变背景
             div.style.setProperty('--marker-color', color);
-            div.style.backgroundColor = color; // fallback
+            div.style.backgroundColor = color;
             div.textContent = abbr;
             return div;
         }
@@ -1617,7 +1588,7 @@
             }
             clearFilter();
             clearCategoryFilter();
-            clearTempLocationMarker(); // 切换模式时清除临时定位标记
+            clearTempLocationMarker();
             applyFilterAndRenderMap();
             updateModeMarkerCount();
             updateCategoryTags();
@@ -1638,7 +1609,7 @@
             filterStreet = '';
             filterCategory = '';
             clearCategoryFilter();
-            clearTempLocationMarker(); // 切换站点时清除临时定位标记
+            clearTempLocationMarker();
 
             const allBtn = document.getElementById('siteAllBtn');
             const lianhuBtn = document.getElementById('siteLianhuBtn');
@@ -1839,7 +1810,6 @@
                                 handleMapClickForAdd(lng, lat, poly._streetName);
                             }
                         } else {
-                            // 非添加模式：高亮该街道，并清除品类高亮
                             clearCategoryFilter();
                             highlightStreet(poly._streetName);
                             poly.setOptions({ fillOpacity: 0.3, strokeWeight: 4 });
@@ -1862,10 +1832,10 @@
                         direction: "center",
                         offset: new AMap.Pixel(0, 0),
                         style: {
-                            fontSize: "11px",
+                            fontSize: "10px",
                             color: "#374151",
                             backgroundColor: "rgba(255,255,255,0.86)",
-                            padding: "1px 5px",
+                            padding: "1px 4px",
                             border: "none",
                             fontWeight: "bold"
                         }
@@ -2160,7 +2130,7 @@
         function clearFilter() {
             clearHighlight();
             clearCategoryFilter();
-            clearTempLocationMarker(); // 清除高亮时也清除临时定位标记
+            clearTempLocationMarker();
         }
 
         // ===== 品类标签动态生成（考虑街道过滤） =====
@@ -2210,33 +2180,10 @@
             }
         }
 
-        // ===== 新增：查找最近标记 =====
-        function findNearestMarker(lng, lat) {
-            let nearest = null;
-            let minDist = Infinity;
-            const candidates = markerList.filter(item => {
-                if (item.type !== currentMode) return false;
-                if (currentSite !== 'all' && item.site !== currentSite) return false;
-                return true;
-            });
-            if (candidates.length === 0) return null;
-            for (let item of candidates) {
-                const dx = item.geo.lng - lng;
-                const dy = item.geo.lat - lat;
-                const dist = Math.sqrt(dx * dx + dy * dy) * 111000;
-                if (dist < minDist) {
-                    minDist = dist;
-                    nearest = item;
-                }
-            }
-            return nearest ? { item: nearest, distance: minDist } : null;
-        }
-
         // ===== 显示临时定位标记（无弹窗，样式为脉冲环） =====
         function showTempLocationMarker(lng, lat) {
             clearTempLocationMarker();
 
-            // 创建自定义标记内容 - 纯几何脉冲环
             const contentDiv = document.createElement('div');
             contentDiv.className = 'temp-location-marker';
 
@@ -2249,20 +2196,17 @@
                 bubble: true
             });
 
-            // 点击标记时清除自身（方便用户）
             marker.on('click', function() {
                 clearTempLocationMarker();
                 showToast('已清除定位标记', 'info');
             });
 
             tempLocationMarker = marker;
-
-            // 将地图移动到该位置
             map.setCenter([lng, lat]);
             map.setZoom(15);
         }
 
-        // ===== 地址解析（修改版：显示临时标记，无弹窗） =====
+        // ===== 地址解析 =====
         function parseAddress() {
             const input = document.getElementById('addressInput').value.trim();
             if (!input) {
@@ -2270,10 +2214,8 @@
                 return;
             }
 
-            // 清除之前的临时标记
             clearTempLocationMarker();
 
-            // 使用高德地理编码获取精确位置
             AMap.plugin('AMap.Geocoder', () => {
                 const geocoder = new AMap.Geocoder();
                 geocoder.getLocation(input, (status, result) => {
@@ -2283,7 +2225,6 @@
                         const lat = loc.location.getLat();
                         const address = loc.formattedAddress || input;
 
-                        // 查找所属街道
                         let street = findStreetByLngLat(lng, lat);
                         if (!street) {
                             const streetMatch = input.match(/([\u4e00-\u9fa5]{2,}街道)/);
@@ -2297,23 +2238,17 @@
                             }
                         }
 
-                        // 高亮街道（如果找到了）
                         if (street) {
                             highlightStreet(street);
                         } else {
                             clearHighlight();
                         }
 
-                        // 显示临时定位标记（无弹窗）
                         showTempLocationMarker(lng, lat);
-
-                        // 定位到该位置
                         map.setCenter([lng, lat]);
                         map.setZoom(15);
-
                         showToast(`📍 已定位到：${address}`, 'info');
                     } else {
-                        // 地理编码失败，尝试从地址中提取街道名进行模糊匹配
                         const streetMatch = input.match(/([\u4e00-\u9fa5]{2,}街道)/);
                         if (streetMatch) {
                             const streetName = streetMatch[1];
@@ -3307,7 +3242,7 @@
             }
         }
 
-        // ===== Excel 导入（保留原有逻辑） =====
+        // ===== Excel 导入 =====
         function handleExcelImport(e) {
             const file = e.target.files[0];
             if (!file) return;
@@ -3714,7 +3649,6 @@
                     cancelAddMarkerMode();
                     return;
                 }
-                // 按 Esc 清除临时定位标记
                 if (tempLocationMarker) {
                     clearTempLocationMarker();
                     showToast('已清除定位标记', 'info');
@@ -3766,7 +3700,7 @@
             updateRecycleBadge();
             updateCategoryTags();
 
-            console.log('✅ 应用初始化完成（专业标记样式 + 无弹窗临时定位）');
+            console.log('✅ 应用初始化完成（精简控制板，3面板，模式·站点默认展开）');
             console.log('📌 提示：输入地址点击「解析定位」显示蓝色脉冲环，点击标记或按Esc清除。');
         };
     </script>
