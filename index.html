@@ -36,7 +36,7 @@
             height: 100vh;
         }
         #sidebar {
-            width: 360px;   /* 原420px，缩窄 */
+            width: 360px;
             min-width: 360px;
             background: #f9fafb;
             padding: 10px 12px 16px;
@@ -234,7 +234,7 @@
         }
         button.ghost {
             background: transparent;
-            color: #4b5563;
+            color: #6b7280;
         }
         button.ghost:hover {
             background: #f3f4f6;
@@ -721,7 +721,6 @@
         .toast-message.info {
             background: rgba(80, 80, 80, 0.88);
         }
-        /* 移除所有图标相关样式 */
 
         @keyframes toastFadeIn {
             0% {
@@ -953,14 +952,15 @@
                     <span class="arrow">▶</span>
                 </div>
                 <div class="section-body">
-                    <!-- 搜索师傅 -->
+                    <!-- 搜索师傅（带清除按钮） -->
                     <div class="flex-row gap-1">
                         <input id="noteSearchInput" placeholder="品类 / 师傅名" style="flex:1;min-width:60px;" />
+                        <button onclick="clearSearchInput()" class="ghost small" style="font-size:12px;padding:0 4px;" title="清空">✕</button>
                         <button onclick="searchExistNoteMarker()" class="primary small">搜索</button>
                     </div>
                     <div id="noteSearchResultBox" class="info-box" style="font-size:10px;min-height:18px;max-height:80px;overflow-y:auto;"></div>
 
-                    <!-- 标记操作 -->
+                    <!-- 标记操作（删除街道，无清除按钮） -->
                     <div class="flex-row gap-1">
                         <input id="deleteStreetInput" placeholder="删除街道（精确）" style="flex:1;min-width:60px;" />
                         <button onclick="deleteStreetMarkers()" class="danger small">删除</button>
@@ -971,6 +971,7 @@
                         <button onclick="exportData('csv')" class="outline small" style="flex:1;">CSV</button>
                         <button onclick="openRecycleBin()" class="outline small" id="recycleBtn" style="flex:1;">回收站 (<span id="recycleCount">0</span>)</button>
                     </div>
+                    <!-- 备注（无清除按钮） -->
                     <div class="flex-row gap-1" style="margin-top:1px;">
                         <input id="noteInput" placeholder="备注（逗号分隔）" style="flex:1;min-width:60px;" />
                         <button id="addNoteBtn" onclick="addNoteMarker()" class="primary small">添加</button>
@@ -1060,7 +1061,7 @@
     </div>
 
     <!-- ============================================================ -->
-    <!-- ===== JavaScript（完整功能，已按需优化） ===== -->
+    <!-- ===== JavaScript（完整功能，含清除函数） ===== -->
     <!-- ============================================================ -->
     <script>
         // ===== Toast 系统（纯文字，无图标） =====
@@ -1080,13 +1081,19 @@
             } else if (type === 'info') {
                 el.classList.add('info');
             }
-            el.textContent = message; // 直接纯文本
+            el.textContent = message;
             container.appendChild(el);
             toastTimer = setTimeout(() => {
                 el.classList.add('fade-out');
                 setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, 300);
                 toastTimer = null;
             }, duration);
+        }
+
+        // ===== 清除函数（仅保留搜索框清除，其他移除） =====
+        function clearSearchInput() {
+            document.getElementById('noteSearchInput').value = '';
+            document.getElementById('noteSearchResultBox').innerHTML = '';
         }
 
         // ===== 自定义确认对话框 =====
@@ -1578,14 +1585,10 @@
                 installBtn.className = 'primary small';
                 document.getElementById('currentModeLabel').textContent = '家居';
             }
-            // 不清除街道高亮，只清除品类高亮
             clearCategoryFilter();
-            // 重新应用过滤，更新计数
             applyFilterAndRenderMap();
             updateModeMarkerCount();
-            // 更新品类标签（根据当前模式重新统计）
             updateCategoryTags();
-            // 保留临时定位标记（如果有）不清除
         }
 
         function updateModeMarkerCount() {
@@ -3694,7 +3697,7 @@
             updateRecycleBadge();
             updateCategoryTags();
 
-            console.log('应用初始化完成（控制板缩窄、无图标、切换模式保留街道高亮）');
+            console.log('应用初始化完成（含清除按钮）');
         };
     </script>
 </body>
