@@ -2193,9 +2193,9 @@
                 bubble: true
             });
 
+            // 点击时不再清除标记，仅做提示（按 Esc 可清除）
             marker.on('click', function() {
-                clearTempLocationMarker();
-                showToast('已清除定位标记');
+                showToast('定位标记已固定，按 Esc 可清除', 'info');
             });
 
             tempLocationMarker = marker;
