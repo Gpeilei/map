@@ -72,7 +72,7 @@
             background: #ffffff;
             border-radius: 6px;
             overflow: hidden;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
             flex-shrink: 0;
         }
         .section-header {
@@ -320,6 +320,21 @@
             padding-right: 16px;
         }
 
+        /* ===== 城市选择器专用 ===== */
+        .city-select-wrapper {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+            width: 100%;
+        }
+        .city-select-wrapper input {
+            flex: 1;
+            min-width: 60px;
+        }
+        .city-select-wrapper datalist {
+            display: none;
+        }
+
         /* ===== 文件上传 ===== */
         .file-upload-wrapper {
             display: flex;
@@ -412,7 +427,7 @@
             min-height: 20px;
         }
 
-        /* ===== 街道识别栏（已移除图标） ===== */
+        /* ===== 街道识别栏 ===== */
         #streetIdentifyBar {
             background: #f3f4f6;
             border-radius: 4px;
@@ -448,7 +463,7 @@
             background: transparent;
         }
 
-        /* ===== 品类高亮栏（已移除图标） ===== */
+        /* ===== 品类高亮栏 ===== */
         #categoryIdentifyBar {
             background: #f3f4f6;
             border-radius: 4px;
@@ -520,7 +535,7 @@
             background: #9ca3af;
         }
 
-        /* ===== 自定义标记 - 专业版样式 ===== */
+        /* ===== 自定义标记 ===== */
         .custom-marker-label {
             display: flex;
             align-items: center;
@@ -546,7 +561,7 @@
             z-index: 100;
         }
 
-        /* ===== 临时定位标记 - 纯几何脉冲环 ===== */
+        /* ===== 临时定位标记 ===== */
         .temp-location-marker {
             width: 34px;
             height: 34px;
@@ -580,7 +595,7 @@
             }
         }
 
-        /* ===== 临时添加标记（点击街道时） ===== */
+        /* ===== 临时添加标记 ===== */
         .temp-marker {
             background: rgba(160, 160, 160, 0.4);
             border: 2px solid #6b7280;
@@ -612,7 +627,7 @@
             white-space: nowrap;
         }
 
-        /* ===== 模态框（通用） ===== */
+        /* ===== 模态框 ===== */
         .modal-mask {
             position: fixed;
             top: 0;
@@ -685,7 +700,7 @@
             margin-top: 1px;
         }
 
-        /* ===== Toast 通知（纯文字，无图标） ===== */
+        /* ===== Toast ===== */
         #toast-container {
             position: fixed;
             top: 0;
@@ -773,7 +788,7 @@
             background: #e5e7eb;
         }
 
-        /* ===== 回收站模态框 ===== */
+        /* ===== 回收站 ===== */
         #recycle-modal .modal-box {
             width: 500px;
         }
@@ -806,6 +821,18 @@
             text-align: center;
             color: #9ca3af;
             padding: 16px 0;
+        }
+
+        /* ===== 无站点提示 ===== */
+        .no-site-tip {
+            background: #f3f4f6;
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 10px;
+            color: #6b7280;
+            text-align: center;
+            border: 1px dashed #d1d5db;
+            display: none;
         }
 
         /* ===== 响应式 ===== */
@@ -849,12 +876,6 @@
         .justify-between {
             justify-content: space-between;
         }
-        .gap-1 {
-            gap: 3px;
-        }
-        .gap-2 {
-            gap: 6px;
-        }
         .flex-wrap {
             flex-wrap: wrap;
         }
@@ -863,6 +884,9 @@
         }
         .text-center {
             text-align: center;
+        }
+        .hidden {
+            display: none !important;
         }
     </style>
 </head>
@@ -875,6 +899,7 @@
             <div style="display:flex;align-items:center;justify-content:space-between;padding:2px 0 4px;border-bottom:1px solid #e5e7eb;flex-wrap:wrap;gap:2px;">
                 <span style="font-weight:600;font-size:13px;color:#1f2937;">地图标记</span>
                 <span style="font-size:10px;color:#6b7280;display:flex;gap:6px;flex-wrap:wrap;">
+                    <span>城市: <strong id="currentCityLabel" style="color:#1f2937;">西安</strong></span>
                     <span>模式: <strong id="currentModeLabel" style="color:#1f2937;">家修</strong></span>
                     <span>站点: <strong id="currentSiteLabel" style="color:#1f2937;">全部</strong></span>
                     <span>标记: <strong id="modeMarkerCount" style="color:#4b5563;">0</strong></span>
@@ -882,30 +907,70 @@
                 </span>
             </div>
 
-            <!-- ===== 面板1: 模式 · 站点 (默认展开) ===== -->
+            <!-- ===== 面板1: 城市 · 模式 · 站点 (默认展开) ===== -->
             <div class="section">
                 <div class="section-header open" onclick="toggleSection(this)">
-                    <span>模式 · 站点</span>
+                    <span>城市 · 模式 · 站点</span>
                     <span class="arrow">▶</span>
                 </div>
                 <div class="section-body">
+                    <!-- ===== 城市选择器（支持手动输入 + 下拉建议） ===== -->
+                    <div class="flex-row gap-1">
+                        <span class="text-xs" style="flex-shrink:0;">城市</span>
+                        <div class="city-select-wrapper">
+                            <input list="cityList" id="cityInput" placeholder="选择或输入城市" value="西安" style="flex:1;min-width:60px;" />
+                            <datalist id="cityList">
+                                <option value="西安">
+                                <option value="北京">
+                                <option value="上海">
+                                <option value="广州">
+                                <option value="深圳">
+                                <option value="成都">
+                                <option value="武汉">
+                                <option value="杭州">
+                                <option value="南京">
+                                <option value="重庆">
+                                <option value="天津">
+                                <option value="苏州">
+                                <option value="东莞">
+                                <option value="佛山">
+                                <option value="郑州">
+                                <option value="长沙">
+                                <option value="青岛">
+                                <option value="沈阳">
+                                <option value="大连">
+                                <option value="昆明">
+                            </datalist>
+                            <button onclick="switchCity()" class="primary small" style="flex-shrink:0;">切换</button>
+                        </div>
+                    </div>
+                    <div class="text-xs" id="citySwitchStatus" style="color:#6b7280;">当前城市：西安</div>
+
+                    <!-- ===== 模式切换 ===== -->
                     <div class="flex-row gap-1">
                         <span class="text-xs" style="flex-shrink:0;">模式</span>
                         <button id="modeRepairBtn" class="primary small" onclick="setMode('repair')" style="flex:1;">家修</button>
                         <button id="modeInstallBtn" class="outline small" onclick="setMode('install')" style="flex:1;">家居</button>
                     </div>
-                    <div class="flex-row gap-1">
-                        <span class="text-xs" style="flex-shrink:0;">站点</span>
-                        <button id="siteAllBtn" class="primary small" onclick="setSite('all')" style="flex:1;">全部</button>
-                        <button id="siteLianhuBtn" class="outline small" onclick="setSite('lianhu')" style="flex:1;">莲湖</button>
-                        <button id="siteWeiyangBtn" class="outline small" onclick="setSite('weiyang')" style="flex:1;">未央</button>
-                        <button id="siteYantaBtn" class="outline small" onclick="setSite('yanta')" style="flex:1;">雁塔</button>
+
+                    <!-- ===== 站点切换（仅西安有效） ===== -->
+                    <div id="siteSelectorWrapper">
+                        <div class="flex-row gap-1">
+                            <span class="text-xs" style="flex-shrink:0;">站点</span>
+                            <button id="siteAllBtn" class="primary small" onclick="setSite('all')" style="flex:1;">全部</button>
+                            <button id="siteLianhuBtn" class="outline small" onclick="setSite('lianhu')" style="flex:1;">莲湖</button>
+                            <button id="siteWeiyangBtn" class="outline small" onclick="setSite('weiyang')" style="flex:1;">未央</button>
+                            <button id="siteYantaBtn" class="outline small" onclick="setSite('yanta')" style="flex:1;">雁塔</button>
+                        </div>
+                        <div class="text-xs" id="streetLoadStatus" style="color:#6b7280;">切换站点自动加载街道</div>
                     </div>
-                    <div class="text-xs" id="streetLoadStatus" style="color:#6b7280;">切换站点自动加载街道</div>
+
+                    <!-- ===== 非西安城市的提示 ===== -->
+                    <div id="noSiteTip" class="no-site-tip">该城市暂无站点数据，标记将显示全部</div>
                 </div>
             </div>
 
-            <!-- ===== 面板2: 地图工具（合并了原地址定位和品类筛选） ===== -->
+            <!-- ===== 面板2: 地图工具 ===== -->
             <div class="section">
                 <div class="section-header open" onclick="toggleSection(this)">
                     <span>地图工具</span>
@@ -913,7 +978,7 @@
                 </div>
                 <div class="section-body">
                     <div class="flex-row gap-1">
-                        <button onclick="setCityXiAn()" class="outline small" style="flex:1;">西安</button>
+                        <button onclick="setCityXiAn()" class="outline small" style="flex:1;">📍 西安</button>
                         <button id="toggleSimpleBtn" onclick="toggleSimpleMap()" class="outline small" style="flex:1;">极简</button>
                         <button id="toggleAddModeBtn" class="outline small" style="flex:1;" onclick="toggleAddMarkerMode()">
                             <span class="mode-indicator off" id="modeIndicator"></span> 添加
@@ -945,14 +1010,14 @@
                 </div>
             </div>
 
-            <!-- ===== 面板3: 标记管理（合并了原数据导入、搜索师傅、标记管理） ===== -->
+            <!-- ===== 面板3: 标记管理 ===== -->
             <div class="section">
                 <div class="section-header open" onclick="toggleSection(this)">
                     <span>标记管理 <span class="badge" id="markerCountBadge">0</span></span>
                     <span class="arrow">▶</span>
                 </div>
                 <div class="section-body">
-                    <!-- 搜索师傅（带清除按钮） -->
+                    <!-- 搜索师傅 -->
                     <div class="flex-row gap-1">
                         <input id="noteSearchInput" placeholder="品类 / 师傅名" style="flex:1;min-width:60px;" />
                         <button onclick="clearSearchInput()" class="ghost small" style="font-size:12px;padding:0 4px;" title="清空">✕</button>
@@ -960,7 +1025,7 @@
                     </div>
                     <div id="noteSearchResultBox" class="info-box" style="font-size:10px;min-height:18px;max-height:80px;overflow-y:auto;"></div>
 
-                    <!-- 标记操作（删除街道，无清除按钮） -->
+                    <!-- 标记操作 -->
                     <div class="flex-row gap-1">
                         <input id="deleteStreetInput" placeholder="删除街道（精确）" style="flex:1;min-width:60px;" />
                         <button onclick="deleteStreetMarkers()" class="danger small">删除</button>
@@ -971,7 +1036,7 @@
                         <button onclick="exportData('csv')" class="outline small" style="flex:1;">CSV</button>
                         <button onclick="openRecycleBin()" class="outline small" id="recycleBtn" style="flex:1;">回收站 (<span id="recycleCount">0</span>)</button>
                     </div>
-                    <!-- 备注（无清除按钮） -->
+                    <!-- 备注 -->
                     <div class="flex-row gap-1" style="margin-top:1px;">
                         <input id="noteInput" placeholder="备注（逗号分隔）" style="flex:1;min-width:60px;" />
                         <button id="addNoteBtn" onclick="addNoteMarker()" class="primary small">添加</button>
@@ -1061,10 +1126,10 @@
     </div>
 
     <!-- ============================================================ -->
-    <!-- ===== JavaScript（完整功能，含清除函数） ===== -->
+    <!-- ===== JavaScript ===== -->
     <!-- ============================================================ -->
     <script>
-        // ===== Toast 系统（纯文字，无图标） =====
+        // ===== Toast 系统 =====
         let toastTimer = null;
 
         function showToast(message, type = 'success', duration = 2600) {
@@ -1090,13 +1155,13 @@
             }, duration);
         }
 
-        // ===== 清除函数（仅保留搜索框清除，其他移除） =====
+        // ===== 清除函数 =====
         function clearSearchInput() {
             document.getElementById('noteSearchInput').value = '';
             document.getElementById('noteSearchResultBox').innerHTML = '';
         }
 
-        // ===== 自定义确认对话框 =====
+        // ===== 确认对话框 =====
         function showConfirm(title, message) {
             return new Promise((resolve) => {
                 const modal = document.getElementById('confirm-modal');
@@ -1123,7 +1188,7 @@
             });
         }
 
-        // ===== 回收站系统（持久化 localStorage） =====
+        // ===== 回收站系统 =====
         let recycleBin = [];
         const RECYCLE_DAYS = 3;
         const RECYCLE_STORAGE_KEY = 'map_recycle_bin';
@@ -1287,10 +1352,10 @@
         let _isMerging = false;
         let loadVersion = 0;
 
-        // 临时定位标记（地址解析用）
+        // 临时定位标记
         let tempLocationMarker = null;
 
-        // 已打开的 InfoWindow 列表（用于自动展开）
+        // 已打开的 InfoWindow 列表
         let autoOpenedInfoWindows = [];
 
         // ===== 添加标记模式状态 =====
@@ -1301,9 +1366,10 @@
         let pendingAddPosition = null;
         let pendingAddStreet = null;
 
-        // 当前模式
+        // 当前模式 & 城市 & 站点
         let currentMode = 'repair';
         let currentSite = 'all';
+        let currentCity = 'xian'; // 城市标识
 
         // 合并确认
         let pendingMergeResolve = null;
@@ -1323,7 +1389,122 @@
             imageSize: new AMap.Size(25, 34)
         });
 
-        // ===== 街道文件映射 =====
+        // ===== 城市配置（可扩展） =====
+        const CITY_CONFIG = {
+            xian: {
+                label: '西安',
+                center: [108.95, 34.27],
+                zoom: 10,
+                sites: {
+                    lianhu: { label: '莲湖', center: [108.878, 34.268] },
+                    weiyang: { label: '未央', center: [108.928, 34.308] },
+                    yanta: { label: '雁塔', center: [108.948, 34.218] }
+                },
+                // 街道文件列表（按站点）
+                streetFilesBySite: {
+                    lianhu: [
+                        "zaoyuan.geojson", "taoyuanlu.geojson", "xiguan.geojson", "tumen.geojson",
+                        "beiguan.geojson", "hongmiaopo.geojson", "huanchengxilu.geojson",
+                        "qingnianlu.geojson", "beiyuanmen.geojson", "zhangbagou.geojson",
+                        "yuhuazhai.geojson", "sanqiao.geojson", "hancheng.geojson",
+                        "weiyanggong.geojson", "liucunbao.geojson", "jianzhanglu.geojson",
+                        "gaoqiao.geojson", "doumen.geojson", "wangsi.geojson", "mawang.geojson",
+                        "zhangjiacun.geojson", "wenyilu.geojson", "changanlu.geojson",
+                        "baishulin.geojson", "nanyuanmen.geojson"
+                    ],
+                    weiyang: [
+                        "xinhe.geojson", "xinzhu.geojson", "baqiao.geojson", "shilipu.geojson",
+                        "hongqing.geojson", "fangzhicheng.geojson", "xiwang.geojson",
+                        "hongqi.geojson", "dizhai.geojson", "caotan.geojson", "weiyanghu.geojson",
+                        "xujiawan.geojson", "zhangjiabao.geojson", "tanjia.geojson",
+                        "daminggong.geojson", "xinjiamiao.geojson", "ziqianglu.geojson",
+                        "taihualu.geojson", "jiefangmen.geojson", "hujiamiao.geojson",
+                        "changlexilu.geojson", "xiyilu.geojson", "zhongshanmen.geojson",
+                        "changlezhonglu.geojson", "hansenzhai.geojson", "changlefang.geojson",
+                        "dongguannanjie.geojson", "taiyilu.geojson"
+                    ],
+                    yanta: [
+                        "dianzicheng.geojson", "ducheng.geojson", "xiaozhailu.geojson",
+                        "changyanbao.geojson", "dayanta.geojson", "qujiang.geojson",
+                        "dengjiapo.geojson", "paoli.geojson", "mingdu.geojson", "dazhao.geojson",
+                        "weiqu.geojson", "xiliu.geojson", "guodu.geojson", "lingzhao.geojson"
+                    ]
+                },
+                // 全部街道文件（用于"全部"站点）
+                allStreetFiles: function() {
+                    const all = new Set();
+                    const s = this.streetFilesBySite;
+                    Object.keys(s).forEach(k => s[k].forEach(f => all.add(f)));
+                    return Array.from(all);
+                }
+            },
+            // ===== 其他城市预留框架 =====
+            beijing: {
+                label: '北京',
+                center: [116.4, 39.9],
+                zoom: 10,
+                sites: {},
+                streetFilesBySite: {},
+                allStreetFiles: function() { return []; }
+            },
+            shanghai: {
+                label: '上海',
+                center: [121.47, 31.23],
+                zoom: 10,
+                sites: {},
+                streetFilesBySite: {},
+                allStreetFiles: function() { return []; }
+            },
+            guangzhou: {
+                label: '广州',
+                center: [113.26, 23.13],
+                zoom: 10,
+                sites: {},
+                streetFilesBySite: {},
+                allStreetFiles: function() { return []; }
+            },
+            shenzhen: {
+                label: '深圳',
+                center: [114.07, 22.55],
+                zoom: 10,
+                sites: {},
+                streetFilesBySite: {},
+                allStreetFiles: function() { return []; }
+            },
+            chengdu: {
+                label: '成都',
+                center: [104.07, 30.57],
+                zoom: 10,
+                sites: {},
+                streetFilesBySite: {},
+                allStreetFiles: function() { return []; }
+            },
+            wuhan: {
+                label: '武汉',
+                center: [114.30, 30.60],
+                zoom: 10,
+                sites: {},
+                streetFilesBySite: {},
+                allStreetFiles: function() { return []; }
+            },
+            hangzhou: {
+                label: '杭州',
+                center: [120.15, 30.28],
+                zoom: 10,
+                sites: {},
+                streetFilesBySite: {},
+                allStreetFiles: function() { return []; }
+            }
+        };
+
+        // 站点配置（兼容旧代码，实际使用 CITY_CONFIG）
+        const SITE_CONFIG = {
+            lianhu: { label: '莲湖', center: [108.878, 34.268] },
+            weiyang: { label: '未央', center: [108.928, 34.308] },
+            yanta: { label: '雁塔', center: [108.948, 34.218] }
+        };
+
+        // 街道名称映射
         const streetFileToName = {
             "zaoyuan.geojson": "枣园街道",
             "taoyuanlu.geojson": "桃园路街道",
@@ -1393,57 +1574,6 @@
             "guodu.geojson": "郭杜街道",
             "lingzhao.geojson": "灵沼街道"
         };
-
-        // ===== 站点配置 =====
-        const SITE_CONFIG = {
-            lianhu: {
-                label: '莲湖',
-                center: [108.878, 34.268],
-                streetFiles: [
-                    "zaoyuan.geojson", "taoyuanlu.geojson", "xiguan.geojson", "tumen.geojson",
-                    "beiguan.geojson", "hongmiaopo.geojson", "huanchengxilu.geojson",
-                    "qingnianlu.geojson", "beiyuanmen.geojson", "zhangbagou.geojson",
-                    "yuhuazhai.geojson", "sanqiao.geojson", "hancheng.geojson",
-                    "weiyanggong.geojson", "liucunbao.geojson", "jianzhanglu.geojson",
-                    "gaoqiao.geojson", "doumen.geojson", "wangsi.geojson", "mawang.geojson",
-                    "zhangjiacun.geojson", "wenyilu.geojson", "changanlu.geojson",
-                    "baishulin.geojson", "nanyuanmen.geojson"
-                ]
-            },
-            weiyang: {
-                label: '未央',
-                center: [108.928, 34.308],
-                streetFiles: [
-                    "xinhe.geojson", "xinzhu.geojson", "baqiao.geojson", "shilipu.geojson",
-                    "hongqing.geojson", "fangzhicheng.geojson", "xiwang.geojson",
-                    "hongqi.geojson", "dizhai.geojson", "caotan.geojson", "weiyanghu.geojson",
-                    "xujiawan.geojson", "zhangjiabao.geojson", "tanjia.geojson",
-                    "daminggong.geojson", "xinjiamiao.geojson", "ziqianglu.geojson",
-                    "taihualu.geojson", "jiefangmen.geojson", "hujiamiao.geojson",
-                    "changlexilu.geojson", "xiyilu.geojson", "zhongshanmen.geojson",
-                    "changlezhonglu.geojson", "hansenzhai.geojson", "changlefang.geojson",
-                    "dongguannanjie.geojson", "taiyilu.geojson"
-                ]
-            },
-            yanta: {
-                label: '雁塔',
-                center: [108.948, 34.218],
-                streetFiles: [
-                    "dianzicheng.geojson", "ducheng.geojson", "xiaozhailu.geojson",
-                    "changyanbao.geojson", "dayanta.geojson", "qujiang.geojson",
-                    "dengjiapo.geojson", "paoli.geojson", "mingdu.geojson", "dazhao.geojson",
-                    "weiqu.geojson", "xiliu.geojson", "guodu.geojson", "lingzhao.geojson"
-                ]
-            }
-        };
-
-        function getAllStreetFiles() {
-            const all = new Set();
-            Object.values(SITE_CONFIG).forEach(site => {
-                site.streetFiles.forEach(f => all.add(f));
-            });
-            return Array.from(all);
-        }
 
         const manualCenterOverride = {
             "建章路街道": { lng: 108.8192, lat: 34.3369 },
@@ -1570,7 +1700,162 @@
             return '';
         }
 
-        // ===== 模式切换（保留街道高亮，只清品类） =====
+        // ===== 城市切换核心 =====
+        function getCityConfig(cityId) {
+            return CITY_CONFIG[cityId] || CITY_CONFIG.xian;
+        }
+
+        function getCurrentCityConfig() {
+            return getCityConfig(currentCity);
+        }
+
+        function getCityIdByName(name) {
+            const normalized = name.trim();
+            for (const [id, cfg] of Object.entries(CITY_CONFIG)) {
+                if (cfg.label === normalized) return id;
+            }
+            // 如果不是预设城市，尝试作为自定义城市处理
+            return null;
+        }
+
+        function switchCity() {
+            const input = document.getElementById('cityInput');
+            const rawName = input.value.trim();
+            if (!rawName) {
+                showToast('请输入城市名称', 'error');
+                return;
+            }
+
+            let cityId = getCityIdByName(rawName);
+            // 如果是自定义城市（不在预设中），创建一个临时配置
+            if (!cityId) {
+                // 检查是否已经存在自定义城市（以自定义前缀存储）
+                const customKey = 'custom_' + rawName;
+                if (CITY_CONFIG[customKey]) {
+                    cityId = customKey;
+                } else {
+                    // 创建新的自定义城市配置
+                    CITY_CONFIG[customKey] = {
+                        label: rawName,
+                        center: [116.4, 39.9], // 默认中心
+                        zoom: 10,
+                        sites: {},
+                        streetFilesBySite: {},
+                        allStreetFiles: function() { return []; },
+                        isCustom: true
+                    };
+                    cityId = customKey;
+                    showToast(`已添加自定义城市：${rawName}（暂无站点数据）`, 'info');
+                }
+            }
+
+            if (cityId === currentCity) {
+                showToast(`当前已是 ${CITY_CONFIG[cityId].label}`, 'info');
+                return;
+            }
+
+            // 执行切换
+            currentCity = cityId;
+            const config = getCityConfig(cityId);
+
+            // 更新UI
+            document.getElementById('currentCityLabel').textContent = config.label;
+            document.getElementById('citySwitchStatus').textContent = `当前城市：${config.label}`;
+
+            // 清空过滤
+            filterStreet = '';
+            filterCategory = '';
+            clearCategoryFilter();
+            clearTempLocationMarker();
+            clearSelectedStreet();
+
+            // 更新地图
+            if (config.center) {
+                map.setCenter(config.center);
+                map.setZoom(config.zoom || 10);
+            }
+
+            // 更新站点UI
+            updateSiteUIForCity();
+
+            // 清空街道图层并重新加载
+            clearStreetLayer();
+            streetCenterCache = {};
+            streetDataCache = {};
+            streetPolygons = [];
+            streetTextMarkers = [];
+
+            // 如果是西安，加载街道
+            if (cityId === 'xian') {
+                // 重置站点为'all'
+                currentSite = 'all';
+                const allBtn = document.getElementById('siteAllBtn');
+                const lianhuBtn = document.getElementById('siteLianhuBtn');
+                const weiyangBtn = document.getElementById('siteWeiyangBtn');
+                const yantaBtn = document.getElementById('siteYantaBtn');
+                [allBtn, lianhuBtn, weiyangBtn, yantaBtn].forEach(b => b.className = 'outline small');
+                allBtn.className = 'primary small';
+                document.getElementById('currentSiteLabel').textContent = '全部';
+                loadVersion++;
+                loadStreetsForCurrentSite('all', loadVersion);
+            } else {
+                // 非西安城市，显示提示
+                document.getElementById('streetLoadStatus').textContent = `当前城市 ${config.label} 暂无街道数据`;
+                // 站点设置为'all'
+                currentSite = 'all';
+                document.getElementById('currentSiteLabel').textContent = '全部';
+                // 隐藏站点按钮，显示提示
+                const wrapper = document.getElementById('siteSelectorWrapper');
+                const tip = document.getElementById('noSiteTip');
+                wrapper.style.display = 'none';
+                tip.style.display = 'block';
+                tip.textContent = `城市「${config.label}」暂无站点数据，标记将显示全部`;
+            }
+
+            // 重新应用过滤和渲染
+            applyFilterAndRenderMap();
+            updateModeMarkerCount();
+            updateCategoryTags();
+
+            // 如果添加模式开启，退出
+            if (isAddMarkerMode) cancelAddMarkerMode();
+
+            showToast(`已切换至 ${config.label}`);
+        }
+
+        // ===== 更新站点UI根据当前城市 =====
+        function updateSiteUIForCity() {
+            const wrapper = document.getElementById('siteSelectorWrapper');
+            const tip = document.getElementById('noSiteTip');
+            const config = getCurrentCityConfig();
+
+            if (currentCity === 'xian') {
+                wrapper.style.display = 'block';
+                tip.style.display = 'none';
+                // 恢复站点按钮状态
+                const allBtn = document.getElementById('siteAllBtn');
+                const lianhuBtn = document.getElementById('siteLianhuBtn');
+                const weiyangBtn = document.getElementById('siteWeiyangBtn');
+                const yantaBtn = document.getElementById('siteYantaBtn');
+                // 根据 currentSite 高亮
+                [allBtn, lianhuBtn, weiyangBtn, yantaBtn].forEach(b => b.className = 'outline small');
+                if (currentSite === 'all') allBtn.className = 'primary small';
+                else if (currentSite === 'lianhu') lianhuBtn.className = 'primary small';
+                else if (currentSite === 'weiyang') weiyangBtn.className = 'primary small';
+                else if (currentSite === 'yanta') yantaBtn.className = 'primary small';
+                document.getElementById('currentSiteLabel').textContent =
+                    currentSite === 'all' ? '全部' : (SITE_CONFIG[currentSite]?.label || currentSite);
+                document.getElementById('streetLoadStatus').textContent = '切换站点自动加载街道';
+            } else {
+                wrapper.style.display = 'none';
+                tip.style.display = 'block';
+                tip.textContent = `城市「${config.label}」暂无站点数据，标记将显示全部`;
+                document.getElementById('currentSiteLabel').textContent = '全部';
+                document.getElementById('streetLoadStatus').textContent = `当前城市 ${config.label} 暂无街道数据`;
+            }
+        }
+
+        // ===== 模式切换 =====
         function setMode(mode) {
             if (mode === currentMode) return;
             currentMode = mode;
@@ -1592,16 +1877,20 @@
         }
 
         function updateModeMarkerCount() {
-            const count = markerList.filter(item => {
+            let count = markerList.filter(item => {
                 if (item.type !== currentMode) return false;
-                if (currentSite === 'all') return true;
-                return item.site === currentSite;
+                if (currentCity === 'xian' && currentSite !== 'all' && item.site !== currentSite) return false;
+                return true;
             }).length;
             document.getElementById('modeMarkerCount').textContent = count;
         }
 
-        // ===== 站点切换 =====
+        // ===== 站点切换（仅西安有效） =====
         function setSite(site) {
+            if (currentCity !== 'xian') {
+                showToast('当前城市暂无站点数据', 'info');
+                return;
+            }
             if (site === currentSite) return;
             filterStreet = '';
             filterCategory = '';
@@ -1639,16 +1928,22 @@
             updateCategoryTags();
         }
 
-        // ===== 加载街道 =====
+        // ===== 加载街道（支持西安） =====
         async function loadStreetsForCurrentSite(site, version) {
+            if (currentCity !== 'xian') {
+                document.getElementById('streetLoadStatus').textContent = '当前城市暂无街道数据';
+                return;
+            }
+
             const statusEl = document.getElementById('streetLoadStatus');
             try {
+                const cityConfig = getCityConfig('xian');
                 let fileList = [];
                 if (site === 'all') {
-                    fileList = getAllStreetFiles();
+                    fileList = cityConfig.allStreetFiles();
                     statusEl.textContent = '加载全部街道...';
                 } else {
-                    fileList = SITE_CONFIG[site]?.streetFiles || [];
+                    fileList = cityConfig.streetFilesBySite[site] || [];
                     const label = SITE_CONFIG[site]?.label || site;
                     statusEl.textContent = `加载 ${label} 街道... (${fileList.length} 个文件)`;
                 }
@@ -1658,7 +1953,7 @@
                 }
                 const filesToLoad = fileList.filter(f => {
                     const name = streetFileToName[f] || f.replace('.geojson', '');
-                    return !streetDataCache[name] || !streetDataCache[name].sites.has(site);
+                    return !streetDataCache[name] || !streetDataCache[name].sites.has('xian');
                 });
                 if (filesToLoad.length === 0) {
                     updateStreetVisibility(site);
@@ -1672,7 +1967,7 @@
                 const total = filesToLoad.length;
                 for (let i = 0; i < filesToLoad.length; i += concurrency) {
                     const chunk = filesToLoad.slice(i, i + concurrency);
-                    const chunkPromises = chunk.map(f => loadSingleStreet(f, version, site));
+                    const chunkPromises = chunk.map(f => loadSingleStreet(f, version, 'xian'));
                     const chunkResults = await Promise.allSettled(chunkPromises);
                     loadedCount += chunk.length;
                     statusEl.textContent = `加载街道中... (${loadedCount}/${total})`;
@@ -1858,11 +2153,14 @@
                 cache.polygons.forEach(p => p.setMap(null));
                 cache.textMarkers.forEach(t => t.setMap(null));
             });
+            if (currentCity !== 'xian') return;
+
+            const cityConfig = getCityConfig('xian');
             let fileList = [];
             if (site === 'all') {
-                fileList = getAllStreetFiles();
+                fileList = cityConfig.allStreetFiles();
             } else {
-                fileList = SITE_CONFIG[site]?.streetFiles || [];
+                fileList = cityConfig.streetFilesBySite[site] || [];
             }
             fileList.forEach(f => {
                 const name = streetFileToName[f] || f.replace('.geojson', '');
@@ -1995,14 +2293,14 @@
             item.marker.setContent(newContent);
         }
 
-        // ===== 自动展开符合条件的标记的 InfoWindow =====
+        // ===== 自动展开 =====
         function autoOpenMarkersInfoWindow() {
             autoOpenedInfoWindows.forEach(win => win.close());
             autoOpenedInfoWindows = [];
 
             let items = markerList.filter(m => {
                 if (m.type !== currentMode) return false;
-                if (currentSite !== 'all' && m.site !== currentSite) return false;
+                if (currentCity === 'xian' && currentSite !== 'all' && m.site !== currentSite) return false;
                 if (filterStreet && (m.geo.street || '').trim() !== filterStreet) return false;
                 if (filterCategory && getCategoryFromItem(m) !== filterCategory) return false;
                 return true;
@@ -2027,7 +2325,7 @@
             map.setZoom(14);
         }
 
-        // ===== 高亮街道（清除品类高亮） =====
+        // ===== 高亮街道 =====
         function highlightStreet(streetName) {
             if (!streetName) {
                 clearHighlight();
@@ -2041,10 +2339,10 @@
             const bar = document.getElementById('streetIdentifyBar');
             bar.style.display = 'flex';
             document.getElementById('identifiedStreetName').textContent = streetName;
-            const count = markerList.filter(m => {
+            let count = markerList.filter(m => {
                 if ((m.geo.street || '').trim() !== streetName) return false;
                 if (m.type !== currentMode) return false;
-                if (currentSite !== 'all' && m.site !== currentSite) return false;
+                if (currentCity === 'xian' && currentSite !== 'all' && m.site !== currentSite) return false;
                 return true;
             }).length;
             document.getElementById('identifiedStreetCount').textContent = `（${count}）`;
@@ -2069,7 +2367,7 @@
             updateCategoryTags();
         }
 
-        // ===== 高亮品类（保留街道高亮，实现联合过滤） =====
+        // ===== 高亮品类 =====
         function highlightCategory(category) {
             if (!category) {
                 clearCategoryFilter();
@@ -2082,7 +2380,7 @@
             let count = markerList.filter(m => {
                 if (getCategoryFromItem(m) !== category) return false;
                 if (m.type !== currentMode) return false;
-                if (currentSite !== 'all' && m.site !== currentSite) return false;
+                if (currentCity === 'xian' && currentSite !== 'all' && m.site !== currentSite) return false;
                 if (filterStreet && (m.geo.street || '').trim() !== filterStreet) return false;
                 return true;
             }).length;
@@ -2091,7 +2389,7 @@
             const items = markerList.filter(m => {
                 if (getCategoryFromItem(m) !== category) return false;
                 if (m.type !== currentMode) return false;
-                if (currentSite !== 'all' && m.site !== currentSite) return false;
+                if (currentCity === 'xian' && currentSite !== 'all' && m.site !== currentSite) return false;
                 if (filterStreet && (m.geo.street || '').trim() !== filterStreet) return false;
                 return true;
             });
@@ -2123,19 +2421,18 @@
             updateCategoryTags();
         }
 
-        // ===== 清除所有高亮 =====
         function clearFilter() {
             clearHighlight();
             clearCategoryFilter();
             clearTempLocationMarker();
         }
 
-        // ===== 品类标签动态生成（考虑街道过滤） =====
+        // ===== 品类标签 =====
         function updateCategoryTags() {
             const container = document.getElementById('categoryTags');
             container.innerHTML = '';
             let items = markerList.filter(m => m.type === currentMode);
-            if (currentSite !== 'all') {
+            if (currentCity === 'xian' && currentSite !== 'all') {
                 items = items.filter(m => m.site === currentSite);
             }
             if (filterStreet) {
@@ -2169,7 +2466,7 @@
             });
         }
 
-        // ===== 清除临时定位标记（无弹窗） =====
+        // ===== 清除临时定位标记 =====
         function clearTempLocationMarker() {
             if (tempLocationMarker) {
                 tempLocationMarker.setMap(null);
@@ -2177,13 +2474,10 @@
             }
         }
 
-        // ===== 显示临时定位标记（无弹窗，样式为脉冲环） =====
         function showTempLocationMarker(lng, lat) {
             clearTempLocationMarker();
-
             const contentDiv = document.createElement('div');
             contentDiv.className = 'temp-location-marker';
-
             const marker = new AMap.Marker({
                 position: [lng, lat],
                 content: contentDiv,
@@ -2192,12 +2486,9 @@
                 zIndex: 999,
                 bubble: true
             });
-
-            // 点击时不再清除标记，仅做提示（按 Esc 可清除）
             marker.on('click', function() {
                 showToast('定位标记已固定，按 Esc 可清除', 'info');
             });
-
             tempLocationMarker = marker;
             map.setCenter([lng, lat]);
             map.setZoom(15);
@@ -2271,7 +2562,7 @@
             });
         }
 
-        // ===== 删除标记（回收站） =====
+        // ===== 删除标记 =====
         async function deleteMarkerItemByIndex(index) {
             if (index < 0 || index >= markerList.length) return;
             const item = markerList[index];
@@ -2279,7 +2570,7 @@
                 showToast('当前模式下不能操作其他类型的标记', 'error');
                 return;
             }
-            if (currentSite !== 'all' && item.site !== currentSite) {
+            if (currentCity === 'xian' && currentSite !== 'all' && item.site !== currentSite) {
                 showToast('当前站点下不能操作其他站点的标记', 'error');
                 return;
             }
@@ -2326,7 +2617,7 @@
         // ===== 导出 =====
         function exportData(format) {
             let visibleItems = markerList.filter(item => item.type === currentMode);
-            if (currentSite !== 'all') {
+            if (currentCity === 'xian' && currentSite !== 'all') {
                 visibleItems = visibleItems.filter(item => item.site === currentSite);
             }
             if (visibleItems.length === 0) {
@@ -2400,7 +2691,7 @@
             let count = markerList.filter(m => {
                 if ((m.geo.street || '').trim() !== streetName) return false;
                 if (m.type !== currentMode) return false;
-                if (currentSite !== 'all' && m.site !== currentSite) return false;
+                if (currentCity === 'xian' && currentSite !== 'all' && m.site !== currentSite) return false;
                 return true;
             }).length;
             document.getElementById('identifiedStreetCount').textContent = `（${count}）`;
@@ -2573,7 +2864,7 @@
                 if (parts.length === 2) geo.category = parts[1];
                 else geo.category = '';
             }
-            let site = currentSite === 'all' ? 'lianhu' : currentSite;
+            let site = (currentCity === 'xian' && currentSite !== 'all') ? currentSite : 'lianhu';
             const now = new Date().toISOString();
             try {
                 const promise = supabaseClient.from(TABLE_NAME).insert([{
@@ -2624,7 +2915,7 @@
                 showToast('当前模式下不能编辑其他类型的标记', 'error');
                 return;
             }
-            if (currentSite !== 'all' && item.site !== currentSite) {
+            if (currentCity === 'xian' && currentSite !== 'all' && item.site !== currentSite) {
                 showToast('当前站点下不能编辑其他站点的标记', 'error');
                 return;
             }
@@ -2654,7 +2945,8 @@
             document.getElementById("editNameInput").value = defaultName;
             document.getElementById("editNoteInput").value = document.getElementById("noteInput").value.trim() || '';
             document.getElementById("editTypeSelect").value = currentMode;
-            document.getElementById("editSiteSelect").value = currentSite === 'all' ? 'lianhu' : currentSite;
+            document.getElementById("editSiteSelect").value = (currentCity === 'xian' && currentSite !== 'all') ?
+                currentSite : 'lianhu';
             document.getElementById("editModal").style.display = "flex";
         }
 
@@ -2785,7 +3077,7 @@
         // ===== 删除全部 =====
         async function deleteAllMarkers() {
             let visibleItems = markerList.filter(item => item.type === currentMode);
-            if (currentSite !== 'all') {
+            if (currentCity === 'xian' && currentSite !== 'all') {
                 visibleItems = visibleItems.filter(item => item.site === currentSite);
             }
             if (visibleItems.length === 0) {
@@ -2831,6 +3123,10 @@
 
         // ===== 删除街道 =====
         async function deleteStreetMarkers() {
+            if (currentCity !== 'xian') {
+                showToast('当前城市暂无街道数据', 'info');
+                return;
+            }
             const streetInput = document.getElementById('deleteStreetInput');
             const streetName = streetInput.value.trim();
             if (!streetName) {
@@ -2843,7 +3139,7 @@
                 const s = normalize(item.geo.street || '');
                 return s === target && item.type === currentMode;
             });
-            if (currentSite !== 'all') {
+            if (currentCity === 'xian' && currentSite !== 'all') {
                 matchedItems = matchedItems.filter(item => item.site === currentSite);
             }
             if (matchedItems.length === 0) {
@@ -2888,7 +3184,7 @@
             }
         }
 
-        // ===== 应用过滤 & 渲染（支持街道+品类联合高亮） =====
+        // ===== 应用过滤 & 渲染 =====
         function applyFilterAndRenderMap() {
             if (clusterer) {
                 clusterer.setMap(null);
@@ -2897,7 +3193,7 @@
             markerList.forEach(item => item.marker.setMap(null));
 
             let visibleItems = markerList.filter(item => item.type === currentMode);
-            if (currentSite !== 'all') {
+            if (currentCity === 'xian' && currentSite !== 'all') {
                 visibleItems = visibleItems.filter(item => item.site === currentSite);
             }
             visibleItems.forEach(item => item.marker.setMap(map));
@@ -2974,7 +3270,7 @@
             }
         }
 
-        // ===== 搜索（备注/品类） =====
+        // ===== 搜索 =====
         function searchExistNoteMarker() {
             const keywordInput = document.getElementById("noteSearchInput").value.trim().toLowerCase();
             const boxDom = document.getElementById("noteSearchResultBox");
@@ -2992,7 +3288,7 @@
             const hitList = [];
             markerList.forEach((item, idx) => {
                 if (item.type !== currentMode) return;
-                if (currentSite !== 'all' && item.site !== currentSite) return;
+                if (currentCity === 'xian' && currentSite !== 'all' && item.site !== currentSite) return;
                 if (filterStreet) {
                     const s = (item.geo.street || '').trim();
                     if (s !== filterStreet) return;
@@ -3061,7 +3357,12 @@
 
         // ===== 地图控制 =====
         function setCityXiAn() {
-            map.setCity("西安市");
+            // 如果当前不是西安，切换城市
+            if (currentCity !== 'xian') {
+                document.getElementById('cityInput').value = '西安';
+                switchCity();
+                return;
+            }
             map.setCenter([108.95, 34.27]);
             map.setZoom(10);
             showToast('已定位至西安');
@@ -3074,8 +3375,12 @@
             showToast(isSimpleMode ? '已切换至极简模式' : '已切换至详细模式');
         }
 
-        // ===== 添加标记模式核心 =====
+        // ===== 添加标记模式 =====
         function toggleAddMarkerMode() {
+            if (currentCity !== 'xian') {
+                showToast('当前城市暂无街道数据，添加模式不可用', 'error');
+                return;
+            }
             isAddMarkerMode = !isAddMarkerMode;
             const toggleBtn = document.getElementById('toggleAddModeBtn');
             const cancelBtn = document.getElementById('cancelAddModeBtn');
@@ -3210,6 +3515,7 @@
 
         // ===== 自动补全街道 =====
         async function autoFillStreetForMarkers() {
+            if (currentCity !== 'xian') return;
             let updatedCount = 0;
             for (let item of markerList) {
                 if (!item.geo.street) {
@@ -3298,6 +3604,10 @@
                 showToast('请先上传Excel文件', 'error');
                 return;
             }
+            if (currentCity !== 'xian') {
+                showToast('当前城市暂无街道数据，请切换到西安后再导入', 'error');
+                return;
+            }
             if (Object.keys(streetCenterCache).length === 0) {
                 showToast('请先切换站点加载街道数据，否则无法准确识别位置', 'error');
                 return;
@@ -3367,7 +3677,7 @@
                 return name;
             }
 
-            let site = currentSite === 'all' ? 'lianhu' : currentSite;
+            let site = (currentCity === 'xian' && currentSite !== 'all') ? currentSite : 'lianhu';
             const groupMap = {};
             for (let row of rows) {
                 let street = (row["街道"] || "").trim();
@@ -3658,6 +3968,14 @@
                     saveMarkerEdit();
                 }
             }
+            // Enter 在城市输入框中触发切换
+            if (e.key === 'Enter') {
+                const target = e.target;
+                if (target && target.id === 'cityInput') {
+                    e.preventDefault();
+                    switchCity();
+                }
+            }
         });
 
         // ===== 折叠面板 =====
@@ -3668,6 +3986,23 @@
                 header.classList.toggle('open');
             }
         }
+
+        // ===== 城市输入框自动补全（回车触发切换） =====
+        document.addEventListener('DOMContentLoaded', function() {
+            const cityInput = document.getElementById('cityInput');
+            if (cityInput) {
+                cityInput.addEventListener('change', function() {
+                    // 当用户从下拉列表中选择时自动切换
+                    const val = this.value.trim();
+                    if (val) {
+                        const cityId = getCityIdByName(val);
+                        if (cityId && cityId !== currentCity) {
+                            switchCity();
+                        }
+                    }
+                });
+            }
+        });
 
         // ===== 初始化 =====
         window.onload = function() {
@@ -3681,15 +4016,24 @@
 
             document.getElementById("excelFileInput").addEventListener("change", handleExcelImport);
 
+            // 初始化城市
+            currentCity = 'xian';
+            document.getElementById('cityInput').value = '西安';
+            document.getElementById('currentCityLabel').textContent = '西安';
+            document.getElementById('citySwitchStatus').textContent = '当前城市：西安';
+
+            // 站点按钮初始状态
             document.getElementById('siteAllBtn').className = 'primary small';
             document.getElementById('siteLianhuBtn').className = 'outline small';
             document.getElementById('siteWeiyangBtn').className = 'outline small';
             document.getElementById('siteYantaBtn').className = 'outline small';
             document.getElementById('currentSiteLabel').textContent = '全部';
+            document.getElementById('noSiteTip').style.display = 'none';
+            document.getElementById('siteSelectorWrapper').style.display = 'block';
 
             loadFromCloud().then(() => {
                 setupRealtimeSubscription();
-                loadStreetsForCurrentSite(currentSite, loadVersion);
+                loadStreetsForCurrentSite('all', loadVersion);
             });
 
             setMode('repair');
@@ -3697,7 +4041,7 @@
             updateRecycleBadge();
             updateCategoryTags();
 
-            console.log('应用初始化完成（含清除按钮）');
+            console.log('应用初始化完成（支持多城市）');
         };
     </script>
 </body>
