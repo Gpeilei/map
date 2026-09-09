@@ -1129,6 +1129,21 @@
     <!-- ===== JavaScript ===== -->
     <!-- ============================================================ -->
     <script>
+        // =============================================================
+        // ===== 修改点1：街道位置偏移配置（可在此调整偏移量） =====
+        // =============================================================
+        // 如果街道地图在高德底图上整体偏移，调整以下两个值：
+        //   lngOffset: 正数=向右（东），负数=向左（西）
+        //   latOffset: 正数=向上（北），负数=向下（南）
+        // 当前设置：向右 0.0008°，向下 0.0008°（约 80~90 米）
+        // 建议从 0.0005 开始尝试，每次增减 0.0002~0.0005，直到对齐
+        // =============================================================
+        const STREET_OFFSET = {
+            lng: 0.0050, // 经度偏移（正=右/东）
+            lat: -0.0010 // 纬度偏移（负=下/南）
+        };
+        // =============================================================
+
         // ===== Toast 系统 =====
         let toastTimer = null;
 
@@ -2022,6 +2037,24 @@
                     } else { console.warn(` ${filename} 未知几何类型: ${geoType}`); }
                 });
                 const validPolyList = polyList.filter(p => Array.isArray(p) && p.length > 2);
+
+                // =============================================================
+                // ===== 修改点2：对街道多边形路径应用偏移（整体向右下移动） =====
+                // =============================================================
+                const offsetLng = STREET_OFFSET.lng;
+                const offsetLat = STREET_OFFSET.lat;
+                if (offsetLng !== 0 || offsetLat !== 0) {
+                    validPolyList.forEach(path => {
+                        for (let i = 0; i < path.length; i++) {
+                            if (Array.isArray(path[i]) && path[i].length >= 2) {
+                                path[i][0] += offsetLng;
+                                path[i][1] += offsetLat;
+                            }
+                        }
+                    });
+                }
+                // =============================================================
+
                 if (validPolyList.length === 0) { console.warn(`街道[${showName}] 没有有效多边形，跳过此街道`);
                     return false; }
                 let sumLng = 0,
@@ -2041,10 +2074,14 @@
                     return false; }
                 let useLng = sumLng / totalPoints;
                 let useLat = sumLat / totalPoints;
+
+                // =============================================================
+                // ===== 修改点3：手动覆盖的中心点也应用偏移 =====
+                // =============================================================
                 const override = manualCenterOverride[showName];
                 if (override) {
-                    useLng = override.lng;
-                    useLat = override.lat;
+                    useLng = override.lng + offsetLng;
+                    useLat = override.lat + offsetLat;
                 } else {
                     const inXiAn = (lng, lat) => lng > 108.5 && lng < 109.5 && lat > 33.8 && lat < 34.8;
                     if (!inXiAn(useLng, useLat)) {
@@ -2066,12 +2103,14 @@
                             });
                         });
                         if (isFinite(minLng) && isFinite(maxLng) && isFinite(minLat) && isFinite(maxLat)) {
-                            useLng = (minLng + maxLng) / 2;
-                            useLat = (minLat + maxLat) / 2;
+                            useLng = (minLng + maxLng) / 2 + offsetLng;
+                            useLat = (minLat + maxLat) / 2 + offsetLat;
                         } else { console.warn(`街道[${showName}] 包围盒计算失败，跳过`);
                             return false; }
                     }
                 }
+                // =============================================================
+
                 if (isNaN(useLng) || isNaN(useLat) || !isFinite(useLng) || !isFinite(useLat)) {
                     console.warn(`街道[${showName}] 最终坐标无效，跳过`);
                     return false;
