@@ -1099,7 +1099,7 @@
                 </div>
             </div>
 
-            <!-- ===== 面板3: 电动车路线规划 ===== -->
+            <!-- ===== 面板3: 路线规划 ===== -->
             <div class="section">
                 <div class="section-header open" onclick="toggleSection(this)">
                     <span>路线规划 <span class="badge" id="routeCountBadge">0</span></span>
@@ -1160,10 +1160,6 @@
                         <button onclick="exportData('xlsx')" class="primary small" style="flex:1;">Excel</button>
                         <button onclick="exportData('csv')" class="outline small" style="flex:1;">CSV</button>
                         <button onclick="openRecycleBin()" class="outline small" id="recycleBtn" style="flex:1;">回收站 (<span id="recycleCount">0</span>)</button>
-                    </div>
-                    <!-- 刷新云端数据 -->
-                    <div class="flex-row gap-1" style="margin-top:1px;">
-                        <button onclick="loadFromCloud()" class="outline small block">刷新云端数据</button>
                     </div>
 
                     <!-- 数据导入 -->
@@ -1262,10 +1258,10 @@
         // =============================================================
 
         // =============================================================
-        // ===== 电动车参数（内置，无需界面设置） =====
+        // ===== 参数（内置，无需界面设置） =====
         // =============================================================
-        const EBIKE_AVG_SPEED = 18;       // 电动车综合平均速度，km/h
-        const RIDING_TIME_FACTOR = 0.85;  // 高德骑行时间按自行车估算，电动车乘系数修正
+        const EBIKE_AVG_SPEED = 18;       // 综合平均速度，km/h
+        const RIDING_TIME_FACTOR = 0.85;  // 高德骑行时间按自行车估算，乘系数修正
         const USE_GAODE_RIDING_TIME = true; // 优先使用高德骑行时间再修正
         const FALLBACK_ROAD_FACTOR = 1.25;  // 规划失败时直线距离 × 系数估算道路距离
         // =============================================================
@@ -3568,7 +3564,7 @@
         }
 
         // =============================================================
-        // ===== 电动车路线规划模块 =====
+        // ===== 路线规划模块 =====
         // =============================================================
 
         // 地理编码
@@ -3689,7 +3685,7 @@
         }
 
         // =============================================================
-        // 电动车路径规划（单段）—— 使用高德骑行规划
+        // 路径规划（单段）—— 使用高德骑行规划
         // =============================================================
         function planRidingSegment(from, to) {
             return new Promise((resolve) => {
@@ -3805,7 +3801,7 @@
             if (stop._infoWin) stop._infoWin.open(map, [stop.lng, stop.lat]);
         }
 
-        // 生成电动车路线主流程
+        // 生成路线主流程
         async function planRouteFromInput() {
             if (routePlanning) {
                 showToast('正在规划中，请稍候…');
@@ -3969,7 +3965,7 @@
                     const typeLabel = index === 0 ? '起点' :
                         (index === orderedStops.length - 1 ? '终点' : `第 ${index + 1} 站`);
                     const metaHtml = (index > 0 && stop.segDistance != null)
-                        ? `<p style="font-size:10px;color:#6b7280;margin:1px 0;">距上一站：${(stop.segDistance/1000).toFixed(2)} 公里 / 电动车约 ${Math.max(1, Math.round(stop.segTime/60))} 分钟</p>`
+                        ? `<p style="font-size:10px;color:#6b7280;margin:1px 0;">距上一站：${(stop.segDistance/1000).toFixed(2)} 公里 / 约 ${Math.max(1, Math.round(stop.segTime/60))} 分钟</p>`
                         : '';
                     const content = `<div style="min-width:180px;">
                         <h4 style="font-size:13px;margin:3px 0;">${typeLabel}</h4>
@@ -4001,7 +3997,7 @@
                 const h = Math.floor(totalTime / 3600);
                 const m = Math.round((totalTime % 3600) / 60);
                 const timeStr = h > 0 ? `${h} 小时 ${m} 分钟` : `${m} 分钟`;
-                let summary = `共 ${orderedStops.length} 个站点\n总骑行距离：约 ${dKm} 公里\n电动车预计耗时：约 ${timeStr}`;
+                let summary = `共 ${orderedStops.length} 个站点\n总骑行距离：约 ${dKm} 公里\n预计耗时：约 ${timeStr}`;
                 if (ridingFailCount > 0) {
                     summary += `\n（其中 ${ridingFailCount} 段骑行规划失败，已按直线估算）`;
                 }
@@ -4020,7 +4016,7 @@
                 if (ridingFailCount === segments.length && segments.length > 0) {
                     showToast('骑行路线获取失败（可能 Key 未开通 Web 服务），已按直线估算', 'error', 4200);
                 } else {
-                    showToast(`电动车路线规划完成，共 ${orderedStops.length} 个站点，约 ${dKm} 公里`);
+                    showToast(`路线规划完成，共 ${orderedStops.length} 个站点，约 ${dKm} 公里`);
                 }
 
             } catch (err) {
@@ -4047,7 +4043,7 @@
 
                 let meta = '';
                 if (index > 0 && stop.segDistance != null) {
-                    meta = `距上一站 ${(stop.segDistance / 1000).toFixed(2)} km · 电动车约 ${Math.max(1, Math.round(stop.segTime / 60))} 分钟`;
+                    meta = `距上一站 ${(stop.segDistance / 1000).toFixed(2)} km · 约 ${Math.max(1, Math.round(stop.segTime / 60))} 分钟`;
                 } else if (index === 0) {
                     meta = '起点';
                 } else {
@@ -4081,22 +4077,22 @@
                 '经度': Number(s.lng).toFixed(6),
                 '纬度': Number(s.lat).toFixed(6),
                 '距上一站(公里)': i === 0 || s.segDistance == null ? '' : (s.segDistance / 1000).toFixed(2),
-                '电动车耗时(分钟)': i === 0 || s.segTime == null ? '' : Math.max(1, Math.round(s.segTime / 60))
+                '耗时(分钟)': i === 0 || s.segTime == null ? '' : Math.max(1, Math.round(s.segTime / 60))
             }));
             const wb = XLSX.utils.book_new();
             const ws = XLSX.utils.json_to_sheet(data);
-            XLSX.utils.book_append_sheet(wb, ws, '电动车路线');
+            XLSX.utils.book_append_sheet(wb, ws, '路线');
             const out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
             const blob = new Blob([out], { type: 'application/octet-stream' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
-            link.download = `电动车路线_${new Date().toISOString().slice(0,10)}.xlsx`;
+            link.download = `路线_${new Date().toISOString().slice(0,10)}.xlsx`;
             link.click();
-            showToast('电动车路线导出成功');
+            showToast('路线导出成功');
         }
 
         // =============================================================
-        // ===== 电动车路线规划模块结束 =====
+        // ===== 路线规划模块结束 =====
         // =============================================================
 
         // ===== Excel 导入 =====
@@ -4590,7 +4586,7 @@
                 console.log('Riding 插件已就绪');
             });
 
-            console.log('应用初始化完成（电动车路线规划）');
+            console.log('应用初始化完成（路线规划）');
         };
     </script>
 </body>
