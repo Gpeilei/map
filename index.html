@@ -11,7 +11,7 @@
             securityJsCode: "20379ff4e621b8c614c0f5916468c0ae"
         };
     </script>
-    <script type="text/javascript" src="https://webapi.amap.com/maps?v=2.0&key=cdd87705cafe7b06747f57dacc944e64&plugin=AMap.PlaceSearch,AMap.Geocoder,AMap.DistrictSearch,AMap.MarkerClusterer,AMap.Driving"></script>
+    <script type="text/javascript" src="https://webapi.amap.com/maps?v=2.0&key=cdd87705cafe7b06747f57dacc944e64&plugin=AMap.PlaceSearch,AMap.Geocoder,AMap.DistrictSearch,AMap.MarkerClusterer,AMap.Driving,AMap.Riding"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
@@ -1003,7 +1003,7 @@
                     <span class="arrow">▶</span>
                 </div>
                 <div class="section-body">
-                    <!-- ===== 城市选择器（支持手动输入 + 下拉建议） ===== -->
+                    <!-- ===== 城市选择器 ===== -->
                     <div class="flex-row gap-1">
                         <span class="text-xs" style="flex-shrink:0;">城市</span>
                         <div class="city-select-wrapper">
@@ -1099,7 +1099,7 @@
                 </div>
             </div>
 
-            <!-- ===== 面板3: 路线规划 ===== -->
+            <!-- ===== 面板3: 电动车路线规划 ===== -->
             <div class="section">
                 <div class="section-header open" onclick="toggleSection(this)">
                     <span>路线规划 <span class="badge" id="routeCountBadge">0</span></span>
@@ -1116,7 +1116,7 @@
                         </select>
                     </div>
                     <div class="flex-row gap-1">
-                        <button onclick="planRouteFromInput()" class="primary small block">🚗 生成路线</button>
+                        <button onclick="planRouteFromInput()" class="primary small block">🛵 生成电动车路线</button>
                     </div>
                     <div class="flex-row gap-1">
                         <button onclick="clearRouteAddressInput()" class="outline small" style="flex:1;">🧹 清空地址</button>
@@ -1131,7 +1131,7 @@
                     </div>
                     <div id="routeSummary" class="info-box" style="font-size:10px;display:none;"></div>
                     <div id="routeStopList" style="max-height:180px;overflow-y:auto;"></div>
-                    <div class="text-xs text-muted">按行车距离自动优化访问顺序（最近邻 + 2-opt）</div>
+                    <div class="text-xs text-muted">按骑行距离自动优化访问顺序（最近邻 + 2-opt）</div>
                 </div>
             </div>
 
@@ -1161,7 +1161,7 @@
                         <button onclick="exportData('csv')" class="outline small" style="flex:1;">CSV</button>
                         <button onclick="openRecycleBin()" class="outline small" id="recycleBtn" style="flex:1;">回收站 (<span id="recycleCount">0</span>)</button>
                     </div>
-                    <!-- 刷新云端数据（原「备注+添加」已移除，添加标记请用地图工具中的「添加」模式） -->
+                    <!-- 刷新云端数据 -->
                     <div class="flex-row gap-1" style="margin-top:1px;">
                         <button onclick="loadFromCloud()" class="outline small block">刷新云端数据</button>
                     </div>
@@ -1253,12 +1253,21 @@
     <!-- ============================================================ -->
     <script>
         // =============================================================
-        // ===== 修改点1：街道位置偏移配置（可在此调整偏移量） =====
+        // ===== 街道位置偏移配置（可在此调整偏移量） =====
         // =============================================================
         const STREET_OFFSET = {
             lng: 0.0050,
             lat: -0.0010
         };
+        // =============================================================
+
+        // =============================================================
+        // ===== 电动车参数（内置，无需界面设置） =====
+        // =============================================================
+        const EBIKE_AVG_SPEED = 18;       // 电动车综合平均速度，km/h
+        const RIDING_TIME_FACTOR = 0.85;  // 高德骑行时间按自行车估算，电动车乘系数修正
+        const USE_GAODE_RIDING_TIME = true; // 优先使用高德骑行时间再修正
+        const FALLBACK_ROAD_FACTOR = 1.25;  // 规划失败时直线距离 × 系数估算道路距离
         // =============================================================
 
         // ===== Toast 系统 =====
@@ -1499,7 +1508,7 @@
         // 当前模式 & 城市 & 站点
         let currentMode = 'repair';
         let currentSite = 'all';
-        let currentCity = 'xian'; // 城市标识
+        let currentCity = 'xian';
 
         // 合并确认
         let pendingMergeResolve = null;
@@ -1509,10 +1518,10 @@
         let streetDataCache = {};
 
         // ===== 路线规划状态 =====
-        let routeStops = [];          // 有序站点列表
-        let routeMarkers = [];        // 路线标记
-        let routePolyline = null;     // 路线折线
-        let routePlanning = false;    // 是否正在规划
+        let routeStops = [];
+        let routeMarkers = [];
+        let routePolyline = null;
+        let routePlanning = false;
 
         const ICON_NORMAL = new AMap.Icon({
             image: "https://webapi.amap.com/theme/v1.3/markers/n/mark_r.png",
@@ -1525,7 +1534,7 @@
             imageSize: new AMap.Size(25, 34)
         });
 
-        // ===== 城市配置（可扩展） =====
+        // ===== 城市配置 =====
         const CITY_CONFIG = {
             xian: {
                 label: '西安',
@@ -1536,7 +1545,6 @@
                     weiyang: { label: '未央', center: [108.928, 34.308] },
                     yanta: { label: '雁塔', center: [108.948, 34.218] }
                 },
-                // 街道文件列表（按站点）
                 streetFilesBySite: {
                     lianhu: [
                         "zaoyuan.geojson", "taoyuanlu.geojson", "xiguan.geojson", "tumen.geojson",
@@ -1566,7 +1574,6 @@
                         "weiqu.geojson", "xiliu.geojson", "guodu.geojson", "lingzhao.geojson"
                     ]
                 },
-                // 全部街道文件（用于"全部"站点）
                 allStreetFiles: function() {
                     const all = new Set();
                     const s = this.streetFilesBySite;
@@ -1574,73 +1581,21 @@
                     return Array.from(all);
                 }
             },
-            // ===== 其他城市预留框架 =====
-            beijing: {
-                label: '北京',
-                center: [116.4, 39.9],
-                zoom: 10,
-                sites: {},
-                streetFilesBySite: {},
-                allStreetFiles: function() { return []; }
-            },
-            shanghai: {
-                label: '上海',
-                center: [121.47, 31.23],
-                zoom: 10,
-                sites: {},
-                streetFilesBySite: {},
-                allStreetFiles: function() { return []; }
-            },
-            guangzhou: {
-                label: '广州',
-                center: [113.26, 23.13],
-                zoom: 10,
-                sites: {},
-                streetFilesBySite: {},
-                allStreetFiles: function() { return []; }
-            },
-            shenzhen: {
-                label: '深圳',
-                center: [114.07, 22.55],
-                zoom: 10,
-                sites: {},
-                streetFilesBySite: {},
-                allStreetFiles: function() { return []; }
-            },
-            chengdu: {
-                label: '成都',
-                center: [104.07, 30.57],
-                zoom: 10,
-                sites: {},
-                streetFilesBySite: {},
-                allStreetFiles: function() { return []; }
-            },
-            wuhan: {
-                label: '武汉',
-                center: [114.30, 30.60],
-                zoom: 10,
-                sites: {},
-                streetFilesBySite: {},
-                allStreetFiles: function() { return []; }
-            },
-            hangzhou: {
-                label: '杭州',
-                center: [120.15, 30.28],
-                zoom: 10,
-                sites: {},
-                streetFilesBySite: {},
-                allStreetFiles: function() { return []; }
-            }
+            beijing: { label: '北京', center: [116.4, 39.9], zoom: 10, sites: {}, streetFilesBySite: {}, allStreetFiles: function() { return []; } },
+            shanghai: { label: '上海', center: [121.47, 31.23], zoom: 10, sites: {}, streetFilesBySite: {}, allStreetFiles: function() { return []; } },
+            guangzhou: { label: '广州', center: [113.26, 23.13], zoom: 10, sites: {}, streetFilesBySite: {}, allStreetFiles: function() { return []; } },
+            shenzhen: { label: '深圳', center: [114.07, 22.55], zoom: 10, sites: {}, streetFilesBySite: {}, allStreetFiles: function() { return []; } },
+            chengdu: { label: '成都', center: [104.07, 30.57], zoom: 10, sites: {}, streetFilesBySite: {}, allStreetFiles: function() { return []; } },
+            wuhan: { label: '武汉', center: [114.30, 30.60], zoom: 10, sites: {}, streetFilesBySite: {}, allStreetFiles: function() { return []; } },
+            hangzhou: { label: '杭州', center: [120.15, 30.28], zoom: 10, sites: {}, streetFilesBySite: {}, allStreetFiles: function() { return []; } }
         };
 
-        // 站点配置（兼容旧代码，实际使用 CITY_CONFIG）
         const SITE_CONFIG = {
             lianhu: { label: '莲湖', center: [108.878, 34.268] },
             weiyang: { label: '未央', center: [108.928, 34.308] },
             yanta: { label: '雁塔', center: [108.948, 34.218] }
         };
 
-        // 街道名称映射
         const streetFileToName = {
             "zaoyuan.geojson": "枣园街道",
             "taoyuanlu.geojson": "桃园路街道",
@@ -1850,7 +1805,6 @@
             for (const [id, cfg] of Object.entries(CITY_CONFIG)) {
                 if (cfg.label === normalized) return id;
             }
-            // 如果不是预设城市，尝试作为自定义城市处理
             return null;
         }
 
@@ -1863,17 +1817,14 @@
             }
 
             let cityId = getCityIdByName(rawName);
-            // 如果是自定义城市（不在预设中），创建一个临时配置
             if (!cityId) {
-                // 检查是否已经存在自定义城市（以自定义前缀存储）
                 const customKey = 'custom_' + rawName;
                 if (CITY_CONFIG[customKey]) {
                     cityId = customKey;
                 } else {
-                    // 创建新的自定义城市配置
                     CITY_CONFIG[customKey] = {
                         label: rawName,
-                        center: [116.4, 39.9], // 默认中心
+                        center: [116.4, 39.9],
                         zoom: 10,
                         sites: {},
                         streetFilesBySite: {},
@@ -1890,40 +1841,32 @@
                 return;
             }
 
-            // 执行切换
             currentCity = cityId;
             const config = getCityConfig(cityId);
 
-            // 更新UI
             document.getElementById('currentCityLabel').textContent = config.label;
             document.getElementById('citySwitchStatus').textContent = `当前城市：${config.label}`;
 
-            // 清空过滤
             filterStreet = '';
             filterCategory = '';
             clearCategoryFilter();
             clearTempLocationMarker();
             clearSelectedStreet();
 
-            // 更新地图
             if (config.center) {
                 map.setCenter(config.center);
                 map.setZoom(config.zoom || 10);
             }
 
-            // 更新站点UI
             updateSiteUIForCity();
 
-            // 清空街道图层并重新加载
             clearStreetLayer();
             streetCenterCache = {};
             streetDataCache = {};
             streetPolygons = [];
             streetTextMarkers = [];
 
-            // 如果是西安，加载街道
             if (cityId === 'xian') {
-                // 重置站点为'all'
                 currentSite = 'all';
                 const allBtn = document.getElementById('siteAllBtn');
                 const lianhuBtn = document.getElementById('siteLianhuBtn');
@@ -1935,12 +1878,9 @@
                 loadVersion++;
                 loadStreetsForCurrentSite('all', loadVersion);
             } else {
-                // 非西安城市，显示提示
                 document.getElementById('streetLoadStatus').textContent = `当前城市 ${config.label} 暂无街道数据`;
-                // 站点设置为'all'
                 currentSite = 'all';
                 document.getElementById('currentSiteLabel').textContent = '全部';
-                // 隐藏站点按钮，显示提示
                 const wrapper = document.getElementById('siteSelectorWrapper');
                 const tip = document.getElementById('noSiteTip');
                 wrapper.style.display = 'none';
@@ -1948,18 +1888,15 @@
                 tip.textContent = `城市「${config.label}」暂无站点数据，标记将显示全部`;
             }
 
-            // 重新应用过滤和渲染
             applyFilterAndRenderMap();
             updateModeMarkerCount();
             updateCategoryTags();
 
-            // 如果添加模式开启，退出
             if (isAddMarkerMode) cancelAddMarkerMode();
 
             showToast(`已切换至 ${config.label}`);
         }
 
-        // ===== 更新站点UI根据当前城市 =====
         function updateSiteUIForCity() {
             const wrapper = document.getElementById('siteSelectorWrapper');
             const tip = document.getElementById('noSiteTip');
@@ -1968,12 +1905,10 @@
             if (currentCity === 'xian') {
                 wrapper.style.display = 'block';
                 tip.style.display = 'none';
-                // 恢复站点按钮状态
                 const allBtn = document.getElementById('siteAllBtn');
                 const lianhuBtn = document.getElementById('siteLianhuBtn');
                 const weiyangBtn = document.getElementById('siteWeiyangBtn');
                 const yantaBtn = document.getElementById('siteYantaBtn');
-                // 根据 currentSite 高亮
                 [allBtn, lianhuBtn, weiyangBtn, yantaBtn].forEach(b => b.className = 'outline small');
                 if (currentSite === 'all') allBtn.className = 'primary small';
                 else if (currentSite === 'lianhu') lianhuBtn.className = 'primary small';
@@ -2021,7 +1956,7 @@
             document.getElementById('modeMarkerCount').textContent = count;
         }
 
-        // ===== 站点切换（仅西安有效） =====
+        // ===== 站点切换 =====
         function setSite(site) {
             if (currentCity !== 'xian') {
                 showToast('当前城市暂无站点数据', 'info');
@@ -2064,7 +1999,7 @@
             updateCategoryTags();
         }
 
-        // ===== 加载街道（支持西安） =====
+        // ===== 加载街道 =====
         async function loadStreetsForCurrentSite(site, version) {
             if (currentCity !== 'xian') {
                 document.getElementById('streetLoadStatus').textContent = '当前城市暂无街道数据';
@@ -2159,9 +2094,6 @@
                 });
                 const validPolyList = polyList.filter(p => Array.isArray(p) && p.length > 2);
 
-                // =============================================================
-                // ===== 修改点2：对街道多边形路径应用偏移（整体向右下移动） =====
-                // =============================================================
                 const offsetLng = STREET_OFFSET.lng;
                 const offsetLat = STREET_OFFSET.lat;
                 if (offsetLng !== 0 || offsetLat !== 0) {
@@ -2174,7 +2106,6 @@
                         }
                     });
                 }
-                // =============================================================
 
                 if (validPolyList.length === 0) { console.warn(`街道[${showName}] 没有有效多边形，跳过此街道`);
                     return false; }
@@ -2196,9 +2127,6 @@
                 let useLng = sumLng / totalPoints;
                 let useLat = sumLat / totalPoints;
 
-                // =============================================================
-                // ===== 修改点3：手动覆盖的中心点也应用偏移 =====
-                // =============================================================
                 const override = manualCenterOverride[showName];
                 if (override) {
                     useLng = override.lng + offsetLng;
@@ -2230,7 +2158,6 @@
                             return false; }
                     }
                 }
-                // =============================================================
 
                 if (isNaN(useLng) || isNaN(useLat) || !isFinite(useLng) || !isFinite(useLat)) {
                     console.warn(`街道[${showName}] 最终坐标无效，跳过`);
@@ -3453,7 +3380,6 @@
 
         // ===== 地图控制 =====
         function setCityXiAn() {
-            // 如果当前不是西安，切换城市
             if (currentCity !== 'xian') {
                 document.getElementById('cityInput').value = '西安';
                 switchCity();
@@ -3642,10 +3568,10 @@
         }
 
         // =============================================================
-        // ===== 路线规划模块 =====
+        // ===== 电动车路线规划模块 =====
         // =============================================================
 
-        // 地理编码（支持限定城市）
+        // 地理编码
         function geocodeAmap(address, city) {
             return new Promise(resolve => {
                 AMap.plugin("AMap.Geocoder", () => {
@@ -3665,7 +3591,6 @@
         function normalizeRouteAddress(addr, cityLabel) {
             let s = (addr || '').trim();
             if (!s) return '';
-            // 已包含行政区划信息则不再补全
             if (/省|市|区|县|自治区/.test(s)) return s;
             return (cityLabel || '') + s;
         }
@@ -3681,7 +3606,6 @@
             return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
         }
 
-        // 最近邻算法生成初始访问顺序
         function nearestNeighborOrder(points, startIdx) {
             const n = points.length;
             const visited = new Array(n).fill(false);
@@ -3703,7 +3627,6 @@
             return order;
         }
 
-        // 开放路径总距离
         function orderDistance(order, points) {
             let d = 0;
             for (let i = 1; i < order.length; i++) {
@@ -3712,7 +3635,6 @@
             return d;
         }
 
-        // 2-opt 优化（固定首点）
         function twoOptOrder(order, points) {
             const best = order.slice();
             const n = best.length;
@@ -3747,7 +3669,6 @@
             return best;
         }
 
-        // 计算最优顺序
         function computeBestOrder(stops, startMode) {
             const n = stops.length;
             if (n <= 2) return stops.map((_, i) => i);
@@ -3767,11 +3688,13 @@
             return ord;
         }
 
-        // 驾车路径规划（单段）
-        function planDrivingSegment(from, to) {
+        // =============================================================
+        // 电动车路径规划（单段）—— 使用高德骑行规划
+        // =============================================================
+        function planRidingSegment(from, to) {
             return new Promise((resolve) => {
-                AMap.plugin('AMap.Driving', () => {
-                    if (typeof AMap.Driving !== 'function') {
+                AMap.plugin('AMap.Riding', () => {
+                    if (typeof AMap.Riding !== 'function') {
                         resolve(null);
                         return;
                     }
@@ -3781,14 +3704,10 @@
                         settled = true;
                         resolve(val);
                     };
-                    // 超时保护
                     setTimeout(() => done(null), 12000);
                     try {
-                        const driving = new AMap.Driving({
-                            policy: AMap.DrivingPolicy.LEAST_TIME,
-                            ferry: 1
-                        });
-                        driving.search(
+                        const riding = new AMap.Riding();
+                        riding.search(
                             new AMap.LngLat(from.lng, from.lat),
                             new AMap.LngLat(to.lng, to.lat),
                             (status, result) => {
@@ -3801,25 +3720,46 @@
                                         });
                                     });
                                     if (path.length === 0) { done(null); return; }
-                                    done({
-                                        path,
-                                        distance: route.distance,
-                                        time: route.time
-                                    });
+
+                                    const distance = route.distance;
+                                    let time;
+                                    if (USE_GAODE_RIDING_TIME && route.time) {
+                                        time = Math.round(route.time * RIDING_TIME_FACTOR);
+                                    } else {
+                                        time = Math.round(distance / 1000 / EBIKE_AVG_SPEED * 3600);
+                                    }
+
+                                    done({ path, distance, time });
                                 } else {
                                     done(null);
                                 }
                             }
                         );
                     } catch (err) {
-                        console.warn('Driving 规划异常', err);
+                        console.warn('Riding 规划异常', err);
                         done(null);
                     }
                 });
             });
         }
 
-        // 清除路线（保留地址输入框内容）
+        // 直线降级估算
+        function fallbackRidingEstimate(from, to) {
+            const straight = haversineMeters(from, to);
+            const distance = straight * FALLBACK_ROAD_FACTOR;
+            const time = distance / 1000 / EBIKE_AVG_SPEED * 3600;
+            return {
+                path: [
+                    [from.lng, from.lat],
+                    [to.lng, to.lat]
+                ],
+                distance,
+                time,
+                isFallback: true
+            };
+        }
+
+        // 清除路线
         function clearRoutePlan(silent) {
             routeMarkers.forEach(m => m.setMap(null));
             routeMarkers = [];
@@ -3840,7 +3780,7 @@
             if (!silent) showToast('已清除路线');
         }
 
-        // ===== 新增：清空路线地址输入框 =====
+        // 清空路线地址输入框
         function clearRouteAddressInput() {
             const input = document.getElementById('routeAddressInput');
             if (!input) return;
@@ -3865,7 +3805,7 @@
             if (stop._infoWin) stop._infoWin.open(map, [stop.lng, stop.lat]);
         }
 
-        // 生成路线主流程
+        // 生成电动车路线主流程
         async function planRouteFromInput() {
             if (routePlanning) {
                 showToast('正在规划中，请稍候…');
@@ -3947,19 +3887,19 @@
                 const orderedStops = order.map(i => stops[i]);
                 await sleep(60);
 
-                // 4. 逐段驾车规划
+                // 4. 逐段骑行规划
                 const segmentCount = orderedStops.length - 1;
                 const segments = [];
                 let totalDistance = 0;
                 let totalTime = 0;
-                let drivingFailCount = 0;
+                let ridingFailCount = 0;
 
                 for (let i = 0; i < segmentCount; i++) {
                     const pct = 50 + Math.round((i / segmentCount) * 45);
                     progressBar.style.width = pct + '%';
                     progressText.textContent =
-                        `规划路段 ${i + 1}/${segmentCount}：${orderedStops[i].label} → ${orderedStops[i + 1].label}`;
-                    const seg = await planDrivingSegment(orderedStops[i], orderedStops[i + 1]);
+                        `规划骑行路段 ${i + 1}/${segmentCount}：${orderedStops[i].label} → ${orderedStops[i + 1].label}`;
+                    const seg = await planRidingSegment(orderedStops[i], orderedStops[i + 1]);
                     if (seg) {
                         segments.push(seg);
                         orderedStops[i + 1].segDistance = seg.distance;
@@ -3967,8 +3907,13 @@
                         totalDistance += seg.distance;
                         totalTime += seg.time;
                     } else {
-                        segments.push(null);
-                        drivingFailCount++;
+                        const fb = fallbackRidingEstimate(orderedStops[i], orderedStops[i + 1]);
+                        segments.push(fb);
+                        orderedStops[i + 1].segDistance = fb.distance;
+                        orderedStops[i + 1].segTime = fb.time;
+                        totalDistance += fb.distance;
+                        totalTime += fb.time;
+                        ridingFailCount++;
                     }
                     await sleep(100);
                 }
@@ -3991,7 +3936,7 @@
                 if (fullPath.length > 1) {
                     routePolyline = new AMap.Polyline({
                         path: fullPath,
-                        strokeColor: '#2563eb',
+                        strokeColor: '#16a34a',
                         strokeWeight: 6,
                         strokeOpacity: 0.85,
                         lineJoin: 'round',
@@ -4024,7 +3969,7 @@
                     const typeLabel = index === 0 ? '起点' :
                         (index === orderedStops.length - 1 ? '终点' : `第 ${index + 1} 站`);
                     const metaHtml = (index > 0 && stop.segDistance != null)
-                        ? `<p style="font-size:10px;color:#6b7280;margin:1px 0;">距上一站：${(stop.segDistance/1000).toFixed(2)} 公里 / ${Math.max(1, Math.round(stop.segTime/60))} 分钟</p>`
+                        ? `<p style="font-size:10px;color:#6b7280;margin:1px 0;">距上一站：${(stop.segDistance/1000).toFixed(2)} 公里 / 电动车约 ${Math.max(1, Math.round(stop.segTime/60))} 分钟</p>`
                         : '';
                     const content = `<div style="min-width:180px;">
                         <h4 style="font-size:13px;margin:3px 0;">${typeLabel}</h4>
@@ -4056,9 +4001,9 @@
                 const h = Math.floor(totalTime / 3600);
                 const m = Math.round((totalTime % 3600) / 60);
                 const timeStr = h > 0 ? `${h} 小时 ${m} 分钟` : `${m} 分钟`;
-                let summary = `共 ${orderedStops.length} 个站点\n总行驶距离：约 ${dKm} 公里\n预计总耗时：约 ${timeStr}`;
-                if (drivingFailCount > 0) {
-                    summary += `\n（其中 ${drivingFailCount} 段未能获取驾车路线，已用直线连接）`;
+                let summary = `共 ${orderedStops.length} 个站点\n总骑行距离：约 ${dKm} 公里\n电动车预计耗时：约 ${timeStr}`;
+                if (ridingFailCount > 0) {
+                    summary += `\n（其中 ${ridingFailCount} 段骑行规划失败，已按直线估算）`;
                 }
                 summaryEl.textContent = summary;
                 summaryEl.style.display = 'block';
@@ -4072,10 +4017,10 @@
                 progressBar.className = 'progress-bar done';
                 progressText.textContent = `完成！共 ${orderedStops.length} 个站点`;
 
-                if (drivingFailCount === segments.length && segments.length > 0) {
-                    showToast('驾车路线获取失败（可能 Key 未开通 Web 服务），已用直线连接', 'error', 4200);
+                if (ridingFailCount === segments.length && segments.length > 0) {
+                    showToast('骑行路线获取失败（可能 Key 未开通 Web 服务），已按直线估算', 'error', 4200);
                 } else {
-                    showToast(`路线规划完成，共 ${orderedStops.length} 个站点，约 ${dKm} 公里`);
+                    showToast(`电动车路线规划完成，共 ${orderedStops.length} 个站点，约 ${dKm} 公里`);
                 }
 
             } catch (err) {
@@ -4102,7 +4047,7 @@
 
                 let meta = '';
                 if (index > 0 && stop.segDistance != null) {
-                    meta = `距上一站 ${(stop.segDistance / 1000).toFixed(2)} km · ${Math.max(1, Math.round(stop.segTime / 60))} 分钟`;
+                    meta = `距上一站 ${(stop.segDistance / 1000).toFixed(2)} km · 电动车约 ${Math.max(1, Math.round(stop.segTime / 60))} 分钟`;
                 } else if (index === 0) {
                     meta = '起点';
                 } else {
@@ -4136,22 +4081,22 @@
                 '经度': Number(s.lng).toFixed(6),
                 '纬度': Number(s.lat).toFixed(6),
                 '距上一站(公里)': i === 0 || s.segDistance == null ? '' : (s.segDistance / 1000).toFixed(2),
-                '距上一站(分钟)': i === 0 || s.segTime == null ? '' : Math.max(1, Math.round(s.segTime / 60))
+                '电动车耗时(分钟)': i === 0 || s.segTime == null ? '' : Math.max(1, Math.round(s.segTime / 60))
             }));
             const wb = XLSX.utils.book_new();
             const ws = XLSX.utils.json_to_sheet(data);
-            XLSX.utils.book_append_sheet(wb, ws, '路线');
+            XLSX.utils.book_append_sheet(wb, ws, '电动车路线');
             const out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
             const blob = new Blob([out], { type: 'application/octet-stream' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
-            link.download = `路线_${new Date().toISOString().slice(0,10)}.xlsx`;
+            link.download = `电动车路线_${new Date().toISOString().slice(0,10)}.xlsx`;
             link.click();
-            showToast('路线导出成功');
+            showToast('电动车路线导出成功');
         }
 
         // =============================================================
-        // ===== 路线规划模块结束 =====
+        // ===== 电动车路线规划模块结束 =====
         // =============================================================
 
         // ===== Excel 导入 =====
@@ -4563,7 +4508,6 @@
                     saveMarkerEdit();
                 }
             }
-            // Enter 在城市输入框中触发切换
             if (e.key === 'Enter') {
                 const target = e.target;
                 if (target && target.id === 'cityInput') {
@@ -4582,12 +4526,11 @@
             }
         }
 
-        // ===== 城市输入框自动补全（回车触发切换） =====
+        // ===== 城市输入框自动补全 & 路线输入快捷键 =====
         document.addEventListener('DOMContentLoaded', function() {
             const cityInput = document.getElementById('cityInput');
             if (cityInput) {
                 cityInput.addEventListener('change', function() {
-                    // 当用户从下拉列表中选择时自动切换
                     const val = this.value.trim();
                     if (val) {
                         const cityId = getCityIdByName(val);
@@ -4597,7 +4540,6 @@
                     }
                 });
             }
-            // 路线地址输入框：Ctrl+Enter 触发规划
             const routeInput = document.getElementById('routeAddressInput');
             if (routeInput) {
                 routeInput.addEventListener('keydown', function(e) {
@@ -4621,13 +4563,11 @@
 
             document.getElementById("excelFileInput").addEventListener("change", handleExcelImport);
 
-            // 初始化城市
             currentCity = 'xian';
             document.getElementById('cityInput').value = '西安';
             document.getElementById('currentCityLabel').textContent = '西安';
             document.getElementById('citySwitchStatus').textContent = '当前城市：西安';
 
-            // 站点按钮初始状态
             document.getElementById('siteAllBtn').className = 'primary small';
             document.getElementById('siteLianhuBtn').className = 'outline small';
             document.getElementById('siteWeiyangBtn').className = 'outline small';
@@ -4646,12 +4586,11 @@
             updateRecycleBadge();
             updateCategoryTags();
 
-            // 预加载驾车路线规划插件
-            AMap.plugin(['AMap.Driving'], () => {
-                console.log('Driving 插件已就绪');
+            AMap.plugin(['AMap.Riding'], () => {
+                console.log('Riding 插件已就绪');
             });
 
-            console.log('应用初始化完成（支持多城市 + 路线规划）');
+            console.log('应用初始化完成（电动车路线规划）');
         };
     </script>
 </body>
