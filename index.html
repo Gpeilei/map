@@ -1266,6 +1266,18 @@
         const FALLBACK_ROAD_FACTOR = 1.25;  // 规划失败时直线距离 × 系数估算道路距离
         // =============================================================
 
+        // =============================================================
+        // ===== 高德 Web 服务 Key（骑行路径规划专用） =====
+        // 说明：
+        //   1. 原 JS API Key（cdd87705...）属于「Web端(JS API)」类型，
+        //      不能用于 restapi.amap.com 的 Web 服务接口，因此骑行规划会失败。
+        //   2. 请到 https://console.amap.com/dev/key/app 新建一个
+        //      「服务平台 = Web服务」的 Key，填到下面。
+        //   3. 若留空则自动回退到 AMap.Riding 插件（可能仍然失败）。
+        // =============================================================
+        const AMAP_WEB_SERVICE_KEY = '05da18fe4729147f89e25cb45f432ce4';
+        // =============================================================
+
         // ===== Toast 系统 =====
         let toastTimer = null;
 
@@ -3685,9 +3697,107 @@
         }
 
         // =============================================================
-        // 路径规划（单段）—— 使用高德骑行规划
+        // 路径规划（单段）
+        // 优先级：Web 服务 REST（需 Web服务Key） → JS API 插件 → 直线估算
         // =============================================================
-        function planRidingSegment(from, to) {
+
+        // --- JSONP 工具（绕过浏览器跨域限制）---
+        function jsonpRequest(url, timeout = 8000) {
+            return new Promise((resolve, reject) => {
+                const cbName = 'amap_cb_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+                const script = document.createElement('script');
+                let timer = null;
+                let finished = false;
+                const cleanup = () => {
+                    if (timer) { clearTimeout(timer); timer = null; }
+                    try { delete window[cbName]; } catch (e) { window[cbName] = undefined; }
+                    if (script.parentNode) script.parentNode.removeChild(script);
+                };
+                window[cbName] = function(data) {
+                    if (finished) return;
+                    finished = true;
+                    cleanup();
+                    resolve(data);
+                };
+                timer = setTimeout(() => {
+                    if (finished) return;
+                    finished = true;
+                    cleanup();
+                    reject(new Error('JSONP 超时'));
+                }, timeout);
+                script.onerror = function() {
+                    if (finished) return;
+                    finished = true;
+                    cleanup();
+                    reject(new Error('JSONP 加载失败'));
+                };
+                script.src = url + (url.indexOf('?') === -1 ? '?' : '&') + 'callback=' + cbName;
+                document.head.appendChild(script);
+            });
+        }
+
+        // --- 通过高德 Web 服务 REST 接口规划骑行（推荐方式）---
+        async function planRidingSegmentViaRest(from, to) {
+            if (!AMAP_WEB_SERVICE_KEY || AMAP_WEB_SERVICE_KEY.indexOf('在这里填') === 0) {
+                return null;
+            }
+            const base = 'https://restapi.amap.com/v4/direction/bicycling' +
+                '?origin=' + from.lng + ',' + from.lat +
+                '&destination=' + to.lng + ',' + to.lat +
+                '&key=' + encodeURIComponent(AMAP_WEB_SERVICE_KEY);
+
+            let data = null;
+
+            // 1) 先尝试 fetch（部分环境允许跨域）
+            try {
+                const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+                const timer = controller ? setTimeout(() => controller.abort(), 8000) : null;
+                const resp = await fetch(base, controller ? { signal: controller.signal } : undefined);
+                if (timer) clearTimeout(timer);
+                data = await resp.json();
+            } catch (e) {
+                data = null;
+            }
+
+            // 2) fetch 失败则用 JSONP
+            if (!data) {
+                try {
+                    data = await jsonpRequest(base, 8000);
+                } catch (e) {
+                    data = null;
+                }
+            }
+
+            if (!data || data.errcode !== 0) {
+                if (data && data.errmsg) {
+                    console.warn('[骑行REST] 接口返回异常：', data.errcode, data.errmsg);
+                }
+                return null;
+            }
+
+            const path0 = data.data && data.data.paths && data.data.paths[0];
+            if (!path0) return null;
+
+            const path = [];
+            (path0.steps || []).forEach(step => {
+                (step.polyline || '').split(';').forEach(pt => {
+                    const arr = pt.split(',');
+                    const lng = parseFloat(arr[0]);
+                    const lat = parseFloat(arr[1]);
+                    if (!isNaN(lng) && !isNaN(lat)) path.push([lng, lat]);
+                });
+            });
+            if (path.length < 2) return null;
+
+            const distance = path0.distance;
+            const rawTime = path0.duration || (distance / 1000 / EBIKE_AVG_SPEED * 3600);
+            const time = Math.round(rawTime * RIDING_TIME_FACTOR);
+
+            return { path, distance, time };
+        }
+
+        // --- 通过 JS API 插件规划骑行（旧方案，作为兜底）---
+        function planRidingSegmentViaPlugin(from, to) {
             return new Promise((resolve) => {
                 AMap.plugin('AMap.Riding', () => {
                     if (typeof AMap.Riding !== 'function') {
@@ -3737,6 +3847,13 @@
                     }
                 });
             });
+        }
+
+        // --- 单段骑行规划主入口：REST 优先，插件兜底 ---
+        async function planRidingSegment(from, to) {
+            const restResult = await planRidingSegmentViaRest(from, to);
+            if (restResult) return restResult;
+            return await planRidingSegmentViaPlugin(from, to);
         }
 
         // 直线降级估算
@@ -4014,7 +4131,11 @@
                 progressText.textContent = `完成！共 ${orderedStops.length} 个站点`;
 
                 if (ridingFailCount === segments.length && segments.length > 0) {
-                    showToast('骑行路线获取失败（可能 Key 未开通 Web 服务），已按直线估算', 'error', 4200);
+                    if (!AMAP_WEB_SERVICE_KEY || AMAP_WEB_SERVICE_KEY.indexOf('在这里填') === 0) {
+                        showToast('骑行路线获取失败：请到高德控制台申请「Web服务」类型的 Key，填入 AMAP_WEB_SERVICE_KEY 后重试', 'error', 6000);
+                    } else {
+                        showToast('骑行路线获取失败：请检查 Web 服务 Key 是否正确、是否已开通骑行路径规划权限', 'error', 6000);
+                    }
                 } else {
                     showToast(`路线规划完成，共 ${orderedStops.length} 个站点，约 ${dKm} 公里`);
                 }
@@ -4584,6 +4705,9 @@
 
             AMap.plugin(['AMap.Riding'], () => {
                 console.log('Riding 插件已就绪');
+                if (!AMAP_WEB_SERVICE_KEY || AMAP_WEB_SERVICE_KEY.indexOf('在这里填') === 0) {
+                    console.warn('[骑行规划] 未配置 AMAP_WEB_SERVICE_KEY，将使用 AMap.Riding 插件（可能因 Key 类型不支持而失败）');
+                }
             });
 
             console.log('应用初始化完成（路线规划）');
