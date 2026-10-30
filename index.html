@@ -1231,7 +1231,7 @@
         </div>
     </div>
 
-    <!-- ===== 合并确认模态框（只保留一组按钮） ===== -->
+    <!-- ===== 合并确认模态框 ===== -->
     <div class="modal-mask" id="mergeModal">
         <div class="modal-box">
             <h4>发现重复标记</h4>
@@ -1239,9 +1239,13 @@
             <div class="modal-row"><label>合并后备注</label><textarea id="mergeNotePreview" rows="2" readonly style="background:#f9fafb;"></textarea></div>
             <div class="modal-btn-group">
                 <button class="outline" onclick="rejectMerge()">跳过</button>
-                <button class="outline" id="mergeAllBtn" onclick="mergeAllRemaining()" style="display:none;">全部合并（保留第一条）</button>
                 <button class="primary" onclick="confirmMerge()">确认合并</button>
             </div>
+        </div>
+        <div class="modal-btn-group">
+            <button class="outline" onclick="rejectMerge()">跳过</button>
+            <button class="outline" id="mergeAllBtn" onclick="mergeAllRemaining()" style="display:none;">全部合并（保留第一条）</button>
+            <button class="primary" onclick="confirmMerge()">确认合并</button>
         </div>
     </div>
 
@@ -1498,8 +1502,7 @@
         let streetPolygons = [];
         let streetTextMarkers = [];
         let _isMerging = false;
-        let handledMergeKeys = new Set();   // 所有已经被处理过的重复组（合并或跳过都算）
-        let realtimeTimer = null;           // Realtime 防抖
+        let skippedMergeKeys = new Set();
         let loadVersion = 0;
 
         // 临时定位标记
@@ -1760,8 +1763,6 @@
                 return d.toLocaleString('zh-CN', { hour12: false });
             } catch { return isoStr; }
         }
-
-        // 备注列表去重合并
         function mergeNoteStrings(notes) {
             const seen = new Set();
             const out = [];
@@ -1777,7 +1778,6 @@
             return out.join('，');
         }
 
-        // 合并一组重复文档
         async function mergeDuplicateDocs(docs, keepIndex) {
             const keep = docs[keepIndex];
             const toDelete = docs.filter((_, i) => i !== keepIndex);
@@ -2862,10 +2862,8 @@
                     if (!groupMap[key]) groupMap[key] = [];
                     groupMap[key].push(doc);
                 });
-
-                // ★ 只处理"未被处理过"的重复组
                 const duplicates = Object.keys(groupMap).filter(k =>
-                    groupMap[k].length > 1 && !handledMergeKeys.has(k)
+                    groupMap[k].length > 1 && !skippedMergeKeys.has(k)
                 );
                 if (duplicates.length > 0) {
                     console.log(`发现 ${duplicates.length} 个重复组，请求用户确认...`);
@@ -2876,45 +2874,34 @@
                         const key = duplicates[i];
                         const docs = groupMap[key];
 
-                        let keepIndex = 0;
-                        let skipThis = false;
-
+                        let keepIndex;
                         if (batchMergeAll) {
                             keepIndex = 0;
                         } else {
                             const result = await showMergeConfirm(docs, i < duplicates.length - 1);
                             if (result === 'skip') {
-                                skipThis = true;
-                            } else if (result === 'all') {
+                                skippedMergeKeys.add(key);
+                                continue;
+                            }
+                            if (result === 'all') {
                                 batchMergeAll = true;
                                 keepIndex = 0;
-                            } else if (typeof result === 'number') {
-                                keepIndex = result;
                             } else {
-                                // 意外的值（取消/异常），按跳过处理
-                                skipThis = true;
+                                keepIndex = result;
                             }
                         }
-
-                        // ★ 无论合并还是跳过、成功还是失败，都先标记为已处理
-                        handledMergeKeys.add(key);
-
-                        if (skipThis) continue;
 
                         try {
                             await mergeDuplicateDocs(docs, keepIndex);
                         } catch (e) {
-                            console.error('合并重复组失败（已记录，不再提示）', e);
-                            showToast('部分重复项合并失败，可稍后手动处理', 'error');
+                            console.error('合并重复组失败', e);
                         }
                     }
                     console.log(`合并完成，共处理 ${duplicates.length} 组重复数据`);
                     _isMerging = false;
-                    // 延迟一点再重载，避开 Realtime 回调的"余波"
-                    setTimeout(() => loadFromCloud(), 500);
+                    await loadFromCloud();
                     return;
                 }
-
                 markerList.forEach(item => { item.marker.setMap(null);
                     item.infoWin.close(); });
                 markerList = [];
@@ -2966,10 +2953,10 @@
                 });
                 listDiv.innerHTML = html;
 
-                // 备注预览去重合并
+                // ★ 备注预览改为去重合并
                 notePreview.value = mergeNoteStrings(docs.map(d => d.note));
 
-                // 有后续组时显示"全部合并"按钮
+                // ★ 有后续组时显示“全部合并”按钮
                 if (allBtn) allBtn.style.display = hasMore ? 'inline-flex' : 'none';
 
                 pendingMergeResolve = resolve;
@@ -2991,7 +2978,6 @@
                 pendingMergeResolve(idx);
                 pendingMergeResolve = null;
             }
-            pendingMergeReject = null;
             showToast('重复标记已合并');
             updateCategoryTags();
         };
@@ -3003,10 +2989,8 @@
                 pendingMergeResolve('skip');
                 pendingMergeResolve = null;
             }
-            pendingMergeReject = null;
             showToast('已跳过合并');
         };
-
         window.mergeAllRemaining = function() {
             const modal = document.getElementById('mergeModal');
             modal.style.display = 'none';
@@ -3014,7 +2998,6 @@
                 pendingMergeResolve('all');
                 pendingMergeResolve = null;
             }
-            pendingMergeReject = null;
             showToast('将自动合并剩余所有重复项（每组保留第一条）');
         };
 
@@ -3332,7 +3315,8 @@
                     contentDiv.classList.remove('highlighted');
                 }
             });
-                        if (!filterStreet && !filterCategory && visibleItems.length > 10) {
+
+            if (!filterStreet && !filterCategory && visibleItems.length > 10) {
                 const markers = visibleItems.map(item => item.marker);
                 AMap.plugin('AMap.MarkerClusterer', () => {
                     clusterer = new AMap.MarkerClusterer(map, markers, {
@@ -4647,29 +4631,17 @@
             return { count: successCount };
         }
 
-        // ===== Realtime 订阅（带防抖 + 合并期忽略） =====
+        // ===== Realtime 订阅 =====
         let subscription = null;
 
         function setupRealtimeSubscription() {
-            if (subscription) {
-                subscription.unsubscribe();
-                subscription = null;
-            }
+            if (subscription) { subscription.unsubscribe();
+                subscription = null; }
             subscription = supabaseClient
                 .channel('public:markers')
                 .on('postgres_changes', { event: '*', schema: 'public', table: TABLE_NAME }, payload => {
-                    // ★ 合并进行中直接忽略，避免并发加载
-                    if (_isMerging) {
-                        console.log('合并进行中，忽略 Realtime 事件');
-                        return;
-                    }
-                    // ★ 800ms 防抖，避开合并结束后的"余波"
-                    if (realtimeTimer) clearTimeout(realtimeTimer);
-                    realtimeTimer = setTimeout(() => {
-                        console.log('数据库变更，重新加载数据', payload);
-                        loadFromCloud();
-                        realtimeTimer = null;
-                    }, 800);
+                    console.log('数据库变更，重新加载数据', payload);
+                    loadFromCloud();
                 })
                 .subscribe((status) => { console.log('Realtime 订阅状态:', status); });
         }
@@ -4686,13 +4658,9 @@
                     return;
                 }
                 if (document.getElementById('mergeModal').style.display === 'flex') {
-                    // ★ 改为 resolve('skip')，等同"跳过"，不再 reject 炸流程
                     document.getElementById('mergeModal').style.display = 'none';
-                    if (pendingMergeResolve) {
-                        pendingMergeResolve('skip');
-                        pendingMergeResolve = null;
-                    }
-                    pendingMergeReject = null;
+                    if (pendingMergeReject) pendingMergeReject('cancel');
+                    pendingMergeResolve = null;
                     return;
                 }
                 if (document.getElementById('recycle-modal').style.display === 'flex') {
@@ -4812,4 +4780,3 @@
     </script>
 </body>
 </html>
-           
