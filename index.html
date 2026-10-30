@@ -1242,11 +1242,6 @@
                 <button class="primary" onclick="confirmMerge()">确认合并</button>
             </div>
         </div>
-        <div class="modal-btn-group">
-            <button class="outline" onclick="rejectMerge()">跳过</button>
-            <button class="outline" id="mergeAllBtn" onclick="mergeAllRemaining()" style="display:none;">全部合并（保留第一条）</button>
-            <button class="primary" onclick="confirmMerge()">确认合并</button>
-        </div>
     </div>
 
     <!-- ============================================================ -->
@@ -1502,7 +1497,6 @@
         let streetPolygons = [];
         let streetTextMarkers = [];
         let _isMerging = false;
-        let skippedMergeKeys = new Set();
         let loadVersion = 0;
 
         // 临时定位标记
@@ -1762,43 +1756,6 @@
                 const d = new Date(isoStr);
                 return d.toLocaleString('zh-CN', { hour12: false });
             } catch { return isoStr; }
-        }
-        function mergeNoteStrings(notes) {
-            const seen = new Set();
-            const out = [];
-            notes.forEach(n => {
-                String(n || '').split(/[,，、;；\s]+/).forEach(part => {
-                    const t = part.trim();
-                    if (t && !seen.has(t)) {
-                        seen.add(t);
-                        out.push(t);
-                    }
-                });
-            });
-            return out.join('，');
-        }
-
-        async function mergeDuplicateDocs(docs, keepIndex) {
-            const keep = docs[keepIndex];
-            const toDelete = docs.filter((_, i) => i !== keepIndex);
-
-            const mergedNote = mergeNoteStrings([keep.note, ...toDelete.map(d => d.note)]);
-            if (mergedNote !== (keep.note || '')) {
-                keep.note = mergedNote;
-            }
-            keep.updated_at = new Date().toISOString();
-
-            const updatePromise = supabaseClient.from(TABLE_NAME).update({
-                note: keep.note,
-                updated_at: keep.updated_at
-            }).match({ id: keep.id });
-            await supabaseFetchWithTimeout(() => updatePromise);
-
-            const deleteIds = toDelete.map(d => d.id).filter(id => id != null);
-            if (deleteIds.length > 0) {
-                const deletePromise = supabaseClient.from(TABLE_NAME).delete().in('id', deleteIds);
-                await supabaseFetchWithTimeout(() => deletePromise);
-            }
         }
 
         // ===== 品类相关 =====
@@ -2862,39 +2819,33 @@
                     if (!groupMap[key]) groupMap[key] = [];
                     groupMap[key].push(doc);
                 });
-                const duplicates = Object.keys(groupMap).filter(k =>
-                    groupMap[k].length > 1 && !skippedMergeKeys.has(k)
-                );
+                const duplicates = Object.keys(groupMap).filter(k => groupMap[k].length > 1);
                 if (duplicates.length > 0) {
                     console.log(`发现 ${duplicates.length} 个重复组，请求用户确认...`);
                     _isMerging = true;
-                    let batchMergeAll = false;
-
-                    for (let i = 0; i < duplicates.length; i++) {
-                        const key = duplicates[i];
+                    for (let key of duplicates) {
                         const docs = groupMap[key];
-
-                        let keepIndex;
-                        if (batchMergeAll) {
-                            keepIndex = 0;
-                        } else {
-                            const result = await showMergeConfirm(docs, i < duplicates.length - 1);
-                            if (result === 'skip') {
-                                skippedMergeKeys.add(key);
-                                continue;
-                            }
-                            if (result === 'all') {
-                                batchMergeAll = true;
-                                keepIndex = 0;
-                            } else {
-                                keepIndex = result;
-                            }
+                        const result = await showMergeConfirm(docs);
+                        if (result === 'skip') continue;
+                        const keepIndex = result;
+                        const keep = docs[keepIndex];
+                        const toDelete = docs.filter((_, i) => i !== keepIndex);
+                        let allNotes = [keep.note || ''];
+                        toDelete.forEach(d => { if (d.note) allNotes.push(d.note); });
+                        const mergedNote = allNotes.filter(n => n.trim() !== '').join('；');
+                        if (mergedNote !== keep.note) {
+                            keep.note = mergedNote;
                         }
-
-                        try {
-                            await mergeDuplicateDocs(docs, keepIndex);
-                        } catch (e) {
-                            console.error('合并重复组失败', e);
+                        keep.updated_at = new Date().toISOString();
+                        const updatePromise = supabaseClient.from(TABLE_NAME).update({
+                            note: keep.note,
+                            updated_at: keep.updated_at
+                        }).match({ id: keep.id });
+                        await supabaseFetchWithTimeout(() => updatePromise);
+                        const deleteIds = toDelete.map(d => d.id).filter(id => id != null);
+                        if (deleteIds.length > 0) {
+                            const deletePromise = supabaseClient.from(TABLE_NAME).delete().in('id', deleteIds);
+                            await supabaseFetchWithTimeout(() => deletePromise);
                         }
                     }
                     console.log(`合并完成，共处理 ${duplicates.length} 组重复数据`);
@@ -2932,13 +2883,11 @@
         }
 
         // ===== 合并确认 =====
-        function showMergeConfirm(docs, hasMore) {
+        function showMergeConfirm(docs) {
             return new Promise((resolve, reject) => {
                 const modal = document.getElementById('mergeModal');
                 const listDiv = document.getElementById('mergeList');
                 const notePreview = document.getElementById('mergeNotePreview');
-                const allBtn = document.getElementById('mergeAllBtn');
-
                 listDiv.innerHTML = '';
                 let html = '';
                 docs.forEach((doc, idx) => {
@@ -2952,13 +2901,8 @@
                     </div>`;
                 });
                 listDiv.innerHTML = html;
-
-                // ★ 备注预览改为去重合并
-                notePreview.value = mergeNoteStrings(docs.map(d => d.note));
-
-                // ★ 有后续组时显示“全部合并”按钮
-                if (allBtn) allBtn.style.display = hasMore ? 'inline-flex' : 'none';
-
+                const allNotes = docs.map(d => d.note || '').filter(n => n.trim() !== '');
+                notePreview.value = allNotes.join('；');
                 pendingMergeResolve = resolve;
                 pendingMergeReject = reject;
                 modal.style.display = 'flex';
@@ -2990,15 +2934,6 @@
                 pendingMergeResolve = null;
             }
             showToast('已跳过合并');
-        };
-        window.mergeAllRemaining = function() {
-            const modal = document.getElementById('mergeModal');
-            modal.style.display = 'none';
-            if (pendingMergeResolve) {
-                pendingMergeResolve('all');
-                pendingMergeResolve = null;
-            }
-            showToast('将自动合并剩余所有重复项（每组保留第一条）');
         };
 
         // ===== 编辑/新增 模态框 =====
