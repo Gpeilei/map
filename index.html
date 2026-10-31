@@ -1164,7 +1164,7 @@
                     </div>
                     <!-- 刷新云端数据 -->
                     <div class="flex-row gap-1" style="margin-top:1px;">
-                        <button onclick="loadFromCloud()" class="outline small block">刷新云端数据</button>
+                        <button onclick="manualRefreshCloud()" class="outline small block">刷新云端数据</button>
                     </div>
 
                     <!-- 数据导入 -->
@@ -1250,6 +1250,15 @@
             lat: -0.0010
         };
         // =============================================================
+
+                async function manualRefreshCloud() {
+            await loadFromCloud();
+            if (pollingActive) {
+                console.log('手动刷新：尝试恢复 Realtime');
+                stopPollingFallback();
+                setupRealtimeSubscription();
+            }
+        }
 
         // =============================================================
         // ===== 电动车参数（内置，无需界面设置） =====
@@ -2771,7 +2780,7 @@
         }
 
         // ===== 加载数据 =====
-        async function loadFromCloud() {
+        async function loadFromCloud(silent = false)  {
             if (_isMerging) {
                 console.log('合并进行中，跳过本次加载');
                 return;
@@ -2872,11 +2881,12 @@
                 updateMarkerCountBadge();
                 updateCategoryTags();
                 console.log(`从 Supabase 加载了 ${markerList.length} 个标记`);
-                showToast(`已加载 ${markerList.length} 个标记`);
+                if (!silent) showToast(`已加载 ${markerList.length} 个标记`);
             } catch (err) {
                 console.error('加载数据失败', err);
                 showToast('加载数据失败：' + err.message, 'error');
                 _isMerging = false;
+                await loadFromCloud(true); // 重新加载以刷新UI（静默）
             }
         }
 
@@ -4420,19 +4430,119 @@
             return { count: successCount };
         }
 
-        // ===== Realtime 订阅 =====
+        
+        // ===== Realtime 订阅 & 轮询兜底 =====
+        const ENABLE_REALTIME = true;          // 尝试连接实时通道
+        const REALTIME_MAX_FAILS = 3;          // 连续失败几次后降级为轮询
+        const POLL_INTERVAL_MS = 30000;        // 降级后轮询间隔（毫秒）
         let subscription = null;
+        let pollTimer = null;
+        let pollingActive = false;
+        let realtimeFailCount = 0;
 
+        // ===== Realtime 订阅（失败后自动降级轮询） =====
         function setupRealtimeSubscription() {
-            if (subscription) { subscription.unsubscribe();
-                subscription = null; }
-            subscription = supabaseClient
-                .channel('public:markers')
-                .on('postgres_changes', { event: '*', schema: 'public', table: TABLE_NAME }, payload => {
-                    console.log('数据库变更，重新加载数据', payload);
-                    loadFromCloud();
-                })
-                .subscribe((status) => { console.log('Realtime 订阅状态:', status); });
+            if (!ENABLE_REALTIME) {
+                console.log('Realtime 已禁用');
+                return;
+            }
+            if (subscription) {
+                try { subscription.unsubscribe(); } catch (e) {}
+                subscription = null;
+            }
+            realtimeFailCount = 0;
+
+            try {
+                subscription = supabaseClient
+                    .channel('public:markers')
+                    .on('postgres_changes',
+                        { event: '*', schema: 'public', table: TABLE_NAME },
+                        payload => {
+                            console.log('数据库变更，重新加载数据', payload);
+                            loadFromCloud(true);
+                        }
+                    )
+                    .subscribe((status) => {
+                        console.log('Realtime 订阅状态:', status);
+                        if (status === 'SUBSCRIBED') {
+                            realtimeFailCount = 0;
+                            stopPollingFallback();
+                            console.log('实时同步已连接');
+                        } else if (status === 'CHANNEL_ERROR' ||
+                                   status === 'TIMED_OUT' ||
+                                   status === 'CLOSED') {
+                            realtimeFailCount++;
+                            console.warn(`实时通道异常 (${realtimeFailCount}/${REALTIME_MAX_FAILS})`);
+                            if (realtimeFailCount >= REALTIME_MAX_FAILS) {
+                                // 停止无限重连
+                                try { subscription && subscription.unsubscribe(); } catch (e) {}
+                                subscription = null;
+                                startPollingFallback();
+                            }
+                        }
+                    });
+            } catch (err) {
+                console.warn('Realtime 初始化失败，改用轮询：', err);
+                startPollingFallback();
+            }
+        }
+
+        // ===== 轮询兜底 =====
+        function startPollingFallback() {
+            if (pollingActive) return;
+            pollingActive = true;
+            console.log(`实时通道不可用，切换到轮询模式（每 ${POLL_INTERVAL_MS/1000} 秒）`);
+            showToast(`实时通道不可用，已切换到定时同步（每 ${POLL_INTERVAL_MS/1000} 秒）`, 'info', 4000);
+            scheduleNextPoll();
+        }
+
+        function stopPollingFallback() {
+            pollingActive = false;
+            if (pollTimer) {
+                clearTimeout(pollTimer);
+                pollTimer = null;
+            }
+        }
+
+        function scheduleNextPoll() {
+            if (!pollingActive) return;
+            pollTimer = setTimeout(async () => {
+                if (!pollingActive) return;
+                // 用户正在操作中，跳过本轮
+                if (document.hidden || _isMerging || isProcessing || routePlanning ||
+                    document.getElementById('editModal').style.display === 'flex') {
+                    scheduleNextPoll();
+                    return;
+                }
+                try {
+                    await pollChanges();
+                } catch (e) {
+                    console.warn('轮询检查失败:', e);
+                }
+                scheduleNextPoll();
+            }, POLL_INTERVAL_MS);
+        }
+
+        // 轻量检测：只查 count + 最新 updated_at，避免每次都拉全量数据
+        async function pollChanges() {
+            const [countRes, latestRes] = await Promise.all([
+                supabaseClient.from(TABLE_NAME).select('id', { count: 'exact', head: true }),
+                supabaseClient.from(TABLE_NAME)
+                    .select('updated_at')
+                    .order('updated_at', { ascending: false })
+                    .limit(1)
+            ]);
+            const serverCount = countRes.count ?? -1;
+            const serverLatest = (latestRes.data && latestRes.data[0] && latestRes.data[0].updated_at) || '';
+            const localCount = markerList.length;
+            let localLatest = '';
+            markerList.forEach(it => {
+                if (it.updated_at && it.updated_at > localLatest) localLatest = it.updated_at;
+            });
+            if (serverCount !== localCount || serverLatest > localLatest) {
+                console.log(`检测到云端变化（数量 ${localCount}→${serverCount}）`);
+                await loadFromCloud(true);
+            }
         }
 
         // ===== 快捷键 =====
@@ -4552,6 +4662,16 @@
             updateCategoryTags();
 
             console.log('应用初始化完成（全自动去重合并 & Web服务骑行规划）');
+
+            // 从后台切回前台时，尝试恢复 Realtime（若之前在轮询模式）
+            document.addEventListener('visibilitychange', function () {
+                if (!document.hidden && pollingActive && ENABLE_REALTIME) {
+                    console.log('页面重新可见，尝试恢复 Realtime');
+                    stopPollingFallback();
+                    setupRealtimeSubscription();
+                }
+            });
+            
         };
     </script>
 </body>
