@@ -13,8 +13,8 @@
     </script>
     <!-- 注意：这里保留了原有的 JS API Key，用于加载地图 -->
     <script type="text/javascript" src="https://webapi.amap.com/maps?v=2.0&key=cdd87705cafe7b06747f57dacc944e64&plugin=AMap.PlaceSearch,AMap.Geocoder,AMap.DistrictSearch,AMap.MarkerClusterer,AMap.Driving"></script>
-    <script src="./xlsx.full.min.js"></script>
-    <script src="./supabase.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         /* ===== 基础重置 ===== */
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -272,7 +272,7 @@
                         </select>
                     </div>
                     <div class="flex-row gap-1">
-                        <button onclick="planRouteFromInput()" class="primary small block">🛵 生成路线</button>
+                        <button onclick="planRouteFromInput()" class="primary small block">🛵 生成电动车路线</button>
                     </div>
                     <div class="flex-row gap-1">
                         <button onclick="clearRouteAddressInput()" class="outline small" style="flex:1;">🧹 清空地址</button>
@@ -1001,26 +1001,12 @@
                         if (!streetDataCache[showName]) streetDataCache[showName] = { polygons: [], sites: new Set() };
                         streetDataCache[showName].polygons.push(poly); streetDataCache[showName].sites.add('xian'); streetPolygons.push(poly);
                     });
-                    // 中心点安全计算（防止出现 NaN）
+                    // 中心点
                     if (!streetCenterCache[showName] && polyObjects.length > 0) {
-                        let sumLng = 0, sumLat = 0, totalPoints = 0;
-                        polyObjects.forEach(poly => {
-                            const path = poly.getPath();
-                            path.forEach(point => {
-                                const lng = point.getLng ? point.getLng() : point[0];
-                                const lat = point.getLat ? point.getLat() : point[1];
-                                if (!isNaN(lng) && !isNaN(lat) && isFinite(lng) && isFinite(lat)) {
-                                    sumLng += lng;
-                                    sumLat += lat;
-                                    totalPoints++;
-                                }
-                            });
-                        });
-                        if (totalPoints > 0) {
-                            streetCenterCache[showName] = { lng: sumLng / totalPoints, lat: sumLat / totalPoints };
-                        } else {
-                            console.warn(`街道 ${showName} 无法计算有效中心点`);
-                        }
+                        let bounds = polyObjects[0].getBounds();
+                        polyObjects.forEach(p => bounds.extend(p.getBounds()));
+                        const c = bounds.getCenter();
+                        streetCenterCache[showName] = { lng: c.getLng(), lat: c.getLat() };
                     }
                 });
             } catch (e) { console.warn('加载街道失败', e); }
