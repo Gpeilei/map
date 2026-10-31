@@ -1001,12 +1001,26 @@
                         if (!streetDataCache[showName]) streetDataCache[showName] = { polygons: [], sites: new Set() };
                         streetDataCache[showName].polygons.push(poly); streetDataCache[showName].sites.add('xian'); streetPolygons.push(poly);
                     });
-                    // 中心点
+                    // 中心点安全计算（防止出现 NaN）
                     if (!streetCenterCache[showName] && polyObjects.length > 0) {
-                        let bounds = polyObjects[0].getBounds();
-                        polyObjects.forEach(p => bounds.extend(p.getBounds()));
-                        const c = bounds.getCenter();
-                        streetCenterCache[showName] = { lng: c.getLng(), lat: c.getLat() };
+                        let sumLng = 0, sumLat = 0, totalPoints = 0;
+                        polyObjects.forEach(poly => {
+                            const path = poly.getPath();
+                            path.forEach(point => {
+                                const lng = point.getLng ? point.getLng() : point[0];
+                                const lat = point.getLat ? point.getLat() : point[1];
+                                if (!isNaN(lng) && !isNaN(lat) && isFinite(lng) && isFinite(lat)) {
+                                    sumLng += lng;
+                                    sumLat += lat;
+                                    totalPoints++;
+                                }
+                            });
+                        });
+                        if (totalPoints > 0) {
+                            streetCenterCache[showName] = { lng: sumLng / totalPoints, lat: sumLat / totalPoints };
+                        } else {
+                            console.warn(`街道 ${showName} 无法计算有效中心点`);
+                        }
                     }
                 });
             } catch (e) { console.warn('加载街道失败', e); }
