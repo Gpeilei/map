@@ -1099,10 +1099,10 @@
                 </div>
             </div>
 
-            <!-- ===== 面板3: 路线规划 ===== -->
+            <!-- ===== 面板3: 电动车路线规划 ===== -->
             <div class="section">
                 <div class="section-header open" onclick="toggleSection(this)">
-                    <span>路线规划 <span class="badge" id="routeCountBadge">0</span></span>
+                    <span>电动车路线规划 <span class="badge" id="routeCountBadge">0</span></span>
                     <span class="arrow">▶</span>
                 </div>
                 <div class="section-body">
@@ -1116,7 +1116,7 @@
                         </select>
                     </div>
                     <div class="flex-row gap-1">
-                        <button onclick="planRouteFromInput()" class="primary small block">🛵 生成路线</button>
+                        <button onclick="planRouteFromInput()" class="primary small block">🛵 生成电动车路线</button>
                     </div>
                     <div class="flex-row gap-1">
                         <button onclick="clearRouteAddressInput()" class="outline small" style="flex:1;">🧹 清空地址</button>
@@ -1235,18 +1235,7 @@
         </div>
     </div>
 
-    <!-- ===== 合并确认模态框 ===== -->
-    <div class="modal-mask" id="mergeModal">
-        <div class="modal-box">
-            <h4>发现重复标记</h4>
-            <div id="mergeList" style="max-height:200px;overflow-y:auto;"></div>
-            <div class="modal-row"><label>合并后备注</label><textarea id="mergeNotePreview" rows="2" readonly style="background:#f9fafb;"></textarea></div>
-            <div class="modal-btn-group">
-                <button class="outline" onclick="rejectMerge()">跳过</button>
-                <button class="primary" onclick="confirmMerge()">确认合并</button>
-            </div>
-        </div>
-    </div>
+    <!-- ===== 合并确认模态框已废弃，自动合并 ===== -->
 
     <!-- ============================================================ -->
     <!-- ===== JavaScript ===== -->
@@ -1262,10 +1251,10 @@
         // =============================================================
 
         // =============================================================
-        // ===== 参数（内置，无需界面设置） =====
+        // ===== 电动车参数（内置，无需界面设置） =====
         // =============================================================
-        const EBIKE_AVG_SPEED = 18;       // 综合平均速度，km/h
-        const RIDING_TIME_FACTOR = 0.85;  // 高德骑行时间按自行车估算，乘系数修正
+        const EBIKE_AVG_SPEED = 18;       // 电动车综合平均速度，km/h
+        const RIDING_TIME_FACTOR = 0.85;  // 高德骑行时间按自行车估算，电动车乘系数修正
         const USE_GAODE_RIDING_TIME = true; // 优先使用高德骑行时间再修正
         const FALLBACK_ROAD_FACTOR = 1.25;  // 规划失败时直线距离 × 系数估算道路距离
         // =============================================================
@@ -1509,10 +1498,6 @@
         let currentMode = 'repair';
         let currentSite = 'all';
         let currentCity = 'xian';
-
-        // 合并确认
-        let pendingMergeResolve = null;
-        let pendingMergeReject = null;
 
         // --- 街道数据缓存 ---
         let streetDataCache = {};
@@ -2811,40 +2796,61 @@
                     if (!groupMap[key]) groupMap[key] = [];
                     groupMap[key].push(doc);
                 });
+                
+                // ===== 自动合并逻辑 =====
                 const duplicates = Object.keys(groupMap).filter(k => groupMap[k].length > 1);
                 if (duplicates.length > 0) {
-                    console.log(`发现 ${duplicates.length} 个重复组，请求用户确认...`);
+                    console.log(`发现 ${duplicates.length} 个重复组，正在自动合并...`);
                     _isMerging = true;
+                    let mergedCount = 0;
+                    
                     for (let key of duplicates) {
                         const docs = groupMap[key];
-                        const result = await showMergeConfirm(docs);
-                        if (result === 'skip') continue;
-                        const keepIndex = result;
-                        const keep = docs[keepIndex];
-                        const toDelete = docs.filter((_, i) => i !== keepIndex);
-                        let allNotes = [keep.note || ''];
-                        toDelete.forEach(d => { if (d.note) allNotes.push(d.note); });
-                        const mergedNote = allNotes.filter(n => n.trim() !== '').join('；');
-                        if (mergedNote !== keep.note) {
+                        // 默认保留第一条记录
+                        const keep = docs[0];
+                        const toDelete = docs.slice(1);
+                        
+                        // 提取所有备注，并按逗号、分号、空格拆分
+                        let allNotes = [];
+                        docs.forEach(d => {
+                            if (d.note && d.note.trim() !== '') {
+                                const splitNotes = d.note.split(/[；;，,\s]+/).map(n => n.trim()).filter(n => n);
+                                allNotes.push(...splitNotes);
+                            }
+                        });
+                        
+                        // 使用 Set 进行去重
+                        const uniqueNotes = [...new Set(allNotes)];
+                        const mergedNote = uniqueNotes.join('，'); // 使用中文逗号连接
+                        
+                        if (mergedNote !== (keep.note || '')) {
                             keep.note = mergedNote;
                         }
                         keep.updated_at = new Date().toISOString();
+                        
+                        // 更新保留下来的记录
                         const updatePromise = supabaseClient.from(TABLE_NAME).update({
                             note: keep.note,
                             updated_at: keep.updated_at
                         }).match({ id: keep.id });
                         await supabaseFetchWithTimeout(() => updatePromise);
+                        
+                        // 删除多余的记录
                         const deleteIds = toDelete.map(d => d.id).filter(id => id != null);
                         if (deleteIds.length > 0) {
                             const deletePromise = supabaseClient.from(TABLE_NAME).delete().in('id', deleteIds);
                             await supabaseFetchWithTimeout(() => deletePromise);
                         }
+                        mergedCount++;
                     }
-                    console.log(`合并完成，共处理 ${duplicates.length} 组重复数据`);
+                    console.log(`自动合并完成，共处理 ${mergedCount} 组重复数据`);
                     _isMerging = false;
-                    await loadFromCloud();
+                    showToast(`已自动合并 ${mergedCount} 组重复数据`, 'info');
+                    await loadFromCloud(); // 重新加载以刷新UI
                     return;
                 }
+                // ===== 自动合并逻辑结束 =====
+
                 markerList.forEach(item => { item.marker.setMap(null);
                     item.infoWin.close(); });
                 markerList = [];
@@ -2873,60 +2879,6 @@
                 _isMerging = false;
             }
         }
-
-        // ===== 合并确认 =====
-        function showMergeConfirm(docs) {
-            return new Promise((resolve, reject) => {
-                const modal = document.getElementById('mergeModal');
-                const listDiv = document.getElementById('mergeList');
-                const notePreview = document.getElementById('mergeNotePreview');
-                listDiv.innerHTML = '';
-                let html = '';
-                docs.forEach((doc, idx) => {
-                    const note = doc.note || '无';
-                    const created = formatTimestamp(doc.created_at);
-                    const typeLabel = doc.type === 'repair' ? '家修' : '家居';
-                    const siteLabel = SITE_CONFIG[doc.site]?.label || doc.site;
-                    html += `<div class="merge-option">
-                        <input type="radio" name="mergeSelect" value="${idx}" ${idx===0?'checked':''}>
-                        <div><strong>${doc.geo.name}</strong> <span style="font-size:10px;color:#6b7280;">${typeLabel} | ${siteLabel}</span><br><span style="font-size:10px;">备注：${note}</span><br><span style="font-size:10px;color:#6b7280;">创建：${created}</span></div>
-                    </div>`;
-                });
-                listDiv.innerHTML = html;
-                const allNotes = docs.map(d => d.note || '').filter(n => n.trim() !== '');
-                notePreview.value = allNotes.join('；');
-                pendingMergeResolve = resolve;
-                pendingMergeReject = reject;
-                modal.style.display = 'flex';
-            });
-        }
-
-        window.confirmMerge = function() {
-            const modal = document.getElementById('mergeModal');
-            const selected = document.querySelector('input[name="mergeSelect"]:checked');
-            if (!selected) {
-                showToast('请选择要保留的记录', 'error');
-                return;
-            }
-            const idx = parseInt(selected.value);
-            modal.style.display = 'none';
-            if (pendingMergeResolve) {
-                pendingMergeResolve(idx);
-                pendingMergeResolve = null;
-            }
-            showToast('重复标记已合并');
-            updateCategoryTags();
-        };
-
-        window.rejectMerge = function() {
-            const modal = document.getElementById('mergeModal');
-            modal.style.display = 'none';
-            if (pendingMergeResolve) {
-                pendingMergeResolve('skip');
-                pendingMergeResolve = null;
-            }
-            showToast('已跳过合并');
-        };
 
         // ===== 编辑/新增 模态框 =====
         function openEditModal(index) {
@@ -3273,7 +3225,7 @@
                             <b>聚合内 ${items.length} 个标记：</b><br>
                             ${items.map((item, idx) => `<div style="padding:2px 0;border-bottom:1px solid #eee;">${idx+1}. ${item.geo.name}（${getCategoryFromItem(item)}）</div>`).join('')}
                         </div>`;
-                        const infoWin = new AMap.InfoWindow({
+                                                const infoWin = new AMap.InfoWindow({
                             content: content,
                             offset: new AMap.Pixel(0, -20)
                         });
@@ -3568,22 +3520,28 @@
         }
 
         // =============================================================
-        // ===== 路线规划模块 =====
+        // ===== 电动车路线规划模块（已改为 Web 服务 API） =====
         // =============================================================
 
-        // 地理编码
+        // 🌟 请在此处填入你申请的“Web服务”类型的 Key
+        const AMAP_WEB_SERVICE_KEY = "05da18fe4729147f89e25cb45f432ce4"; 
+
+        // 地理编码（使用 Web API 更稳定）
         function geocodeAmap(address, city) {
-            return new Promise(resolve => {
-                AMap.plugin("AMap.Geocoder", () => {
-                    const opts = city ? { city: city } : {};
-                    const geocoder = new AMap.Geocoder(opts);
-                    geocoder.getLocation(address, function(status, res) {
-                        if (status === "complete" && res.geocodes && res.geocodes.length > 0) {
-                            const g = res.geocodes[0];
-                            resolve({ lng: g.location.lng, lat: g.location.lat });
-                        } else resolve(null);
-                    });
-                });
+            return new Promise(async (resolve) => {
+                const url = `https://restapi.amap.com/v3/geocode/geo?address=${encodeURIComponent(address)}&key=${AMAP_WEB_SERVICE_KEY}`;
+                try {
+                    const resp = await fetch(url);
+                    const res = await resp.json();
+                    if (res.status === "1" && res.geocodes && res.geocodes.length > 0) {
+                        const loc = res.geocodes[0].location.split(',');
+                        resolve({ lng: parseFloat(loc[0]), lat: parseFloat(loc[1]) });
+                    } else {
+                        resolve(null);
+                    }
+                } catch (e) {
+                    resolve(null);
+                }
             });
         }
 
@@ -3688,29 +3646,20 @@
             return ord;
         }
 
-        // =============================================================
-        // 电动车路径规划（单段）—— 使用高德 Web 服务 API
-        // =============================================================
-        // 请将这里的 Key 替换为你刚刚申请的“Web服务”类型的 Key
-        const AMAP_WEB_SERVICE_KEY = "05da18fe4729147f89e25cb45f432ce4";
-
+        // 骑行路径规划（使用 Web API，彻底解决 JS 插件报错）
         function planRidingSegment(from, to) {
             return new Promise(async (resolve) => {
-                // 高德 Web 服务 API 骑行规划接口
                 const url = `https://restapi.amap.com/v4/direction/bicycling?origin=${from.lng},${from.lat}&destination=${to.lng},${to.lat}&key=${AMAP_WEB_SERVICE_KEY}`;
 
                 try {
                     const response = await fetch(url);
                     const result = await response.json();
 
-                    // v4 版本接口返回结构判断
                     if (result.errcode === 0 && result.data && result.data.paths && result.data.paths.length > 0) {
                         const route = result.data.paths[0];
                         const path = [];
                         
-                        // 解析返回的路径点
                         (route.steps || []).forEach(step => {
-                            // 高德 Web API 返回的 polyline 格式是 "lng,lat;lng,lat"
                             const points = step.polyline.split(';');
                             points.forEach(p => {
                                 const [lng, lat] = p.split(',');
@@ -3724,7 +3673,6 @@
                         }
 
                         const distance = route.distance;
-                        // Web API 返回的 duration 单位是秒
                         let time = route.duration;
                         if (!USE_GAODE_RIDING_TIME) {
                             time = Math.round(distance / 1000 / EBIKE_AVG_SPEED * 3600);
@@ -3806,7 +3754,7 @@
             if (stop._infoWin) stop._infoWin.open(map, [stop.lng, stop.lat]);
         }
 
-        // 生成路线主流程
+        // 生成电动车路线主流程
         async function planRouteFromInput() {
             if (routePlanning) {
                 showToast('正在规划中，请稍候…');
@@ -3970,7 +3918,7 @@
                     const typeLabel = index === 0 ? '起点' :
                         (index === orderedStops.length - 1 ? '终点' : `第 ${index + 1} 站`);
                     const metaHtml = (index > 0 && stop.segDistance != null)
-                        ? `<p style="font-size:10px;color:#6b7280;margin:1px 0;">距上一站：${(stop.segDistance/1000).toFixed(2)} 公里 / 约 ${Math.max(1, Math.round(stop.segTime/60))} 分钟</p>`
+                        ? `<p style="font-size:10px;color:#6b7280;margin:1px 0;">距上一站：${(stop.segDistance/1000).toFixed(2)} 公里 / 电动车约 ${Math.max(1, Math.round(stop.segTime/60))} 分钟</p>`
                         : '';
                     const content = `<div style="min-width:180px;">
                         <h4 style="font-size:13px;margin:3px 0;">${typeLabel}</h4>
@@ -4002,7 +3950,7 @@
                 const h = Math.floor(totalTime / 3600);
                 const m = Math.round((totalTime % 3600) / 60);
                 const timeStr = h > 0 ? `${h} 小时 ${m} 分钟` : `${m} 分钟`;
-                let summary = `共 ${orderedStops.length} 个站点\n总骑行距离：约 ${dKm} 公里\n预计耗时：约 ${timeStr}`;
+                let summary = `共 ${orderedStops.length} 个站点\n总骑行距离：约 ${dKm} 公里\n电动车预计耗时：约 ${timeStr}`;
                 if (ridingFailCount > 0) {
                     summary += `\n（其中 ${ridingFailCount} 段骑行规划失败，已按直线估算）`;
                 }
@@ -4021,7 +3969,7 @@
                 if (ridingFailCount === segments.length && segments.length > 0) {
                     showToast('骑行路线获取失败（可能 Key 未开通 Web 服务），已按直线估算', 'error', 4200);
                 } else {
-                    showToast(`路线规划完成，共 ${orderedStops.length} 个站点，约 ${dKm} 公里`);
+                    showToast(`电动车路线规划完成，共 ${orderedStops.length} 个站点，约 ${dKm} 公里`);
                 }
 
             } catch (err) {
@@ -4048,7 +3996,7 @@
 
                 let meta = '';
                 if (index > 0 && stop.segDistance != null) {
-                    meta = `距上一站 ${(stop.segDistance / 1000).toFixed(2)} km · 约 ${Math.max(1, Math.round(stop.segTime / 60))} 分钟`;
+                    meta = `距上一站 ${(stop.segDistance / 1000).toFixed(2)} km · 电动车约 ${Math.max(1, Math.round(stop.segTime / 60))} 分钟`;
                 } else if (index === 0) {
                     meta = '起点';
                 } else {
@@ -4082,23 +4030,19 @@
                 '经度': Number(s.lng).toFixed(6),
                 '纬度': Number(s.lat).toFixed(6),
                 '距上一站(公里)': i === 0 || s.segDistance == null ? '' : (s.segDistance / 1000).toFixed(2),
-                '耗时(分钟)': i === 0 || s.segTime == null ? '' : Math.max(1, Math.round(s.segTime / 60))
+                '电动车耗时(分钟)': i === 0 || s.segTime == null ? '' : Math.max(1, Math.round(s.segTime / 60))
             }));
             const wb = XLSX.utils.book_new();
             const ws = XLSX.utils.json_to_sheet(data);
-            XLSX.utils.book_append_sheet(wb, ws, '路线');
+            XLSX.utils.book_append_sheet(wb, ws, '电动车路线');
             const out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
             const blob = new Blob([out], { type: 'application/octet-stream' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
-            link.download = `路线_${new Date().toISOString().slice(0,10)}.xlsx`;
+            link.download = `电动车路线_${new Date().toISOString().slice(0,10)}.xlsx`;
             link.click();
-            showToast('路线导出成功');
+            showToast('电动车路线导出成功');
         }
-
-        // =============================================================
-        // ===== 路线规划模块结束 =====
-        // =============================================================
 
         // ===== Excel 导入 =====
         function handleExcelImport(e) {
@@ -4476,12 +4420,6 @@
                     closeEditModal();
                     return;
                 }
-                if (document.getElementById('mergeModal').style.display === 'flex') {
-                    document.getElementById('mergeModal').style.display = 'none';
-                    if (pendingMergeReject) pendingMergeReject('cancel');
-                    pendingMergeResolve = null;
-                    return;
-                }
                 if (document.getElementById('recycle-modal').style.display === 'flex') {
                     closeRecycleBin();
                     return;
@@ -4587,11 +4525,7 @@
             updateRecycleBadge();
             updateCategoryTags();
 
-            AMap.plugin(['AMap.Riding'], () => {
-                console.log('Riding 插件已就绪');
-            });
-
-            console.log('应用初始化完成（路线规划）');
+            console.log('应用初始化完成（全自动去重合并 & Web服务骑行规划）');
         };
     </script>
 </body>
