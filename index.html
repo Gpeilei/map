@@ -15,315 +15,864 @@
     <script src="./libs/xlsx.full.min.js"></script>
     <script src="./libs/supabase.js"></script>
     <style>
-        /* ===== 基础重置 ===== */
+        /* ============ 设计令牌 ============ */
+        :root {
+            --c-brand: #1d4ed8;
+            --c-brand-dark: #1e40af;
+            --c-brand-deep: #16233c;
+            --c-brand-soft: #eff4ff;
+            --c-brand-line: #c7d7fe;
+            --c-ink: #0f172a;
+            --c-ink-2: #334155;
+            --c-ink-3: #64748b;
+            --c-ink-4: #94a3b8;
+            --c-line: #e6eaf0;
+            --c-line-2: #d5dbe4;
+            --c-bg: #eef1f6;
+            --c-surface: #ffffff;
+            --c-surface-2: #f7f9fc;
+            --c-ok: #0f9d58;
+            --c-ok-soft: #e8f7ef;
+            --c-warn: #d97706;
+            --c-danger: #dc2626;
+            --c-danger-soft: #fdecec;
+            --r-sm: 6px;
+            --r-md: 8px;
+            --r-lg: 12px;
+            --r-xl: 16px;
+            --sh-1: 0 1px 2px rgba(15, 23, 42, .06);
+            --sh-2: 0 2px 8px rgba(15, 23, 42, .07);
+            --sh-3: 0 12px 32px rgba(15, 23, 42, .16);
+            --sidebar-w: 380px;
+            /* ===== 深色侧边栏令牌 ===== */
+            --sb-bg: #0b1220;
+            --sb-bg-grad: linear-gradient(180deg, #0f172a 0%, #0b1220 100%);
+            --sb-card: rgba(148, 163, 184, .07);
+            --sb-card-hover: rgba(148, 163, 184, .12);
+            --sb-card-solid: #131d33;
+            --sb-line: rgba(148, 163, 184, .14);
+            --sb-line-strong: rgba(148, 163, 184, .26);
+            --sb-text: #e8edf6;
+            --sb-text-2: #b6c2d6;
+            --sb-text-3: #7d8ba3;
+            --sb-text-4: #5a6780;
+            --sb-brand: #4f8cff;
+            --sb-brand-soft: rgba(79, 140, 255, .14);
+            --sb-brand-line: rgba(79, 140, 255, .35);
+            --sb-input-bg: rgba(15, 23, 42, .55);
+            --sb-input-border: rgba(148, 163, 184, .22);
+            --sb-ok: #34d399;
+            --sb-ok-soft: rgba(52, 211, 153, .14);
+            --sb-danger: #f87171;
+            --sb-danger-soft: rgba(248, 113, 113, .12);
+            --sb-warn: #fbbf24;
+        }
+
+        /* ============ 基础重置 ============ */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
+        html, body {
+            height: 100%;
+        }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            background: #f3f4f6;
-            color: #1f2937;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Roboto, Arial, sans-serif;
+            background: var(--c-bg);
+            color: var(--c-ink);
             height: 100vh;
             overflow: hidden;
             font-size: 13px;
+            -webkit-font-smoothing: antialiased;
         }
 
-        /* ===== 主布局 ===== */
+        /* ============ 主布局 ============ */
         #wrap {
             display: flex;
             height: 100vh;
         }
         #sidebar {
-            width: 360px;
-            min-width: 360px;
-            background: #f9fafb;
-            padding: 10px 12px 16px;
+            width: var(--sidebar-w);
+            min-width: var(--sidebar-w);
+            background: var(--sb-bg-grad);
+            padding: 0 16px 20px;
             overflow-y: auto;
-            border-right: 1px solid #e5e7eb;
+            border-right: 1px solid rgba(148, 163, 184, .1);
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 14px;
             scrollbar-width: thin;
-            scrollbar-color: #d1d5db #f3f4f6;
+            scrollbar-color: rgba(148, 163, 184, .25) transparent;
+            color: var(--sb-text);
         }
         #sidebar::-webkit-scrollbar {
-            width: 6px;
+            width: 8px;
         }
         #sidebar::-webkit-scrollbar-track {
-            background: #f3f4f6;
+            background: transparent;
         }
         #sidebar::-webkit-scrollbar-thumb {
-            background: #d1d5db;
-            border-radius: 4px;
+            background: rgba(148, 163, 184, .22);
+            border-radius: 8px;
+            border: 2px solid transparent;
+            background-clip: padding-box;
         }
         #sidebar::-webkit-scrollbar-thumb:hover {
-            background: #b0b8c4;
+            background: rgba(148, 163, 184, .4);
+            background-clip: padding-box;
         }
 
         #map {
             flex: 1;
-            background: #e5e7eb;
+            background: #dfe4ec;
+            position: relative;
         }
 
-        /* ===== 精简卡片系统 ===== */
-        .section {
-            background: #ffffff;
-            border-radius: 6px;
-            overflow: hidden;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+        /* ============ 地图状态浮层 ============ */
+        .map-status-fab {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            z-index: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 16px;
+            background: rgba(15, 23, 42, .85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(148, 163, 184, .22);
+            border-radius: 12px;
+            box-shadow: 0 8px 28px rgba(15, 23, 42, .3);
+            font-size: 12px;
+            color: #e8edf6;
+            pointer-events: none;
+        }
+        .map-status-fab .fab-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+        .map-status-fab .fab-item + .fab-item {
+            padding-left: 10px;
+            border-left: 1px solid rgba(148, 163, 184, .22);
+        }
+        .map-status-fab .fab-label {
+            font-size: 10px;
+            color: #7d8ba3;
+            letter-spacing: .5px;
+        }
+        .map-status-fab .fab-value {
+            font-size: 12.5px;
+            font-weight: 700;
+            color: #fff;
+        }
+        .map-status-fab .fab-value.accent {
+            color: #4f8cff;
+        }
+        .map-status-fab .fab-value.ok {
+            color: #34d399;
+        }
+
+        /* ============ 品牌头部 ============ */
+        .brand {
+            margin: 0 -16px 0;
+            padding: 20px 18px 16px;
+            background: transparent;
+            color: var(--sb-text);
+            position: relative;
+            border-bottom: 1px solid var(--sb-line);
+        }
+        .brand-top {
+            display: flex;
+            align-items: center;
+            gap: 11px;
+            position: relative;
+            z-index: 1;
+        }
+        .brand-logo {
+            width: 38px;
+            height: 38px;
+            border-radius: 11px;
+            background: linear-gradient(135deg, #4f8cff 0%, #2563eb 100%);
+            border: 1px solid rgba(255, 255, 255, .18);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
             flex-shrink: 0;
+            box-shadow: 0 4px 14px rgba(79, 140, 255, .35);
+        }
+        .brand-title {
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: .5px;
+            line-height: 1.3;
+            color: #fff;
+        }
+        .brand-sub {
+            font-size: 10px;
+            color: var(--sb-text-3);
+            letter-spacing: 1.6px;
+            margin-top: 3px;
+            text-transform: uppercase;
+        }
+        .brand-meta {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            margin-top: 14px;
+            flex-wrap: wrap;
+        }
+        .brand-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 0 10px;
+            height: 24px;
+            border-radius: 20px;
+            background: var(--sb-card);
+            border: 1px solid var(--sb-line);
+            font-size: 11px;
+            color: var(--sb-text-2);
+            white-space: nowrap;
+        }
+        .brand-chip b {
+            font-weight: 600;
+            color: #fff;
+        }
+        .brand-meta .dragging-hint {
+            background: transparent;
+            padding: 0;
+            color: var(--sb-text-4);
+            font-size: 10px;
+            border-radius: 0;
+            border: none;
+        }
+
+        /* ============ 概览卡片 ============ */
+        .overview {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            position: relative;
+            z-index: 2;
+        }
+        .ov-card {
+            background: var(--sb-card);
+            border: 1px solid var(--sb-line);
+            border-radius: var(--r-lg);
+            padding: 11px 10px 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            min-width: 0;
+            transition: background .18s, border-color .18s;
+        }
+        .ov-card:hover {
+            background: var(--sb-card-hover);
+            border-color: var(--sb-line-strong);
+        }
+        .ov-label {
+            font-size: 10px;
+            color: var(--sb-text-3);
+            letter-spacing: .5px;
+            white-space: nowrap;
+        }
+        .ov-value {
+            font-size: 19px;
+            font-weight: 700;
+            color: #fff;
+            line-height: 1.15;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .ov-value.accent {
+            color: var(--sb-brand);
+        }
+        .ov-value small {
+            font-size: 10px;
+            font-weight: 500;
+            color: var(--sb-text-4);
+            margin-left: 3px;
+        }
+
+        /* ============ 上下文条 ============ */
+        .context-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: var(--sb-card);
+            border: 1px solid var(--sb-line);
+            border-radius: var(--r-md);
+            font-size: 11px;
+            color: var(--sb-text-3);
+            flex-wrap: wrap;
+        }
+        .context-bar .ctx-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--sb-ok);
+            box-shadow: 0 0 0 3px var(--sb-ok-soft);
+            flex-shrink: 0;
+        }
+        .context-bar strong {
+            color: var(--sb-text);
+            font-weight: 600;
+        }
+
+        /* ============ 标签页导航 ============ */
+        .nav-tabs {
+            display: flex;
+            gap: 4px;
+            background: rgba(15, 23, 42, .5);
+            border: 1px solid var(--sb-line);
+            border-radius: var(--r-lg);
+            padding: 4px;
+            flex-shrink: 0;
+        }
+        .nav-tab {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+            padding: 8px 4px 7px;
+            border-radius: var(--r-md);
+            border: 1px solid transparent;
+            background: transparent;
+            color: var(--sb-text-3);
+            cursor: pointer;
+            transition: all .18s;
+            user-select: none;
+            min-width: 0;
+            position: relative;
+            height: auto;
+            min-height: auto;
+        }
+        .nav-tab:hover {
+            background: var(--sb-card);
+            color: var(--sb-text);
+        }
+        .nav-tab.active {
+            background: linear-gradient(135deg, rgba(79, 140, 255, .22) 0%, rgba(79, 140, 255, .1) 100%);
+            border-color: var(--sb-brand-line);
+            color: #fff;
+            box-shadow: 0 2px 10px rgba(79, 140, 255, .18);
+        }
+        .nav-tab .tab-icon {
+            font-size: 15px;
+            line-height: 1;
+        }
+        .nav-tab .tab-label {
+            font-size: 10.5px;
+            font-weight: 600;
+            letter-spacing: .5px;
+            white-space: nowrap;
+        }
+        .tab-panel {
+            display: none;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .tab-panel.active {
+            display: flex;
+        }
+
+        /* ============ 面板卡片 ============ */
+        .section {
+            background: var(--sb-card);
+            border: 1px solid var(--sb-line);
+            border-radius: var(--r-lg);
+            overflow: hidden;
+            flex-shrink: 0;
+            transition: background .18s, border-color .18s;
+        }
+        .section:hover {
+            background: var(--sb-card-hover);
+            border-color: var(--sb-line-strong);
         }
         .section-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 5px 10px;
-            background: #f3f4f6;
-            border-bottom: 1px solid #e5e7eb;
+            gap: 8px;
+            padding: 11px 14px;
+            background: transparent;
+            border-bottom: 1px solid transparent;
             cursor: pointer;
             user-select: none;
-            font-size: 12px;
+            font-size: 12.5px;
             font-weight: 600;
-            color: #374151;
-            transition: background 0.15s;
+            color: var(--sb-text);
+            transition: background .15s, border-color .15s;
         }
         .section-header:hover {
-            background: #e5e7eb;
+            background: rgba(148, 163, 184, .06);
+        }
+        .section-header.open {
+            border-bottom-color: var(--sb-line);
+        }
+        .sh-left {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            min-width: 0;
+        }
+        .sh-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: var(--r-sm);
+            background: var(--sb-brand-soft);
+            color: var(--sb-brand);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            flex-shrink: 0;
+        }
+        .sh-title {
+            font-size: 12.5px;
+            font-weight: 600;
+            color: var(--sb-text);
+            white-space: nowrap;
+        }
+        .sh-step {
+            font-size: 9.5px;
+            font-weight: 600;
+            color: var(--sb-brand);
+            background: var(--sb-brand-soft);
+            border: 1px solid var(--sb-brand-line);
+            border-radius: 4px;
+            padding: 0 5px;
+            line-height: 15px;
+            letter-spacing: .5px;
         }
         .section-header .arrow {
-            font-size: 10px;
-            transition: transform 0.2s;
-            color: #9ca3af;
+            font-size: 9.5px;
+            transition: transform .22s;
+            color: var(--sb-text-4);
+            flex-shrink: 0;
         }
         .section-header.open .arrow {
             transform: rotate(90deg);
         }
         .section-body {
-            padding: 6px 10px 8px;
+            padding: 12px 14px 14px;
             display: flex;
             flex-direction: column;
-            gap: 5px;
+            gap: 9px;
         }
         .section-body.hidden {
             display: none;
         }
+        .field-label {
+            font-size: 10.5px;
+            font-weight: 600;
+            color: var(--sb-text-3);
+            letter-spacing: .6px;
+            flex-shrink: 0;
+        }
+        .field-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        /* 站点选择器 / 无站点提示需支持 display:block 与 display:none 切换 */
+        #siteSelectorWrapper {
+            display: flex;
+        }
+        .field-sep {
+            height: 1px;
+            background: var(--sb-line);
+            margin: 2px 0;
+        }
 
-        /* ===== 通用组件 ===== */
+        /* ============ 通用工具类 ============ */
         .flex-row {
             display: flex;
-            gap: 4px;
+            gap: 6px;
             align-items: center;
             flex-wrap: wrap;
         }
         .flex-col {
             display: flex;
             flex-direction: column;
-            gap: 3px;
+            gap: 6px;
         }
         .flex-1 {
             flex: 1;
         }
         .gap-1 {
-            gap: 3px;
-        }
-        .gap-2 {
             gap: 6px;
         }
+        .gap-2 {
+            gap: 8px;
+        }
         .mt-1 {
-            margin-top: 3px;
+            margin-top: 4px;
         }
         .mb-1 {
-            margin-bottom: 3px;
+            margin-bottom: 4px;
         }
         .text-xs {
             font-size: 11px;
-            color: #6b7280;
-            line-height: 1.4;
+            color: var(--sb-text-3);
+            line-height: 1.5;
         }
         .text-sm {
             font-size: 12px;
-            color: #374151;
-            line-height: 1.4;
+            color: var(--sb-text-2);
+            line-height: 1.5;
         }
         .text-muted {
-            color: #9ca3af;
-            font-size: 10px;
+            color: var(--sb-text-4);
+            font-size: 10.5px;
+            line-height: 1.5;
         }
         .badge {
             display: inline-block;
-            background: #f3f4f6;
+            background: var(--sb-brand-soft);
+            color: var(--sb-brand);
+            border: 1px solid var(--sb-brand-line);
             padding: 0 8px;
-            border-radius: 12px;
+            border-radius: 20px;
             font-size: 10px;
-            color: #4b5563;
-            line-height: 18px;
+            font-weight: 600;
+            line-height: 17px;
             white-space: nowrap;
+            vertical-align: middle;
         }
         .badge-primary {
-            background: #4b5563;
+            background: var(--sb-brand);
+            border-color: var(--sb-brand);
             color: #fff;
         }
         .divider {
             border: none;
-            border-top: 1px solid #e5e7eb;
-            margin: 2px 0;
+            border-top: 1px solid var(--sb-line);
+            margin: 4px 0;
         }
 
-        /* ===== 按钮 ===== */
+        /* ============ 按钮 ============ */
         button {
             font-family: inherit;
-            font-size: 11px;
+            font-size: 12px;
             font-weight: 500;
-            padding: 3px 8px;
-            border: none;
-            border-radius: 4px;
-            background: #f3f4f6;
-            color: #1f2937;
+            padding: 0 12px;
+            border: 1px solid transparent;
+            border-radius: var(--r-md);
+            background: var(--c-surface-2);
+            color: var(--c-ink-2);
             cursor: pointer;
-            transition: all 0.12s;
+            transition: background .15s, border-color .15s, color .15s, box-shadow .15s;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 3px;
+            gap: 4px;
             white-space: nowrap;
-            line-height: 1.4;
-            min-height: 26px;
+            line-height: 1.3;
+            height: 32px;
+            min-height: 32px;
         }
         button:hover {
-            background: #e5e7eb;
+            background: #eef1f6;
         }
         button:active {
-            transform: scale(0.96);
+            transform: translateY(1px);
+        }
+        button:focus-visible {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(29, 78, 216, .18);
         }
         button:disabled {
-            opacity: 0.5;
+            opacity: .5;
             pointer-events: none;
         }
 
         button.primary {
-            background: #4b5563;
+            background: var(--c-brand);
             color: #fff;
+            box-shadow: 0 1px 2px rgba(29, 78, 216, .3);
         }
         button.primary:hover {
-            background: #374151;
+            background: var(--c-brand-dark);
         }
         button.success {
-            background: #4b5563;
+            background: var(--c-ok);
             color: #fff;
+            box-shadow: 0 1px 2px rgba(15, 157, 88, .28);
         }
         button.success:hover {
-            background: #374151;
+            background: #0c8a4c;
         }
         button.danger {
-            background: #9ca3af;
-            color: #fff;
+            background: var(--c-surface);
+            color: var(--c-danger);
+            border-color: #f3c9c9;
         }
         button.danger:hover {
-            background: #6b7280;
+            background: var(--c-danger-soft);
+            border-color: #efb4b4;
         }
         button.outline {
-            background: transparent;
-            border: 1px solid #d1d5db;
-            color: #4b5563;
+            background: var(--c-surface);
+            border: 1px solid var(--c-line-2);
+            color: var(--c-ink-2);
         }
         button.outline:hover {
-            background: #f9fafb;
-            border-color: #9ca3af;
+            background: var(--c-surface-2);
+            border-color: var(--c-ink-4);
+            color: var(--c-ink);
         }
         button.ghost {
             background: transparent;
-            color: #6b7280;
+            color: var(--c-ink-3);
+            padding: 0 8px;
         }
         button.ghost:hover {
-            background: #f3f4f6;
+            background: var(--c-surface-2);
+            color: var(--c-ink);
         }
         button.small {
-            font-size: 10px;
-            padding: 2px 6px;
-            min-height: 22px;
+            font-size: 11px;
+            padding: 0 10px;
+            height: 28px;
+            min-height: 28px;
         }
         button.block {
             width: 100%;
             justify-content: center;
         }
         button.mode-active {
-            background: #4b5563;
+            background: var(--c-brand);
             color: #fff;
-            border-color: #4b5563;
+            border-color: var(--c-brand);
         }
         button.mode-active:hover {
-            background: #374151;
+            background: var(--c-brand-dark);
         }
         button.mode-inactive {
-            background: #f3f4f6;
-            color: #4b5563;
-            border: 1px solid #d1d5db;
+            background: var(--c-surface);
+            color: var(--c-ink-2);
+            border: 1px solid var(--c-line-2);
+        }
+        button.mode-inactive:hover {
+            background: var(--c-surface-2);
         }
         button .mode-icon {
             width: 14px;
             height: 14px;
             flex-shrink: 0;
         }
-        /* 品类标签按钮 */
-        .category-tag {
-            background: #f3f4f6;
-            border: 1px solid #d1d5db;
-            border-radius: 12px;
-            padding: 0 8px;
-            line-height: 22px;
-            font-size: 10px;
-            cursor: pointer;
-            transition: all 0.15s;
+
+        /* ============ 侧边栏按钮深色适配 ============ */
+        #sidebar button {
+            background: rgba(148, 163, 184, .1);
+            color: var(--sb-text-2);
+            border: 1px solid var(--sb-line);
         }
-        .category-tag:hover {
-            background: #e5e7eb;
+        #sidebar button:hover {
+            background: rgba(148, 163, 184, .18);
         }
-        .category-tag.active {
-            background: #4b5563;
+        #sidebar button.primary {
+            background: linear-gradient(135deg, #4f8cff 0%, #2563eb 100%);
             color: #fff;
-            border-color: #4b5563;
+            border-color: transparent;
+            box-shadow: 0 2px 8px rgba(79, 140, 255, .3);
+        }
+        #sidebar button.primary:hover {
+            background: linear-gradient(135deg, #6ba1ff 0%, #3b82f6 100%);
+        }
+        #sidebar button.success {
+            background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+            color: #052e1d;
+            border-color: transparent;
+            box-shadow: 0 2px 8px rgba(52, 211, 153, .28);
+        }
+        #sidebar button.success:hover {
+            background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+        }
+        #sidebar button.danger {
+            background: transparent;
+            color: var(--sb-danger);
+            border-color: rgba(248, 113, 113, .35);
+        }
+        #sidebar button.danger:hover {
+            background: var(--sb-danger-soft);
+            border-color: rgba(248, 113, 113, .55);
+        }
+        #sidebar button.outline {
+            background: transparent;
+            border: 1px solid var(--sb-input-border);
+            color: var(--sb-text-2);
+        }
+        #sidebar button.outline:hover {
+            background: var(--sb-card);
+            border-color: var(--sb-line-strong);
+            color: var(--sb-text);
+        }
+        #sidebar button.ghost {
+            background: transparent;
+            color: var(--sb-text-3);
+            border-color: transparent;
+        }
+        #sidebar button.ghost:hover {
+            background: var(--sb-card);
+            color: var(--sb-text);
+        }
+        #sidebar button.mode-active {
+            background: linear-gradient(135deg, #4f8cff 0%, #2563eb 100%);
+            color: #fff;
+            border-color: transparent;
+        }
+        #sidebar button.mode-active:hover {
+            background: linear-gradient(135deg, #6ba1ff 0%, #3b82f6 100%);
+        }
+        #sidebar button.mode-inactive {
+            background: transparent;
+            color: var(--sb-text-2);
+            border: 1px solid var(--sb-input-border);
+        }
+        #sidebar button.mode-inactive:hover {
+            background: var(--sb-card);
         }
 
-        /* ===== 输入框 ===== */
+        /* 品类标签按钮 */
+        .category-tag {
+            background: rgba(148, 163, 184, .08);
+            border: 1px solid var(--sb-line);
+            border-radius: 20px;
+            padding: 0 11px;
+            line-height: 26px;
+            font-size: 11px;
+            color: var(--sb-text-2);
+            cursor: pointer;
+            transition: all .15s;
+            white-space: nowrap;
+        }
+        .category-tag:hover {
+            background: var(--sb-brand-soft);
+            border-color: var(--sb-brand-line);
+            color: var(--sb-brand);
+        }
+        .category-tag.active {
+            background: var(--sb-brand);
+            color: #fff;
+            border-color: var(--sb-brand);
+        }
+
+        /* ============ 侧边栏输入框深色适配 ============ */
+        #sidebar input,
+        #sidebar textarea,
+        #sidebar select {
+            background: var(--sb-input-bg);
+            border: 1px solid var(--sb-input-border);
+            color: var(--sb-text);
+        }
+        #sidebar input::placeholder,
+        #sidebar textarea::placeholder {
+            color: var(--sb-text-4);
+        }
+        #sidebar input:hover,
+        #sidebar textarea:hover,
+        #sidebar select:hover {
+            border-color: var(--sb-line-strong);
+        }
+        #sidebar input:focus,
+        #sidebar textarea:focus,
+        #sidebar select:focus {
+            border-color: var(--sb-brand);
+            box-shadow: 0 0 0 3px rgba(79, 140, 255, .18);
+            background: rgba(15, 23, 42, .75);
+        }
+        #sidebar select option {
+            background: #131d33;
+            color: var(--sb-text);
+        }
+        #sidebar .file-upload-wrapper input[type="file"] {
+            color: var(--sb-text-3);
+        }
+        #sidebar .file-upload-wrapper input[type="file"]::file-selector-button {
+            font-family: inherit;
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--sb-text-2);
+            background: rgba(148, 163, 184, .1);
+            border: 1px solid var(--sb-input-border);
+            border-radius: var(--r-md);
+            padding: 0 10px;
+            height: 28px;
+            margin-right: 8px;
+            cursor: pointer;
+            transition: all .15s;
+        }
+        #sidebar .file-upload-wrapper input[type="file"]::file-selector-button:hover {
+            background: var(--sb-brand-soft);
+            border-color: var(--sb-brand-line);
+            color: var(--sb-brand);
+        }
+
+        /* ============ 输入框 ============ */
         input,
         textarea,
         select {
             font-family: inherit;
-            font-size: 11px;
-            padding: 3px 6px;
-            border: 1px solid #d1d5db;
-            border-radius: 4px;
-            background: #f9fafb;
-            color: #1f2937;
+            font-size: 12px;
+            padding: 0 10px;
+            border: 1px solid var(--c-line-2);
+            border-radius: var(--r-md);
+            background: var(--c-surface);
+            color: var(--c-ink);
             width: 100%;
             outline: none;
-            transition: border 0.15s, box-shadow 0.15s;
+            transition: border-color .15s, box-shadow .15s;
             line-height: 1.4;
-            min-height: 26px;
+            height: 32px;
+            min-height: 32px;
+        }
+        input::placeholder,
+        textarea::placeholder {
+            color: var(--c-ink-4);
+        }
+        input:hover,
+        textarea:hover,
+        select:hover {
+            border-color: var(--c-ink-4);
         }
         input:focus,
         textarea:focus,
         select:focus {
-            border-color: #6b7280;
-            box-shadow: 0 0 0 3px rgba(107, 114, 128, 0.15);
-            background: #fff;
+            border-color: var(--c-brand);
+            box-shadow: 0 0 0 3px rgba(29, 78, 216, .13);
+            background: var(--c-surface);
         }
         textarea {
             resize: vertical;
-            min-height: 22px;
-            font-size: 11px;
+            min-height: 76px;
+            padding: 8px 10px;
+            font-size: 12px;
+            line-height: 1.6;
+            height: auto;
         }
         select {
             appearance: auto;
-            padding-right: 16px;
+            padding-right: 8px;
+            cursor: pointer;
         }
 
-        /* ===== 城市选择器专用 ===== */
+        /* ============ 城市选择器 ============ */
         .city-select-wrapper {
             display: flex;
-            gap: 4px;
+            gap: 6px;
             align-items: center;
             width: 100%;
         }
@@ -335,322 +884,366 @@
             display: none;
         }
 
-        /* ===== 文件上传 ===== */
+        /* ============ 文件上传 ============ */
         .file-upload-wrapper {
             display: flex;
-            gap: 4px;
+            gap: 8px;
             align-items: center;
             flex-wrap: wrap;
         }
         .file-upload-wrapper input[type="file"] {
-            padding: 2px 0;
+            padding: 0;
             border: none;
             background: transparent;
-            font-size: 10px;
-            color: #4b5563;
+            font-size: 11px;
+            color: var(--c-ink-3);
             flex: 1;
             min-height: auto;
+            height: auto;
+        }
+        .file-upload-wrapper input[type="file"]:hover {
+            border: none;
+        }
+        .file-upload-wrapper input[type="file"]::file-selector-button {
+            font-family: inherit;
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--c-ink-2);
+            background: var(--c-surface-2);
+            border: 1px solid var(--c-line-2);
+            border-radius: var(--r-md);
+            padding: 0 10px;
+            height: 28px;
+            margin-right: 8px;
+            cursor: pointer;
+            transition: all .15s;
+        }
+        .file-upload-wrapper input[type="file"]::file-selector-button:hover {
+            background: var(--c-brand-soft);
+            border-color: var(--c-brand-line);
+            color: var(--c-brand);
         }
         .file-name-tag {
-            background: #f3f4f6;
-            padding: 0 8px;
-            border-radius: 12px;
-            font-size: 10px;
-            color: #374151;
-            line-height: 22px;
-            max-width: 140px;
+            background: var(--sb-brand-soft);
+            border: 1px solid var(--sb-brand-line);
+            padding: 0 9px;
+            border-radius: 20px;
+            font-size: 10.5px;
+            font-weight: 500;
+            color: var(--sb-brand);
+            line-height: 20px;
+            max-width: 150px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
         }
 
-        /* ===== 进度 ===== */
+        /* ============ 进度 ============ */
         .progress-area {
-            background: #f9fafb;
-            border-radius: 4px;
-            padding: 3px 6px;
-            border: 1px solid #e5e7eb;
+            background: rgba(15, 23, 42, .45);
+            border-radius: var(--r-md);
+            padding: 8px 10px;
+            border: 1px solid var(--sb-line);
             display: none;
         }
+        .progress-area.show {
+            display: block;
+        }
         .progress-area .progress-text {
-            font-size: 10px;
-            color: #374151;
-            line-height: 1.3;
+            font-size: 11px;
+            color: var(--sb-text-2);
+            line-height: 1.4;
             min-height: 16px;
         }
         .progress-area .progress-track {
             width: 100%;
-            height: 3px;
-            background: #e5e7eb;
-            border-radius: 2px;
-            margin-top: 2px;
+            height: 5px;
+            background: rgba(148, 163, 184, .18);
+            border-radius: 4px;
+            margin-top: 6px;
             overflow: hidden;
         }
         .progress-area .progress-bar {
             width: 0%;
             height: 100%;
-            background: #4b5563;
-            border-radius: 2px;
-            transition: width 0.25s;
+            background: linear-gradient(90deg, var(--c-brand) 0%, #4f7df3 100%);
+            border-radius: 4px;
+            transition: width .25s ease;
         }
         .progress-area .progress-bar.done {
-            background: #4b5563;
+            background: linear-gradient(90deg, var(--c-ok) 0%, #34c07c 100%);
         }
 
-        /* ===== 结果列表 & 信息框 ===== */
+        /* ============ 结果列表 & 信息框 ============ */
         .result-item {
-            padding: 2px 6px;
-            background: #f9fafb;
-            margin: 2px 0;
-            border-radius: 4px;
+            padding: 6px 10px;
+            background: rgba(15, 23, 42, .4);
+            margin: 4px 0;
+            border-radius: var(--r-sm);
             cursor: pointer;
-            font-size: 11px;
-            transition: background 0.1s;
-            border-left: 2px solid transparent;
+            font-size: 11.5px;
+            color: var(--sb-text-2);
+            transition: background .15s, border-color .15s;
+            border-left: 3px solid transparent;
+            line-height: 1.5;
         }
         .result-item:hover {
-            background: #f3f4f6;
+            background: var(--sb-brand-soft);
         }
         .result-item.active {
-            background: #e5e7eb;
-            border-left-color: #6b7280;
+            background: var(--sb-brand-soft);
+            border-left-color: var(--sb-brand);
+            color: var(--sb-brand);
+            font-weight: 500;
         }
         .info-box {
-            background: #f9fafb;
-            padding: 3px 6px;
-            border-radius: 4px;
-            font-size: 10px;
+            background: rgba(15, 23, 42, .4);
+            padding: 9px 11px;
+            border-radius: var(--r-md);
+            font-size: 11.5px;
             white-space: pre-wrap;
-            line-height: 1.4;
-            border: 1px solid #e5e7eb;
-            color: #374151;
-            min-height: 20px;
+            line-height: 1.65;
+            border: 1px solid var(--sb-line);
+            color: var(--sb-text-2);
+            min-height: 24px;
         }
 
-        /* ===== 街道识别栏 ===== */
-        #streetIdentifyBar {
-            background: #f3f4f6;
-            border-radius: 4px;
-            padding: 2px 6px;
-            font-size: 10px;
-            color: #374151;
-            border: 1px solid #e5e7eb;
-            display: none;
-            align-items: center;
-            gap: 4px;
-            flex-wrap: wrap;
-        }
-        #streetIdentifyBar .badge-street {
-            background: #4b5563;
-            color: #fff;
-            padding: 0 8px;
-            border-radius: 12px;
-            font-size: 9px;
-            font-weight: 500;
-            line-height: 18px;
-        }
-        #streetIdentifyBar .clear-filter-btn {
-            background: transparent;
-            color: #6b7280;
-            border: none;
-            cursor: pointer;
-            font-size: 9px;
-            padding: 0 2px;
-            line-height: 18px;
-        }
-        #streetIdentifyBar .clear-filter-btn:hover {
-            color: #9ca3af;
-            background: transparent;
-        }
-
-        /* ===== 品类高亮栏 ===== */
+        /* ============ 识别栏（街道 / 品类） ============ */
+        #streetIdentifyBar,
         #categoryIdentifyBar {
-            background: #f3f4f6;
-            border-radius: 4px;
-            padding: 2px 6px;
-            font-size: 10px;
-            color: #374151;
-            border: 1px solid #e5e7eb;
+            background: var(--sb-brand-soft);
+            border-radius: var(--r-md);
+            padding: 6px 9px;
+            font-size: 11.5px;
+            color: var(--sb-text-2);
+            border: 1px solid var(--sb-brand-line);
             display: none;
             align-items: center;
-            gap: 4px;
+            gap: 6px;
             flex-wrap: wrap;
         }
+        #streetIdentifyBar .badge-street,
         #categoryIdentifyBar .badge-category {
-            background: #4b5563;
+            background: var(--sb-brand);
             color: #fff;
-            padding: 0 8px;
-            border-radius: 12px;
-            font-size: 9px;
-            font-weight: 500;
-            line-height: 18px;
+            padding: 0 9px;
+            border-radius: 20px;
+            font-size: 10.5px;
+            font-weight: 600;
+            line-height: 19px;
+            white-space: nowrap;
         }
+        #streetIdentifyBar .clear-filter-btn,
         #categoryIdentifyBar .clear-filter-btn {
             background: transparent;
-            color: #6b7280;
+            color: var(--sb-text-3);
             border: none;
             cursor: pointer;
-            font-size: 9px;
-            padding: 0 2px;
-            line-height: 18px;
+            font-size: 10.5px;
+            padding: 0 4px;
+            line-height: 19px;
+            height: auto;
+            min-height: auto;
+            border-radius: 4px;
         }
+        #streetIdentifyBar .clear-filter-btn:hover,
         #categoryIdentifyBar .clear-filter-btn:hover {
-            color: #9ca3af;
-            background: transparent;
+            color: var(--sb-danger);
+            background: var(--sb-danger-soft);
         }
 
-        /* ===== 添加模式状态 ===== */
+        /* ============ 添加模式状态 ============ */
         #addModeStatus {
-            font-size: 10px;
-            color: #374151;
-            background: #f3f4f6;
-            padding: 3px 6px;
-            border-radius: 4px;
-            border: 1px solid #e5e7eb;
+            font-size: 11px;
+            color: var(--sb-brand);
+            background: var(--sb-brand-soft);
+            padding: 8px 10px;
+            border-radius: var(--r-md);
+            border: 1px dashed var(--sb-brand-line);
             text-align: center;
             display: none;
-            line-height: 1.4;
+            line-height: 1.55;
         }
         #addModeStatus .highlight-street {
             font-weight: 700;
-            color: #6b7280;
+            color: #7fb0ff;
         }
         .add-mode-active .section {
-            border-color: #6b7280;
-            box-shadow: 0 0 0 1px rgba(107, 114, 128, 0.2);
+            border-color: var(--sb-brand-line);
+            box-shadow: 0 0 0 3px rgba(79, 140, 255, .1);
         }
         .mode-indicator {
             display: inline-block;
-            width: 6px;
-            height: 6px;
+            width: 7px;
+            height: 7px;
             border-radius: 50%;
-            margin-right: 2px;
+            margin-right: 4px;
             vertical-align: middle;
             flex-shrink: 0;
         }
         .mode-indicator.on {
-            background: #4b5563;
+            background: var(--sb-ok);
+            box-shadow: 0 0 0 3px var(--sb-ok-soft);
         }
         .mode-indicator.off {
-            background: #9ca3af;
+            background: var(--sb-text-4);
         }
 
-        /* ===== 自定义标记 ===== */
+        /* ============ 自定义标记 ============ */
         .custom-marker-label {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            pointer-events: none;
+            user-select: none;
+            filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.3));
+        }
+        .custom-marker-label .marker-head {
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 32px;
-            height: 32px;
+            width: 30px;
+            height: 30px;
             border-radius: 50%;
             color: #fff;
             font-size: 13px;
-            font-weight: 700;
-            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+            font-weight: 800;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
             border: 2px solid rgba(255, 255, 255, 0.95);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.4);
-            pointer-events: none;
-            user-select: none;
-            transition: all 0.2s ease;
-            background: radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.25) 0%, #6b7280 100%);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 2px 6px rgba(0, 0, 0, 0.15);
+            background: linear-gradient(145deg, var(--marker-light, #64748b), var(--marker-color, #475569));
+            transition: transform 0.2s ease;
+            z-index: 2;
         }
-        .custom-marker-label.highlighted {
-            border: 3px solid #fbbf24 !important;
-            box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.4), 0 4px 16px rgba(251, 191, 36, 0.6) !important;
-            transform: scale(1.15);
-            z-index: 100;
+        .custom-marker-label .marker-tip {
+            width: 0;
+            height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-top: 8px solid var(--marker-color, #475569);
+            margin-top: -3px;
+            z-index: 1;
+        }
+        .custom-marker-label.highlighted .marker-head {
+            border-color: #fbbf24;
+            transform: scale(1.2);
+            animation: marker-pulse 1.5s ease-out infinite;
+        }
+        .custom-marker-label.highlighted .marker-tip {
+            border-top-color: #fbbf24;
+        }
+        @keyframes marker-pulse {
+            0% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.55), inset 0 1px 0 rgba(255,255,255,.35); }
+            70% { box-shadow: 0 0 0 14px rgba(251, 191, 36, 0), inset 0 1px 0 rgba(255,255,255,.35); }
+            100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0), inset 0 1px 0 rgba(255,255,255,.35); }
         }
 
-        /* ===== 路线标记 ===== */
+        /* ============ 路线标记 ============ */
         .route-marker-label {
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 28px;
-            height: 28px;
+            width: 26px;
+            height: 26px;
             border-radius: 50%;
             color: #fff;
-            font-size: 12px;
-            font-weight: 700;
-            border: 2px solid #ffffff;
-            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.28);
+            font-size: 11.5px;
+            font-weight: 800;
+            border: 2px solid rgba(255, 255, 255, 0.95);
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.3);
             pointer-events: auto;
             cursor: pointer;
             user-select: none;
             line-height: 1;
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+            transition: transform 0.15s ease;
+        }
+        .route-marker-label:hover {
+            transform: scale(1.15);
         }
         .route-marker-label.start {
-            background: #16a34a;
+            background: linear-gradient(145deg, #4ade80, #16a34a);
+            width: 30px;
+            height: 30px;
+            font-size: 13px;
         }
         .route-marker-label.mid {
-            background: #2563eb;
+            background: linear-gradient(145deg, #60a5fa, #2563eb);
         }
         .route-marker-label.end {
-            background: #dc2626;
+            background: linear-gradient(145deg, #f87171, #dc2626);
+            width: 30px;
+            height: 30px;
+            font-size: 13px;
         }
 
-        /* ===== 路线站点列表 ===== */
+        /* ============ 路线站点列表 ============ */
         .route-stop-item {
             display: flex;
-            gap: 6px;
+            gap: 9px;
             align-items: flex-start;
-            padding: 4px 6px;
-            margin: 2px 0;
-            background: #f9fafb;
-            border-radius: 4px;
-            border: 1px solid #e5e7eb;
+            padding: 7px 9px;
+            margin: 4px 0;
+            background: rgba(15, 23, 42, .4);
+            border-radius: var(--r-md);
+            border: 1px solid var(--sb-line);
             cursor: pointer;
-            transition: background 0.12s, border-color 0.12s;
+            transition: background .15s, border-color .15s, box-shadow .15s;
         }
         .route-stop-item:hover {
-            background: #f3f4f6;
+            background: var(--sb-card-hover);
+            border-color: var(--sb-line-strong);
         }
         .route-stop-item.active {
-            background: #e5e7eb;
-            border-color: #9ca3af;
+            background: var(--sb-brand-soft);
+            border-color: var(--sb-brand-line);
+            box-shadow: 0 0 0 2px rgba(79, 140, 255, .1);
         }
         .route-stop-seq {
             flex-shrink: 0;
-            width: 20px;
-            height: 20px;
+            width: 22px;
+            height: 22px;
             border-radius: 50%;
             color: #fff;
-            font-size: 10px;
+            font-size: 10.5px;
             font-weight: 700;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: #2563eb;
+            background: var(--sb-brand);
         }
         .route-stop-seq.start {
-            background: #16a34a;
+            background: var(--sb-ok);
         }
         .route-stop-seq.end {
-            background: #dc2626;
+            background: var(--sb-danger);
         }
         .route-stop-info {
             flex: 1;
             min-width: 0;
         }
         .route-stop-name {
-            font-size: 11px;
+            font-size: 12px;
             font-weight: 600;
-            color: #1f2937;
+            color: var(--sb-text);
+            line-height: 1.4;
         }
         .route-stop-addr {
-            font-size: 10px;
-            color: #6b7280;
+            font-size: 10.5px;
+            color: var(--sb-text-3);
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+            line-height: 1.45;
         }
         .route-stop-meta {
-            font-size: 9px;
-            color: #9ca3af;
+            font-size: 10px;
+            color: var(--sb-text-4);
+            line-height: 1.45;
         }
 
-        /* ===== 临时定位标记 ===== */
+        /* ============ 临时定位标记 ============ */
         .temp-location-marker {
             width: 34px;
             height: 34px;
@@ -684,10 +1277,10 @@
             }
         }
 
-        /* ===== 临时添加标记 ===== */
+        /* ============ 临时添加标记 ============ */
         .temp-marker {
-            background: rgba(160, 160, 160, 0.4);
-            border: 2px solid #6b7280;
+            background: rgba(29, 78, 216, 0.18);
+            border: 2px solid #1d4ed8;
             border-radius: 50%;
             width: 20px;
             height: 20px;
@@ -705,91 +1298,100 @@
             }
         }
 
-        /* ===== 拖拽提示 ===== */
+        /* ============ 拖拽提示 ============ */
         .dragging-hint {
-            font-size: 9px;
-            color: #9ca3af;
-            background: #f3f4f6;
-            padding: 0 6px;
-            border-radius: 10px;
-            line-height: 16px;
+            font-size: 10px;
+            color: var(--sb-text-4);
+            background: var(--sb-card);
+            padding: 0 7px;
+            border-radius: 20px;
+            line-height: 18px;
             white-space: nowrap;
+            border: 1px solid var(--sb-line);
         }
 
-        /* ===== 模态框 ===== */
+        /* ============ 模态框 ============ */
         .modal-mask {
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0, 0, 0, 0.3);
+            background: rgba(15, 23, 42, 0.42);
             display: none;
             align-items: center;
             justify-content: center;
             z-index: 9999;
-            backdrop-filter: blur(2px);
+            backdrop-filter: blur(3px);
         }
         .modal-box {
-            width: 420px;
+            width: 440px;
             max-width: 92vw;
-            background: #fff;
-            padding: 20px 24px;
-            border-radius: 12px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
-            max-height: 80vh;
+            background: var(--c-surface);
+            padding: 22px 24px;
+            border-radius: var(--r-xl);
+            box-shadow: var(--sh-3);
+            max-height: 82vh;
             overflow-y: auto;
         }
         .modal-box h4 {
             font-size: 15px;
-            font-weight: 600;
-            margin-bottom: 14px;
-            color: #1f2937;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: var(--c-ink);
+            letter-spacing: .2px;
         }
         .modal-row {
-            margin: 8px 0;
+            margin: 12px 0;
         }
         .modal-row label {
             font-size: 11px;
-            font-weight: 500;
-            color: #374151;
+            font-weight: 600;
+            color: var(--c-ink-3);
             display: block;
-            margin-bottom: 2px;
+            margin-bottom: 6px;
+            letter-spacing: .4px;
         }
         .modal-btn-group {
             display: flex;
-            gap: 8px;
-            margin-top: 14px;
+            gap: 10px;
+            margin-top: 20px;
             justify-content: flex-end;
         }
         .modal-btn-group button {
-            min-width: 64px;
+            min-width: 76px;
             justify-content: center;
         }
         .merge-option {
             display: flex;
             align-items: flex-start;
-            gap: 6px;
-            padding: 4px 6px;
-            margin: 3px 0;
-            background: #f9fafb;
-            border-radius: 4px;
-            border: 1px solid #e5e7eb;
+            gap: 9px;
+            padding: 9px 11px;
+            margin: 6px 0;
+            background: var(--c-surface-2);
+            border-radius: var(--r-md);
+            border: 1px solid var(--c-line);
+            font-size: 11.5px;
+            color: var(--c-ink-2);
+            line-height: 1.5;
         }
         .merge-option input[type="radio"] {
-            margin-top: 2px;
+            margin-top: 3px;
             width: auto;
+            height: auto;
+            min-height: auto;
             flex-shrink: 0;
         }
 
-        /* ===== 快捷提示 ===== */
+        /* ============ 快捷提示 ============ */
         .shortcut-hint {
-            font-size: 9px;
-            color: #9ca3af;
-            margin-top: 1px;
+            font-size: 10px;
+            color: var(--sb-text-4);
+            margin-top: 2px;
+            line-height: 1.5;
         }
 
-        /* ===== Toast ===== */
+        /* ============ Toast ============ */
         #toast-container {
             position: fixed;
             top: 0;
@@ -804,26 +1406,29 @@
         }
         .toast-message {
             pointer-events: auto;
-            background: rgba(60, 60, 60, 0.92);
+            background: rgba(15, 23, 42, 0.9);
             color: #ffffff;
-            padding: 12px 28px;
-            border-radius: 10px;
-            font-size: 14px;
+            padding: 13px 26px;
+            border-radius: var(--r-lg);
+            font-size: 13.5px;
             font-weight: 500;
             max-width: 80vw;
             text-align: center;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+            box-shadow: 0 16px 44px rgba(15, 23, 42, 0.32);
             animation: toastFadeIn 0.25s ease-out;
-            backdrop-filter: blur(4px);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, .1);
             letter-spacing: 0.3px;
             line-height: 1.5;
-            min-width: 100px;
+            min-width: 120px;
         }
         .toast-message.error {
-            background: rgba(180, 60, 60, 0.92);
+            background: rgba(185, 28, 28, 0.92);
+            border-color: rgba(255, 255, 255, .16);
         }
         .toast-message.info {
-            background: rgba(80, 80, 80, 0.88);
+            background: rgba(30, 64, 175, 0.9);
+            border-color: rgba(255, 255, 255, .16);
         }
 
         @keyframes toastFadeIn {
@@ -850,44 +1455,49 @@
             animation: toastFadeOut 0.25s ease-in forwards;
         }
 
-        /* ===== 确认对话框 ===== */
+        /* ============ 确认对话框 ============ */
         #confirm-modal .modal-box {
-            width: 380px;
+            width: 400px;
         }
         #confirm-modal .confirm-message {
             font-size: 13px;
-            color: #1f2937;
-            padding: 6px 0;
-            line-height: 1.6;
+            color: var(--c-ink-2);
+            padding: 4px 0;
+            line-height: 1.7;
             white-space: pre-wrap;
         }
         #confirm-modal .modal-btn-group button.confirm-btn {
-            background: #4b5563;
+            background: var(--c-brand);
             color: #fff;
         }
         #confirm-modal .modal-btn-group button.confirm-btn:hover {
-            background: #374151;
+            background: var(--c-brand-dark);
         }
         #confirm-modal .modal-btn-group button.cancel-btn {
-            background: #f3f4f6;
-            color: #1f2937;
-            border: 1px solid #d1d5db;
+            background: var(--c-surface);
+            color: var(--c-ink-2);
+            border: 1px solid var(--c-line-2);
         }
         #confirm-modal .modal-btn-group button.cancel-btn:hover {
-            background: #e5e7eb;
+            background: var(--c-surface-2);
         }
 
-        /* ===== 回收站 ===== */
+        /* ============ 回收站 ============ */
         #recycle-modal .modal-box {
-            width: 500px;
+            width: 520px;
         }
         .recycle-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 4px 6px;
-            border-bottom: 1px solid #f3f4f6;
-            font-size: 11px;
+            gap: 10px;
+            padding: 9px 10px;
+            border-bottom: 1px solid var(--c-line);
+            font-size: 11.5px;
+            color: var(--c-ink-2);
+        }
+        .recycle-item:hover {
+            background: var(--c-surface-2);
         }
         .recycle-item .info {
             flex: 1;
@@ -896,61 +1506,115 @@
             white-space: nowrap;
         }
         .recycle-item .time {
-            color: #9ca3af;
-            font-size: 9px;
+            color: var(--c-ink-4);
+            font-size: 10px;
             margin-right: 8px;
             flex-shrink: 0;
         }
+        .recycle-item .actions {
+            display: flex;
+            gap: 6px;
+            flex-shrink: 0;
+        }
         .recycle-item .actions button {
-            font-size: 9px;
-            padding: 2px 4px;
-            min-height: 18px;
+            font-size: 10.5px;
+            padding: 0 10px;
+            height: 26px;
+            min-height: 26px;
         }
         .recycle-empty {
             text-align: center;
-            color: #9ca3af;
-            padding: 16px 0;
+            color: var(--c-ink-4);
+            padding: 28px 0;
+            font-size: 12px;
         }
 
-        /* ===== 无站点提示 ===== */
+        /* ============ 无站点提示 ============ */
         .no-site-tip {
-            background: #f3f4f6;
-            border-radius: 4px;
-            padding: 4px 8px;
-            font-size: 10px;
-            color: #6b7280;
+            background: rgba(15, 23, 42, .4);
+            border-radius: var(--r-md);
+            padding: 9px 10px;
+            font-size: 11px;
+            color: var(--sb-text-3);
             text-align: center;
-            border: 1px dashed #d1d5db;
+            border: 1px dashed var(--sb-line-strong);
             display: none;
+            line-height: 1.5;
         }
 
-        /* ===== 响应式 ===== */
+        /* ============ 响应式 ============ */
+        @media (max-width: 1100px) {
+            :root {
+                --sidebar-w: 340px;
+            }
+        }
+        @media (max-width: 900px) {
+            :root {
+                --sidebar-w: 300px;
+            }
+            #sidebar {
+                padding: 0 10px 16px;
+            }
+            .brand {
+                margin: 0 -10px 0;
+                padding: 16px 14px 14px;
+            }
+            .overview {
+                gap: 6px;
+            }
+            .ov-value {
+                font-size: 15px;
+            }
+            .map-status-fab {
+                padding: 8px 12px;
+                gap: 8px;
+                font-size: 11px;
+            }
+            .map-status-fab .fab-label {
+                display: none;
+            }
+        }
         @media (max-width: 768px) {
             #sidebar {
                 width: 100%;
                 min-width: unset;
-                height: 50vh;
+                height: 52vh;
                 border-right: none;
-                border-bottom: 1px solid #e5e7eb;
-                padding: 8px 10px;
+                border-bottom: 1px solid var(--sb-line);
+                padding: 0 10px 14px;
             }
             #wrap {
                 flex-direction: column;
             }
             #map {
-                height: 50vh;
+                height: 48vh;
+            }
+            .brand {
+                margin: 0 -10px 0;
+            }
+            .map-status-fab {
+                top: 10px;
+                right: 10px;
+                padding: 6px 10px;
+                gap: 6px;
+            }
+            .map-status-fab .fab-item + .fab-item {
+                padding-left: 6px;
+            }
+            .map-status-fab .fab-value {
+                font-size: 11px;
             }
             .toast-message {
                 font-size: 13px;
-                padding: 10px 20px;
+                padding: 11px 20px;
                 max-width: 90vw;
             }
             .modal-box {
-                padding: 16px;
+                padding: 18px;
             }
         }
 
-        /* ===== 工具类 ===== */
+        /* ============ 工具类 ============ */
         .truncate {
             overflow: hidden;
             text-overflow: ellipsis;
@@ -984,28 +1648,65 @@
         <!-- ====== 侧边栏 ====== -->
         <div id="sidebar">
 
-            <!-- ===== 顶部状态栏 ===== -->
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:2px 0 4px;border-bottom:1px solid #e5e7eb;flex-wrap:wrap;gap:2px;">
-                <span style="font-weight:600;font-size:13px;color:#1f2937;">地图标记</span>
-                <span style="font-size:10px;color:#6b7280;display:flex;gap:6px;flex-wrap:wrap;">
-                    <span>城市: <strong id="currentCityLabel" style="color:#1f2937;">西安</strong></span>
-                    <span>模式: <strong id="currentModeLabel" style="color:#1f2937;">家修</strong></span>
-                    <span>站点: <strong id="currentSiteLabel" style="color:#1f2937;">全部</strong></span>
-                    <span>标记: <strong id="modeMarkerCount" style="color:#4b5563;">0</strong></span>
+            <!-- ===== 品牌头部 ===== -->
+            <div class="brand">
+                <div class="brand-top">
+                    <div class="brand-logo">图</div>
+                    <div class="brand-title">地图标记管理</div>
+                </div>
+                <div class="brand-sub">工程师分布 · 街道归属 · 路线规划</div>
+                <div class="brand-meta">
+                    <span class="brand-chip" id="currentCityLabel">西安</span>
+                    <span class="brand-chip" id="currentModeLabel">家修</span>
+                    <span class="brand-chip" id="currentSiteLabel">全部</span>
                     <span class="dragging-hint">拖拽移动</span>
-                </span>
+                </div>
             </div>
 
+            <!-- ===== 数据概览 ===== -->
+            <div class="overview">
+                <div class="ov-card">
+                    <div class="ov-label">当前标记</div>
+                    <div class="ov-value accent" id="modeMarkerCount">0</div>
+                </div>
+                <div class="ov-card">
+                    <div class="ov-label">路线站点</div>
+                    <div class="ov-value" id="ovRouteCount">0</div>
+                </div>
+                <div class="ov-card">
+                    <div class="ov-label">回收站</div>
+                    <div class="ov-value" id="ovRecycleCount">0</div>
+                </div>
+            </div>
+
+            <!-- ===== 上下文条 ===== -->
+            <div class="context-bar">
+                <span class="ctx-dot"></span>
+                <span id="ctxText">已连接云端 · 数据实时同步</span>
+            </div>
+
+            <!-- ===== 标签页导航 ===== -->
+            <div class="nav-tabs">
+                <button class="nav-tab active" data-tab="work" onclick="switchTab('work')">工作台</button>
+                <button class="nav-tab" data-tab="route" onclick="switchTab('route')">路线规划</button>
+                <button class="nav-tab" data-tab="data" onclick="switchTab('data')">数据管理</button>
+            </div>
+
+            <!-- ===== 标签页: 工作台 ===== -->
+            <div class="tab-panel active" id="panel-work">
             <!-- ===== 面板1: 城市 · 模式 · 站点 (默认展开) ===== -->
             <div class="section">
                 <div class="section-header open" onclick="toggleSection(this)">
-                    <span>城市 · 模式 · 站点</span>
+                    <span class="sh-left">
+                        <span class="sh-icon">◎</span>
+                        <span class="sh-title">城市 · 模式 · 站点</span>
+                    </span>
                     <span class="arrow">▶</span>
                 </div>
                 <div class="section-body">
                     <!-- ===== 城市选择器 ===== -->
-                    <div class="flex-row gap-1">
-                        <span class="text-xs" style="flex-shrink:0;">城市</span>
+                    <div class="field-group">
+                        <div class="field-label">城市</div>
                         <div class="city-select-wrapper">
                             <input list="cityList" id="cityInput" placeholder="选择或输入城市" value="西安" style="flex:1;min-width:60px;" />
                             <datalist id="cityList">
@@ -1032,26 +1733,32 @@
                             </datalist>
                             <button onclick="switchCity()" class="primary small" style="flex-shrink:0;">切换</button>
                         </div>
+                        <div class="text-xs" id="citySwitchStatus">当前城市：西安</div>
                     </div>
-                    <div class="text-xs" id="citySwitchStatus" style="color:#6b7280;">当前城市：西安</div>
+
+                    <div class="field-sep"></div>
 
                     <!-- ===== 模式切换 ===== -->
-                    <div class="flex-row gap-1">
-                        <span class="text-xs" style="flex-shrink:0;">模式</span>
-                        <button id="modeRepairBtn" class="primary small" onclick="setMode('repair')" style="flex:1;">家修</button>
-                        <button id="modeInstallBtn" class="outline small" onclick="setMode('install')" style="flex:1;">家居</button>
+                    <div class="field-group">
+                        <div class="field-label">业务模式</div>
+                        <div class="flex-row gap-1">
+                            <button id="modeRepairBtn" class="primary small" onclick="setMode('repair')" style="flex:1;">家修</button>
+                            <button id="modeInstallBtn" class="outline small" onclick="setMode('install')" style="flex:1;">家居</button>
+                        </div>
                     </div>
 
+                    <div class="field-sep"></div>
+
                     <!-- ===== 站点切换（仅西安有效） ===== -->
-                    <div id="siteSelectorWrapper">
+                    <div class="field-group" id="siteSelectorWrapper">
+                        <div class="field-label">服务站点</div>
                         <div class="flex-row gap-1">
-                            <span class="text-xs" style="flex-shrink:0;">站点</span>
                             <button id="siteAllBtn" class="primary small" onclick="setSite('all')" style="flex:1;">全部</button>
                             <button id="siteLianhuBtn" class="outline small" onclick="setSite('lianhu')" style="flex:1;">莲湖</button>
                             <button id="siteWeiyangBtn" class="outline small" onclick="setSite('weiyang')" style="flex:1;">未央</button>
                             <button id="siteYantaBtn" class="outline small" onclick="setSite('yanta')" style="flex:1;">雁塔</button>
                         </div>
-                        <div class="text-xs" id="streetLoadStatus" style="color:#6b7280;">切换站点自动加载街道</div>
+                        <div class="text-xs" id="streetLoadStatus">切换站点自动加载街道</div>
                     </div>
 
                     <!-- ===== 非西安城市的提示 ===== -->
@@ -1062,55 +1769,78 @@
             <!-- ===== 面板2: 地图工具 ===== -->
             <div class="section">
                 <div class="section-header open" onclick="toggleSection(this)">
-                    <span>地图工具</span>
+                    <span class="sh-left">
+                        <span class="sh-icon">✚</span>
+                        <span class="sh-title">地图工具</span>
+                    </span>
                     <span class="arrow">▶</span>
                 </div>
                 <div class="section-body">
-                    <div class="flex-row gap-1">
-                        <button onclick="setCityXiAn()" class="outline small" style="flex:1;">📍 西安</button>
-                        <button id="toggleSimpleBtn" onclick="toggleSimpleMap()" class="outline small" style="flex:1;">极简</button>
-                        <button id="toggleAddModeBtn" class="outline small" style="flex:1;" onclick="toggleAddMarkerMode()">
-                            <span class="mode-indicator off" id="modeIndicator"></span> 添加
-                        </button>
-                        <button id="cancelAddModeBtn" class="outline small" style="display:none;flex:1;color:#6b7280;" onclick="cancelAddMarkerMode()">取消</button>
+                    <div class="field-group">
+                        <div class="field-label">地图操作</div>
+                        <div class="flex-row gap-1">
+                            <button onclick="setCityXiAn()" class="outline small" style="flex:1;">📍 西安</button>
+                            <button id="toggleSimpleBtn" onclick="toggleSimpleMap()" class="outline small" style="flex:1;">极简</button>
+                            <button id="toggleAddModeBtn" class="outline small" style="flex:1;" onclick="toggleAddMarkerMode()">
+                                <span class="mode-indicator off" id="modeIndicator"></span> 添加
+                            </button>
+                            <button id="cancelAddModeBtn" class="outline small" style="display:none;flex:1;" onclick="cancelAddMarkerMode()">取消</button>
+                        </div>
+                        <div id="addModeStatus">点击街道选中 → 再次点击同一街道放置标记</div>
+                        <div class="shortcut-hint">Ctrl+Shift+Z 重做 · Esc 取消</div>
                     </div>
-                    <div id="addModeStatus">点击街道选中 → 再次点击同一街道放置标记</div>
-                    <div class="shortcut-hint">Ctrl+Shift+Z 重做 · Esc 取消</div>
+
+                    <div class="field-sep"></div>
 
                     <!-- 地址定位 & 品类筛选 -->
-                    <div class="flex-row gap-1" style="margin-top:2px;">
-                        <input id="addressInput" placeholder="粘贴客户完整地址，自动识别街道" style="flex:1;min-width:60px;" />
-                        <button onclick="parseAddress()" class="primary small">解析定位</button>
+                    <div class="field-group">
+                        <div class="field-label">地址定位</div>
+                        <div class="flex-row gap-1">
+                            <input id="addressInput" placeholder="粘贴工程师完整地址，自动识别街道" style="flex:1;min-width:60px;" />
+                            <button onclick="parseAddress()" class="primary small">解析定位</button>
+                        </div>
+                        <div id="streetIdentifyBar">
+                            <span class="badge-street" id="identifiedStreetName">—</span>
+                            <span class="text-muted" id="identifiedStreetCount"></span>
+                            <button class="clear-filter-btn" onclick="clearFilter()">✕ 清除</button>
+                        </div>
+                        <div id="categoryIdentifyBar">
+                            <span class="badge-category" id="identifiedCategoryName">—</span>
+                            <span class="text-muted" id="identifiedCategoryCount"></span>
+                            <button class="clear-filter-btn" onclick="clearCategoryFilter()">✕ 清除</button>
+                        </div>
                     </div>
-                    <div id="streetIdentifyBar">
-                        <span class="badge-street" id="identifiedStreetName">—</span>
-                        <span style="color:#6b7280;font-size:9px;" id="identifiedStreetCount"></span>
-                        <button class="clear-filter-btn" onclick="clearFilter()">✕ 清除</button>
-                    </div>
-                    <div id="categoryIdentifyBar">
-                        <span class="badge-category" id="identifiedCategoryName">—</span>
-                        <span style="color:#6b7280;font-size:9px;" id="identifiedCategoryCount"></span>
-                        <button class="clear-filter-btn" onclick="clearCategoryFilter()">✕ 清除</button>
-                    </div>
-                    <div>
-                        <div class="text-xs" style="margin-bottom:1px;">快速筛选品类：</div>
+
+                    <div class="field-group">
+                        <div class="field-label">快速筛选品类</div>
                         <div id="categoryTags" class="flex-row gap-1" style="max-height:48px;overflow-y:auto;"></div>
                     </div>
                 </div>
             </div>
+            </div><!-- /panel-work -->
 
+            <!-- ===== 标签页: 路线规划 ===== -->
+            <div class="tab-panel" id="panel-route">
             <!-- ===== 面板3: 路线规划 ===== -->
             <div class="section">
                 <div class="section-header open" onclick="toggleSection(this)">
-                    <span>路线规划 <span class="badge" id="routeCountBadge">0</span></span>
+                    <span class="sh-left">
+                        <span class="sh-icon">⇢</span>
+                        <span class="sh-title">路线规划</span>
+                        <span class="badge" id="routeCountBadge">0</span>
+                    </span>
                     <span class="arrow">▶</span>
                 </div>
                 <div class="section-body">
-                    <div class="text-xs">每行一个客户地址，格式：<b>地址｜客户名</b>（客户名可省略）</div>
-                    <textarea id="routeAddressInput" rows="4"
-                        placeholder="西安市莲湖区枣园西路XX号｜张先生&#10;西安市雁塔区小寨路XX号｜李女士&#10;西安市未央区凤城五路XX号"></textarea>
-                    <div class="flex-row gap-1">
-                        <select id="routeStartSelect" style="flex:1;min-width:60px;">
+                    <div class="field-group">
+                        <div class="field-label">工程师地址列表</div>
+                        <textarea id="routeAddressInput" rows="4"
+                            placeholder="西安市莲湖区枣园西路XX号｜张先生&#10;西安市雁塔区小寨路XX号｜李女士&#10;西安市未央区凤城五路XX号"></textarea>
+                        <div class="text-xs text-muted">每行一个地址，格式：地址｜工程师名（工程师名可省略）</div>
+                    </div>
+                    <div class="field-group">
+                        <div class="field-label">起点策略</div>
+                        <select id="routeStartSelect">
                             <option value="first">以第 1 个地址为起点</option>
                             <option value="auto">自动选最优起点</option>
                         </select>
@@ -1129,52 +1859,73 @@
                         <div class="progress-text" id="routeProgressText">等待开始…</div>
                         <div class="progress-track"><div class="progress-bar" id="routeProgressBar"></div></div>
                     </div>
-                    <div id="routeSummary" class="info-box" style="font-size:10px;display:none;"></div>
-                    <div id="routeStopList" style="max-height:180px;overflow-y:auto;"></div>
+                    <div id="routeSummary" class="info-box" style="display:none;"></div>
+                    <div id="routeStopList" style="max-height:200px;overflow-y:auto;"></div>
                     <div class="text-xs text-muted">按骑行距离自动优化访问顺序（最近邻 + 2-opt）</div>
                 </div>
             </div>
+            </div><!-- /panel-route -->
 
+            <!-- ===== 标签页: 数据管理 ===== -->
+            <div class="tab-panel" id="panel-data">
             <!-- ===== 面板4: 标记管理 ===== -->
             <div class="section">
                 <div class="section-header open" onclick="toggleSection(this)">
-                    <span>标记管理 <span class="badge" id="markerCountBadge">0</span></span>
+                    <span class="sh-left">
+                        <span class="sh-icon">☰</span>
+                        <span class="sh-title">标记管理</span>
+                        <span class="badge" id="markerCountBadge">0</span>
+                    </span>
                     <span class="arrow">▶</span>
                 </div>
                 <div class="section-body">
                     <!-- 搜索师傅 -->
-                    <div class="flex-row gap-1">
-                        <input id="noteSearchInput" placeholder="品类 / 师傅名" style="flex:1;min-width:60px;" />
-                        <button onclick="clearSearchInput()" class="ghost small" style="font-size:12px;padding:0 4px;" title="清空">✕</button>
-                        <button onclick="searchExistNoteMarker()" class="primary small">搜索</button>
+                    <div class="field-group">
+                        <div class="field-label">搜索标记</div>
+                        <div class="flex-row gap-1">
+                            <input id="noteSearchInput" placeholder="品类 / 师傅名" style="flex:1;min-width:60px;" />
+                            <button onclick="clearSearchInput()" class="ghost small" title="清空">✕</button>
+                            <button onclick="searchExistNoteMarker()" class="primary small">搜索</button>
+                        </div>
+                        <div id="noteSearchResultBox" class="info-box" style="min-height:20px;max-height:90px;overflow-y:auto;"></div>
                     </div>
-                    <div id="noteSearchResultBox" class="info-box" style="font-size:10px;min-height:18px;max-height:80px;overflow-y:auto;"></div>
+
+                    <div class="field-sep"></div>
 
                     <!-- 标记操作 -->
-                    <div class="flex-row gap-1">
-                        <input id="deleteStreetInput" placeholder="删除街道（精确）" style="flex:1;min-width:60px;" />
-                        <button onclick="deleteStreetMarkers()" class="danger small">删除</button>
-                        <button onclick="deleteAllMarkers()" class="danger small">全部清除</button>
-                    </div>
-                    <div class="flex-row gap-1">
-                        <button onclick="exportData('xlsx')" class="primary small" style="flex:1;">Excel</button>
-                        <button onclick="exportData('csv')" class="outline small" style="flex:1;">CSV</button>
-                        <button onclick="openRecycleBin()" class="outline small" id="recycleBtn" style="flex:1;">回收站 (<span id="recycleCount">0</span>)</button>
-                    </div>
-                    <!-- 刷新云端数据 -->
-                    <div class="flex-row gap-1" style="margin-top:1px;">
-                        <button onclick="loadFromCloud()" class="outline small block">刷新云端数据</button>
+                    <div class="field-group">
+                        <div class="field-label">删除标记</div>
+                        <div class="flex-row gap-1">
+                            <input id="deleteStreetInput" placeholder="删除街道（精确）" style="flex:1;min-width:60px;" />
+                            <button onclick="deleteStreetMarkers()" class="danger small">删除</button>
+                            <button onclick="deleteAllMarkers()" class="danger small">全部清除</button>
+                        </div>
                     </div>
 
+                    <div class="field-group">
+                        <div class="field-label">数据导出</div>
+                        <div class="flex-row gap-1">
+                            <button onclick="exportData('xlsx')" class="primary small" style="flex:1;">Excel</button>
+                            <button onclick="exportData('csv')" class="outline small" style="flex:1;">CSV</button>
+                            <button onclick="openRecycleBin()" class="outline small" id="recycleBtn" style="flex:1;">回收站 (<span id="recycleCount">0</span>)</button>
+                        </div>
+                        <div class="flex-row gap-1">
+                            <button onclick="loadFromCloud()" class="outline small block">刷新云端数据</button>
+                        </div>
+                    </div>
+
+                    <div class="field-sep"></div>
+
                     <!-- 数据导入 -->
-                    <div style="margin-top:3px;border-top:1px solid #e5e7eb;padding-top:4px;">
+                    <div class="field-group">
+                        <div class="field-label">批量导入</div>
                         <div class="file-upload-wrapper">
                             <input id="excelFileInput" type="file" accept=".xlsx,.xls" style="flex:1;min-width:60px;" />
                         </div>
-                        <div id="fileStatusRow" class="flex-row" style="display:none;gap:3px;">
+                        <div id="fileStatusRow" class="flex-row" style="display:none;gap:6px;">
                             <span class="file-name-tag" id="selectedFileName">未选择</span>
                             <button id="btnStartRecognize" onclick="startExcelRecognition()" class="success small">识别</button>
-                            <button onclick="cancelPendingFile()" class="outline small" style="color:#9ca3af;">✕</button>
+                            <button onclick="cancelPendingFile()" class="outline small">✕</button>
                         </div>
                         <div class="progress-area" id="progressArea">
                             <div class="progress-text" id="progressText">等待开始…</div>
@@ -1184,11 +1935,19 @@
                     </div>
                 </div>
             </div>
+            </div><!-- /panel-data -->
 
         </div>
 
         <!-- ====== 地图容器 ====== -->
-        <div id="map"></div>
+        <div id="map">
+            <div class="map-status-fab" id="mapStatusFab">
+                <div class="fab-item"><span class="fab-label">城市</span><span class="fab-value" id="fabCity">西安</span></div>
+                <div class="fab-item"><span class="fab-label">模式</span><span class="fab-value accent" id="fabMode">家修</span></div>
+                <div class="fab-item"><span class="fab-label">站点</span><span class="fab-value" id="fabSite">全部</span></div>
+                <div class="fab-item"><span class="fab-label">标记</span><span class="fab-value ok" id="fabCount">0</span></div>
+            </div>
+        </div>
     </div>
 
     <!-- ===== Toast 容器 ===== -->
@@ -1227,7 +1986,7 @@
             <div class="modal-row"><label>备注内容</label><textarea id="editNoteInput" rows="3"></textarea></div>
             <div class="modal-row"><label>类型</label><select id="editTypeSelect"><option value="repair">家修</option><option value="install">家居</option></select></div>
             <div class="modal-row"><label>站点</label><select id="editSiteSelect"><option value="lianhu">莲湖</option><option value="weiyang">未央</option><option value="yanta">雁塔</option></select></div>
-            <div class="modal-row" id="editCreatedRow" style="display:none;"><label>创建时间</label><span id="editCreatedAt" style="font-size:11px;color:#6b7280;"></span></div>
+            <div class="modal-row" id="editCreatedRow" style="display:none;"><label>创建时间</label><span id="editCreatedAt" style="font-size:11px;color:#94a3b8;"></span></div>
             <div class="modal-btn-group">
                 <button class="outline" onclick="closeEditModal()">取消</button>
                 <button class="primary" id="editSaveBtn" onclick="saveMarkerEdit()">保存</button>
@@ -1242,12 +2001,9 @@
     <!-- ============================================================ -->
     <script>
         // =============================================================
-        // ===== 街道位置偏移配置（可在此调整偏移量） =====
+        // ===== 行政区划搜索配置（通过高德API动态获取街道边界） =====
         // =============================================================
-        const STREET_OFFSET = {
-            lng: 0.0050,
-            lat: -0.0010
-        };
+        const XI_AN_DISTRICTS = ['莲湖区', '未央区', '雁塔区', '碑林区', '新城区', '灞桥区', '长安区'];
         // =============================================================
 
         // =============================================================
@@ -1346,6 +2102,45 @@
             }
         }
 
+        // ===== 标记本地缓存（Supabase 不可用时的回退数据源） =====
+        const MARKERS_CACHE_KEY = 'map_markers_cache';
+
+        function saveMarkersToCache(rows) {
+            try {
+                localStorage.setItem(MARKERS_CACHE_KEY, JSON.stringify(rows));
+            } catch (e) {
+                console.warn('标记缓存写入失败', e);
+            }
+        }
+
+        function loadMarkersFromCache() {
+            try {
+                const stored = localStorage.getItem(MARKERS_CACHE_KEY);
+                if (stored) return JSON.parse(stored);
+            } catch (e) {
+                console.warn('标记缓存读取失败', e);
+            }
+            return null;
+        }
+
+        // 增删改后从 markerList 同步缓存，保持本地缓存与界面一致
+        function syncCacheFromMarkerList() {
+            try {
+                const rows = markerList.map(item => ({
+                    geo: item.geo,
+                    note: item.note,
+                    id: item.id,
+                    created_at: item.created_at,
+                    updated_at: item.updated_at,
+                    type: item.type,
+                    site: item.site
+                }));
+                saveMarkersToCache(rows);
+            } catch (e) {
+                console.warn('标记缓存同步失败', e);
+            }
+        }
+
         function cleanRecycleBin() {
             const now = Date.now();
             const limit = now - RECYCLE_DAYS * 24 * 60 * 60 * 1000;
@@ -1367,6 +2162,7 @@
 
         function updateRecycleBadge() {
             document.getElementById('recycleCount').textContent = recycleBin.length;
+            setOvValue('ovRecycleCount', recycleBin.length);
         }
 
         function openRecycleBin() {
@@ -1434,6 +2230,7 @@
                     saveRecycleToStorage();
                     updateRecycleBadge();
                     showToast('标记已恢复');
+                    syncCacheFromMarkerList();
                     openRecycleBin();
                 }
             } catch (err) {
@@ -1530,49 +2327,49 @@
                     weiyang: { label: '未央', center: [108.928, 34.308] },
                     yanta: { label: '雁塔', center: [108.948, 34.218] }
                 },
-                streetFilesBySite: {
+                streetsBySite: {
                     lianhu: [
-                        "zaoyuan.geojson", "taoyuanlu.geojson", "xiguan.geojson", "tumen.geojson",
-                        "beiguan.geojson", "hongmiaopo.geojson", "huanchengxilu.geojson",
-                        "qingnianlu.geojson", "beiyuanmen.geojson", "zhangbagou.geojson",
-                        "yuhuazhai.geojson", "sanqiao.geojson", "hancheng.geojson",
-                        "weiyanggong.geojson", "liucunbao.geojson", "jianzhanglu.geojson",
-                        "gaoqiao.geojson", "doumen.geojson", "wangsi.geojson", "mawang.geojson",
-                        "zhangjiacun.geojson", "wenyilu.geojson", "changanlu.geojson",
-                        "baishulin.geojson", "nanyuanmen.geojson"
+                        "枣园街道", "桃园路街道", "西关街道", "土门街道",
+                        "北关街道", "红庙坡街道", "环城西路街道",
+                        "青年路街道", "北院门街道", "丈八沟街道",
+                        "鱼化寨街道", "三桥街道", "汉城街道",
+                        "未央宫街道", "六村堡街道", "建章路街道",
+                        "高桥街道", "斗门街道", "王寺街道", "马王街道",
+                        "张家村街道", "文艺路街道", "长安路街道",
+                        "柏树林街道", "南院门街道"
                     ],
                     weiyang: [
-                        "xinhe.geojson", "xinzhu.geojson", "baqiao.geojson", "shilipu.geojson",
-                        "hongqing.geojson", "fangzhicheng.geojson", "xiwang.geojson",
-                        "hongqi.geojson", "dizhai.geojson", "caotan.geojson", "weiyanghu.geojson",
-                        "xujiawan.geojson", "zhangjiabao.geojson", "tanjia.geojson",
-                        "daminggong.geojson", "xinjiamiao.geojson", "ziqianglu.geojson",
-                        "taihualu.geojson", "jiefangmen.geojson", "hujiamiao.geojson",
-                        "changlexilu.geojson", "xiyilu.geojson", "zhongshanmen.geojson",
-                        "changlezhonglu.geojson", "hansenzhai.geojson", "changlefang.geojson",
-                        "dongguannanjie.geojson", "taiyilu.geojson"
+                        "新合街道", "新筑街道", "灞桥街道", "十里铺街道",
+                        "洪庆街道", "纺织城街道", "席王街道",
+                        "红旗街道", "狄寨街道", "草滩街道", "未央湖街道",
+                        "徐家湾街道", "张家堡街道", "谭家街道",
+                        "大明宫街道", "辛家庙街道", "自强路街道",
+                        "太华路街道", "解放门街道", "胡家庙街道",
+                        "长乐西路街道", "西一路街道", "中山门街道",
+                        "长乐中路街道", "韩森寨街道", "长乐坊街道",
+                        "东关南街街道", "太乙路街道"
                     ],
                     yanta: [
-                        "dianzicheng.geojson", "ducheng.geojson", "xiaozhailu.geojson",
-                        "changyanbao.geojson", "dayanta.geojson", "qujiang.geojson",
-                        "dengjiapo.geojson", "paoli.geojson", "mingdu.geojson", "dazhao.geojson",
-                        "weiqu.geojson", "xiliu.geojson", "guodu.geojson", "lingzhao.geojson"
+                        "电子城街道", "杜城街道", "小寨路街道",
+                        "长延堡街道", "大雁塔街道", "曲江街道",
+                        "等驾坡街道", "炮里街道", "鸣犊街道", "大兆街道",
+                        "韦曲街道", "细柳街道", "郭杜街道", "灵沼街道"
                     ]
                 },
-                allStreetFiles: function() {
+                allStreets: function() {
                     const all = new Set();
-                    const s = this.streetFilesBySite;
+                    const s = this.streetsBySite;
                     Object.keys(s).forEach(k => s[k].forEach(f => all.add(f)));
                     return Array.from(all);
                 }
             },
-            beijing: { label: '北京', center: [116.4, 39.9], zoom: 10, sites: {}, streetFilesBySite: {}, allStreetFiles: function() { return []; } },
-            shanghai: { label: '上海', center: [121.47, 31.23], zoom: 10, sites: {}, streetFilesBySite: {}, allStreetFiles: function() { return []; } },
-            guangzhou: { label: '广州', center: [113.26, 23.13], zoom: 10, sites: {}, streetFilesBySite: {}, allStreetFiles: function() { return []; } },
-            shenzhen: { label: '深圳', center: [114.07, 22.55], zoom: 10, sites: {}, streetFilesBySite: {}, allStreetFiles: function() { return []; } },
-            chengdu: { label: '成都', center: [104.07, 30.57], zoom: 10, sites: {}, streetFilesBySite: {}, allStreetFiles: function() { return []; } },
-            wuhan: { label: '武汉', center: [114.30, 30.60], zoom: 10, sites: {}, streetFilesBySite: {}, allStreetFiles: function() { return []; } },
-            hangzhou: { label: '杭州', center: [120.15, 30.28], zoom: 10, sites: {}, streetFilesBySite: {}, allStreetFiles: function() { return []; } }
+            beijing: { label: '北京', center: [116.4, 39.9], zoom: 10, sites: {}, streetsBySite: {}, allStreets: function() { return []; } },
+            shanghai: { label: '上海', center: [121.47, 31.23], zoom: 10, sites: {}, streetsBySite: {}, allStreets: function() { return []; } },
+            guangzhou: { label: '广州', center: [113.26, 23.13], zoom: 10, sites: {}, streetsBySite: {}, allStreets: function() { return []; } },
+            shenzhen: { label: '深圳', center: [114.07, 22.55], zoom: 10, sites: {}, streetsBySite: {}, allStreets: function() { return []; } },
+            chengdu: { label: '成都', center: [104.07, 30.57], zoom: 10, sites: {}, streetsBySite: {}, allStreets: function() { return []; } },
+            wuhan: { label: '武汉', center: [114.30, 30.60], zoom: 10, sites: {}, streetsBySite: {}, allStreets: function() { return []; } },
+            hangzhou: { label: '杭州', center: [120.15, 30.28], zoom: 10, sites: {}, streetsBySite: {}, allStreets: function() { return []; } }
         };
 
         const SITE_CONFIG = {
@@ -1581,86 +2378,16 @@
             yanta: { label: '雁塔', center: [108.948, 34.218] }
         };
 
-        const streetFileToName = {
-            "zaoyuan.geojson": "枣园街道",
-            "taoyuanlu.geojson": "桃园路街道",
-            "xiguan.geojson": "西关街道",
-            "tumen.geojson": "土门街道",
-            "beiguan.geojson": "北关街道",
-            "hongmiaopo.geojson": "红庙坡街道",
-            "huanchengxilu.geojson": "环城西路街道",
-            "qingnianlu.geojson": "青年路街道",
-            "beiyuanmen.geojson": "北院门街道",
-            "zhangbagou.geojson": "丈八沟街道",
-            "yuhuazhai.geojson": "鱼化寨街道",
-            "sanqiao.geojson": "三桥街道",
-            "hancheng.geojson": "汉城街道",
-            "weiyanggong.geojson": "未央宫街道",
-            "liucunbao.geojson": "六村堡街道",
-            "jianzhanglu.geojson": "建章路街道",
-            "gaoqiao.geojson": "高桥街道",
-            "doumen.geojson": "斗门街道",
-            "wangsi.geojson": "王寺街道",
-            "mawang.geojson": "马王街道",
-            "zhangjiacun.geojson": "张家村街道",
-            "wenyilu.geojson": "文艺路街道",
-            "changanlu.geojson": "长安路街道",
-            "baishulin.geojson": "柏树林街道",
-            "nanyuanmen.geojson": "南院门街道",
-            "xinhe.geojson": "新合街道",
-            "xinzhu.geojson": "新筑街道",
-            "baqiao.geojson": "灞桥街道",
-            "shilipu.geojson": "十里铺街道",
-            "hongqing.geojson": "洪庆街道",
-            "fangzhicheng.geojson": "纺织城街道",
-            "xiwang.geojson": "席王街道",
-            "hongqi.geojson": "红旗街道",
-            "dizhai.geojson": "狄寨街道",
-            "caotan.geojson": "草滩街道",
-            "weiyanghu.geojson": "未央湖街道",
-            "xujiawan.geojson": "徐家湾街道",
-            "zhangjiabao.geojson": "张家堡街道",
-            "tanjia.geojson": "谭家街道",
-            "daminggong.geojson": "大明宫街道",
-            "xinjiamiao.geojson": "辛家庙街道",
-            "ziqianglu.geojson": "自强路街道",
-            "taihualu.geojson": "太华路街道",
-            "jiefangmen.geojson": "解放门街道",
-            "hujiamiao.geojson": "胡家庙街道",
-            "changlexilu.geojson": "长乐西路街道",
-            "xiyilu.geojson": "西一路街道",
-            "zhongshanmen.geojson": "中山门街道",
-            "changlezhonglu.geojson": "长乐中路街道",
-            "hansenzhai.geojson": "韩森寨街道",
-            "changlefang.geojson": "长乐坊街道",
-            "dongguannanjie.geojson": "东关南街街道",
-            "taiyilu.geojson": "太乙路街道",
-            "dianzicheng.geojson": "电子城街道",
-            "ducheng.geojson": "杜城街道",
-            "xiaozhailu.geojson": "小寨路街道",
-            "changyanbao.geojson": "长延堡街道",
-            "dayanta.geojson": "大雁塔街道",
-            "qujiang.geojson": "曲江街道",
-            "dengjiapo.geojson": "等驾坡街道",
-            "paoli.geojson": "炮里街道",
-            "mingdu.geojson": "鸣犊街道",
-            "dazhao.geojson": "大兆街道",
-            "weiqu.geojson": "韦曲街道",
-            "xiliu.geojson": "细柳街道",
-            "guodu.geojson": "郭杜街道",
-            "lingzhao.geojson": "灵沼街道"
-        };
-
-        const manualCenterOverride = {
-            "建章路街道": { lng: 108.8192, lat: 34.3369 },
-            "六村堡街道": { lng: 108.8532, lat: 34.3521 },
-            "土门街道": { lng: 108.8780, lat: 34.2628 },
-            "十里铺街道": { lng: 109.0280, lat: 34.2793 },
-            "红旗街道": { lng: 109.0553, lat: 34.2228 },
-            "中山门街道": { lng: 108.9623, lat: 34.2677 },
-            "辛家庙街道": { lng: 109.0044, lat: 34.3158 },
-            "张家堡街道": { lng: 108.9366, lat: 34.3276 }
-        };
+        // 街道→站点归属映射（用于按站点筛选街道显示）
+        const STREET_TO_SITE = {};
+        (function() {
+            const xianCfg = CITY_CONFIG.xian;
+            Object.keys(xianCfg.streetsBySite).forEach(site => {
+                xianCfg.streetsBySite[site].forEach(street => {
+                    STREET_TO_SITE[street] = site;
+                });
+            });
+        })();
 
         // ===== 坐标转换 =====
         const PI = 3.1415926535897932384626;
@@ -1709,9 +2436,29 @@
         // ===== 工具函数 =====
         function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
-        function getRandomStreetColor() {
-            const hue = Math.floor(Math.random() * 360);
-            return { strokeColor: `hsl(${hue},50%,50%)`, fillColor: `hsl(${hue},40%,70%)` };
+        // ===== 站点专业配色方案（低饱和度、高级感） =====
+        const SITE_COLOR_SCHEME = {
+            lianhu:  { hue: 215, sat: 38 },   // 靛蓝系
+            weiyang: { hue: 152, sat: 35 },   // 翠绿系
+            yanta:   { hue: 28,  sat: 42 },   // 琥珀系
+            other:   { hue: 268, sat: 30 }    // 紫罗兰系
+        };
+
+        function getStreetColor(streetName) {
+            const site = STREET_TO_SITE[streetName] || 'other';
+            const scheme = SITE_COLOR_SCHEME[site] || SITE_COLOR_SCHEME.other;
+            // 基于街道名哈希微调亮度，产生同色系内的细微差异
+            let hash = 0;
+            for (let i = 0; i < streetName.length; i++) {
+                hash = streetName.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            const variance = (Math.abs(hash) % 12) - 6;
+            const strokeL = Math.max(32, Math.min(56, 44 + variance));
+            const fillL = Math.max(68, Math.min(84, 76 + variance));
+            return {
+                strokeColor: `hsl(${scheme.hue}, ${scheme.sat}%, ${strokeL}%)`,
+                fillColor: `hsl(${scheme.hue}, ${Math.max(20, scheme.sat - 8)}%, ${fillL}%)`
+            };
         }
 
         function supabaseFetchWithTimeout(promiseFn, timeoutMs = REQUEST_TIMEOUT) {
@@ -1746,6 +2493,12 @@
             return `hsl(${hue}, 50%, 50%)`;
         }
 
+        function getCategoryLightColor(color) {
+            const m = color.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/);
+            if (m) return `hsl(${m[1]}, ${m[2]}%, 68%)`;
+            return color;
+        }
+
         function getCategoryAbbr(category) {
             if (!category) return '点';
             const trimmed = category.trim();
@@ -1759,11 +2512,18 @@
         function createMarkerIconContent(category) {
             const abbr = getCategoryAbbr(category);
             const color = getCategoryColor(category);
+            const lightColor = getCategoryLightColor(color);
             const div = document.createElement('div');
             div.className = 'custom-marker-label';
             div.style.setProperty('--marker-color', color);
-            div.style.backgroundColor = color;
-            div.textContent = abbr;
+            div.style.setProperty('--marker-light', lightColor);
+            const head = document.createElement('div');
+            head.className = 'marker-head';
+            head.textContent = abbr;
+            const tip = document.createElement('div');
+            tip.className = 'marker-tip';
+            div.appendChild(head);
+            div.appendChild(tip);
             return div;
         }
 
@@ -1812,8 +2572,8 @@
                         center: [116.4, 39.9],
                         zoom: 10,
                         sites: {},
-                        streetFilesBySite: {},
-                        allStreetFiles: function() { return []; },
+                        streetsBySite: {},
+                        allStreets: function() { return []; },
                         isCustom: true
                     };
                     cityId = customKey;
@@ -1888,7 +2648,7 @@
             const config = getCurrentCityConfig();
 
             if (currentCity === 'xian') {
-                wrapper.style.display = 'block';
+                wrapper.style.display = 'flex';
                 tip.style.display = 'none';
                 const allBtn = document.getElementById('siteAllBtn');
                 const lianhuBtn = document.getElementById('siteLianhuBtn');
@@ -1939,6 +2699,22 @@
                 return true;
             }).length;
             document.getElementById('modeMarkerCount').textContent = count;
+            // 同步地图状态浮层
+            const cfg = getCurrentCityConfig();
+            const fabCity = document.getElementById('fabCity');
+            const fabMode = document.getElementById('fabMode');
+            const fabSite = document.getElementById('fabSite');
+            const fabCount = document.getElementById('fabCount');
+            if (fabCity) fabCity.textContent = cfg ? cfg.label : '';
+            if (fabMode) fabMode.textContent = currentMode === 'install' ? '家居' : '家修';
+            if (fabSite) fabSite.textContent = currentSite === 'all' ? '全部' : (SITE_CONFIG[currentSite]?.label || currentSite);
+            if (fabCount) fabCount.textContent = count;
+        }
+
+        // 概览卡片同步（容错：元素不存在则跳过）
+        function setOvValue(id, val) {
+            const el = document.getElementById(id);
+            if (el) el.textContent = val;
         }
 
         // ===== 站点切换 =====
@@ -1992,48 +2768,57 @@
             }
 
             const statusEl = document.getElementById('streetLoadStatus');
+            const cityConfig = getCityConfig('xian');
+            let streetList = [];
+            if (site === 'all') {
+                streetList = cityConfig.allStreets();
+            } else {
+                streetList = cityConfig.streetsBySite[site] || [];
+            }
+            if (streetList.length === 0) {
+                statusEl.textContent = '当前站点暂无街道数据';
+                return;
+            }
+            // 已全部缓存则直接显示
+            const streetsToLoad = streetList.filter(name => !streetDataCache[name]);
+            if (streetsToLoad.length === 0) {
+                updateStreetVisibility(site);
+                statusEl.textContent = `街道已缓存，显示 ${streetList.length} 个街道`;
+                setTimeout(() => { autoFillStreetForMarkers(); }, 100);
+                return;
+            }
+            // 第一步：直接从本地 GeoJSON 文件加载（API 已确认不可用，本地文件为准）
             try {
-                const cityConfig = getCityConfig('xian');
-                let fileList = [];
-                if (site === 'all') {
-                    fileList = cityConfig.allStreetFiles();
-                    statusEl.textContent = '加载全部街道...';
-                } else {
-                    fileList = cityConfig.streetFilesBySite[site] || [];
-                    const label = SITE_CONFIG[site]?.label || site;
-                    statusEl.textContent = `加载 ${label} 街道... (${fileList.length} 个文件)`;
-                }
-                if (fileList.length === 0) {
-                    statusEl.textContent = '当前站点暂无街道数据';
-                    return;
-                }
-                const filesToLoad = fileList.filter(f => {
-                    const name = streetFileToName[f] || f.replace('.geojson', '');
-                    return !streetDataCache[name] || !streetDataCache[name].sites.has('xian');
-                });
-                if (filesToLoad.length === 0) {
-                    updateStreetVisibility(site);
-                    statusEl.textContent = `街道已缓存，显示 ${fileList.length} 个街道`;
-                    setTimeout(() => { autoFillStreetForMarkers(); }, 100);
-                    return;
-                }
-                statusEl.textContent = `加载街道中... (${filesToLoad.length}/${fileList.length})`;
-                const concurrency = 8;
-                let loadedCount = 0;
-                const total = filesToLoad.length;
-                for (let i = 0; i < filesToLoad.length; i += concurrency) {
-                    const chunk = filesToLoad.slice(i, i + concurrency);
-                    const chunkPromises = chunk.map(f => loadSingleStreet(f, version, 'xian'));
-                    const chunkResults = await Promise.allSettled(chunkPromises);
-                    loadedCount += chunk.length;
-                    statusEl.textContent = `加载街道中... (${loadedCount}/${total})`;
+                statusEl.textContent = '正在从本地GeoJSON加载街道边界...';
+                const remaining = streetList.filter(name => !streetDataCache[name]);
+                if (remaining.length > 0) {
+                    await loadStreetsFromLocalGeojson(remaining, version);
                     if (version !== loadVersion) {
                         statusEl.textContent = '加载已取消（切换站点）';
                         return;
                     }
                 }
+                // 第二步：本地未覆盖的街道，尝试 DistrictSearch API 补充（可选）
+                let loadedCount = streetList.filter(name => streetDataCache[name]).length;
+                if (loadedCount < streetList.length) {
+                    try {
+                        statusEl.textContent = '正在通过行政区划API补充街道边界...';
+                        await fetchAllDistrictStreets(version);
+                        if (version !== loadVersion) {
+                            statusEl.textContent = '加载已取消（切换站点）';
+                            return;
+                        }
+                    } catch (apiErr) {
+                        console.warn('行政区划API补充失败（不影响已加载数据）:', apiErr);
+                    }
+                }
                 updateStreetVisibility(site);
-                statusEl.textContent = `街道加载完成（${fileList.length} 个）`;
+                loadedCount = streetList.filter(name => streetDataCache[name]).length;
+                statusEl.textContent = `街道加载完成（${loadedCount}/${streetList.length}）`;
+                if (loadedCount === 0) {
+                    statusEl.textContent = '街道加载失败：本地GeoJSON与API均无数据，请检查geojson目录';
+                    console.error('街道加载失败：0个街道被加载。请确认页面通过HTTP服务器访问（file://协议无法fetch本地文件）');
+                }
                 if (streetPolygons.length > 0) {
                     map.setFitView(streetPolygons);
                 }
@@ -2044,121 +2829,142 @@
             }
         }
 
-        async function loadSingleStreet(filename, version, site) {
-            try {
-                const resp = await fetch("./geojson/" + filename, { cache: 'force-cache' });
-                if (!resp.ok) throw new Error("HTTP " + resp.status);
-                const geoData = await resp.json();
-                if (version !== loadVersion) return false;
-                let features = [];
-                let showName = streetFileToName[filename] || filename.replace(".geojson", "");
-                if (geoData.type === "Feature") features = [geoData];
-                else if (geoData.type === "FeatureCollection") features = geoData.features;
-                else { console.warn(`${filename} 未知geojson类型，跳过`);
-                    return false; }
-                if (!Array.isArray(features) || features.length === 0) { console.warn(`${filename} 没有有效的features，跳过`);
-                    return false; }
-                const polyList = [];
-                features.forEach((feat, index) => {
-                    if (!feat.geometry) { console.warn(` ${filename} 第${index}个特征无geometry`); return; }
-                    if (feat.properties?.乡镇名) { showName = feat.properties.乡镇名; }
-                    const geoType = feat.geometry.type;
-                    const coords = feat.geometry.coordinates;
-                    if (geoType === "Polygon") {
-                        if (Array.isArray(coords) && Array.isArray(coords[0]) && coords[0].length > 2) {
-                            polyList.push(coords[0]);
-                        } else { console.warn(` ${filename} Polygon 外环格式异常`); }
-                    } else if (geoType === "MultiPolygon") {
-                        coords.forEach((polygonRings, idx) => {
-                            if (Array.isArray(polygonRings) && Array.isArray(polygonRings[0]) && polygonRings[0]
-                                .length > 2) {
-                                polyList.push(polygonRings[0]);
-                            } else { console.warn(` ${filename} MultiPolygon 第${idx}个碎片外环格式异常`); }
-                        });
-                    } else { console.warn(` ${filename} 未知几何类型: ${geoType}`); }
-                });
-                const validPolyList = polyList.filter(p => Array.isArray(p) && p.length > 2);
-
-                const offsetLng = STREET_OFFSET.lng;
-                const offsetLat = STREET_OFFSET.lat;
-                if (offsetLng !== 0 || offsetLat !== 0) {
-                    validPolyList.forEach(path => {
-                        for (let i = 0; i < path.length; i++) {
-                            if (Array.isArray(path[i]) && path[i].length >= 2) {
-                                path[i][0] += offsetLng;
-                                path[i][1] += offsetLat;
-                            }
-                        }
+        // 通过 DistrictSearch API 并行获取西安各区街道边界
+        function fetchAllDistrictStreets(version) {
+            return new Promise((resolve) => {
+                let completed = 0;
+                const total = XI_AN_DISTRICTS.length;
+                let anySuccess = false;
+                XI_AN_DISTRICTS.forEach(districtName => {
+                    const ds = new AMap.DistrictSearch({
+                        level: 'district',
+                        subdistrict: 1,
+                        extensions: 'all'
                     });
-                }
-
-                if (validPolyList.length === 0) { console.warn(`街道[${showName}] 没有有效多边形，跳过此街道`);
-                    return false; }
-                let sumLng = 0,
-                    sumLat = 0,
-                    totalPoints = 0;
-                validPolyList.forEach(path => {
-                    path.forEach(point => {
-                        if (Array.isArray(point) && point.length >= 2 && !isNaN(point[0]) && !isNaN(point[
-                            1])) {
-                            sumLng += point[0];
-                            sumLat += point[1];
-                            totalPoints++;
+                    ds.search('西安市' + districtName, (status, result) => {
+                        completed++;
+                        if (version !== loadVersion) {
+                            if (completed === total) resolve(anySuccess);
+                            return;
                         }
+                        if (status === 'complete' && result.districtList && result.districtList[0]) {
+                            const streets = result.districtList[0].districtList || [];
+                            streets.forEach(street => processStreetFromAPI(street, version));
+                            anySuccess = true;
+                        } else {
+                            console.warn(`行政区划搜索 ${districtName} 失败:`, status);
+                        }
+                        if (completed === total) resolve(anySuccess);
                     });
                 });
-                if (totalPoints === 0) { console.warn(`街道[${showName}] 无有效顶点，跳过`);
-                    return false; }
-                let useLng = sumLng / totalPoints;
-                let useLat = sumLat / totalPoints;
+            });
+        }
 
-                const override = manualCenterOverride[showName];
-                if (override) {
-                    useLng = override.lng + offsetLng;
-                    useLat = override.lat + offsetLat;
-                } else {
-                    const inXiAn = (lng, lat) => lng > 108.5 && lng < 109.5 && lat > 33.8 && lat < 34.8;
-                    if (!inXiAn(useLng, useLat)) {
-                        let minLng = Infinity,
-                            maxLng = -Infinity,
-                            minLat = Infinity,
-                            maxLat = -Infinity;
-                        validPolyList.forEach(path => {
-                            path.forEach(point => {
-                                if (Array.isArray(point) && point.length >= 2 && !isNaN(point[0]) && !isNaN(
-                                    point[1])) {
-                                    const lng = point[0],
-                                        lat = point[1];
-                                    if (lng < minLng) minLng = lng;
-                                    if (lng > maxLng) maxLng = lng;
-                                    if (lat < minLat) minLat = lat;
-                                    if (lat > maxLat) maxLat = lat;
-                                }
-                            });
-                        });
-                        if (isFinite(minLng) && isFinite(maxLng) && isFinite(minLat) && isFinite(maxLat)) {
-                            useLng = (minLng + maxLng) / 2 + offsetLng;
-                            useLat = (minLat + maxLat) / 2 + offsetLat;
-                        } else { console.warn(`街道[${showName}] 包围盒计算失败，跳过`);
-                            return false; }
-                    }
-                }
+        // 处理 DistrictSearch 返回的单个街道数据（GCJ02坐标，无需偏移）
+        function processStreetFromAPI(street, version) {
+            if (version !== loadVersion) return;
+            const stdName = (street.name || '').trim();
+            if (!stdName || streetDataCache[stdName]) return;
+            if (!STREET_TO_SITE[stdName]) return; // 只处理业务映射中的街道
+            const boundaries = street.boundaries || [];
+            const center = street.center;
+            console.log('[街道调试]', stdName, 'center=', center, 'boundaries=', boundaries.length);
+            // 有边界数据即可加载（addStreetToCache 会优先用质心居中），API的center仅作回退
+            if ((!center || !center.lng || !center.lat) && boundaries.length === 0) return;
+            addStreetToCache(stdName, boundaries, center || {}, version);
+        }
 
-                if (isNaN(useLng) || isNaN(useLat) || !isFinite(useLng) || !isFinite(useLat)) {
-                    console.warn(`街道[${showName}] 最终坐标无效，跳过`);
-                    return false;
+        // ===== 多边形质心计算（让街道标签落在主要范围正中央） =====
+        // 计算单个闭合环的有符号面积（Shoelace 公式）
+        function ringSignedArea(ring) {
+            let area = 0;
+            const n = ring.length;
+            for (let i = 0; i < n; i++) {
+                const p1 = ring[i];
+                const p2 = ring[(i + 1) % n];
+                area += p1.lng * p2.lat - p2.lng * p1.lat;
+            }
+            return area / 2;
+        }
+        // 计算单个闭合环的质心（面积加权重心，比外接框中心更贴近视觉中心）
+        function ringCentroid(ring) {
+            let area = 0, cx = 0, cy = 0;
+            const n = ring.length;
+            for (let i = 0; i < n; i++) {
+                const p1 = ring[i];
+                const p2 = ring[(i + 1) % n];
+                const cross = p1.lng * p2.lat - p2.lng * p1.lat;
+                area += cross;
+                cx += (p1.lng + p2.lng) * cross;
+                cy += (p1.lat + p2.lat) * cross;
+            }
+            area /= 2;
+            if (Math.abs(area) < 1e-12) return null;
+            return { lng: cx / (6 * area), lat: cy / (6 * area) };
+        }
+        // 判断点是否在闭合环内部（射线法）
+        function pointInRing(pt, ring) {
+            let inside = false;
+            const n = ring.length;
+            for (let i = 0, j = n - 1; i < n; j = i++) {
+                const xi = ring[i].lng, yi = ring[i].lat;
+                const xj = ring[j].lng, yj = ring[j].lat;
+                if (((yi > pt.lat) !== (yj > pt.lat)) &&
+                    (pt.lng < (xj - xi) * (pt.lat - yi) / (yj - yi) + xi)) {
+                    inside = !inside;
                 }
-                const stdName = showName.trim();
-                streetCenterCache[stdName] = { lng: useLng, lat: useLat };
-                const polyObjects = [];
-                validPolyList.forEach(pathArr => {
-                    const colorOpt = getRandomStreetColor();
+            }
+            return inside;
+        }
+        // 计算一组边界中"主要大范围"（面积最大多边形）的正中央：
+        // 优先取质心；若质心落在多边形外（强凹形状），回退到该多边形外接框中心
+        function computeMainCentroid(boundaries) {
+            if (!boundaries || boundaries.length === 0) return null;
+            let mainRing = null, mainArea = 0;
+            boundaries.forEach(ring => {
+                if (!ring || ring.length < 3) return;
+                const a = Math.abs(ringSignedArea(ring));
+                if (a > mainArea) { mainArea = a; mainRing = ring; }
+            });
+            if (!mainRing) return null;
+            const c = ringCentroid(mainRing);
+            if (c && pointInRing(c, mainRing)) return c;
+            // 回退：主要多边形的外接框中心（仅限主要范围，比全局外接框准确）
+            let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
+            mainRing.forEach(p => {
+                if (p.lng < minLng) minLng = p.lng;
+                if (p.lng > maxLng) maxLng = p.lng;
+                if (p.lat < minLat) minLat = p.lat;
+                if (p.lat > maxLat) maxLat = p.lat;
+            });
+            if (minLng !== Infinity) {
+                return { lng: (minLng + maxLng) / 2, lat: (minLat + maxLat) / 2 };
+            }
+            return c;
+        }
+
+        // 共用的街道图层构建（API 与本地 geojson 回退共用）
+        function addStreetToCache(stdName, boundaries, center, version) {
+            if (version !== loadVersion) return;
+            if (!stdName || streetDataCache[stdName]) return;
+            // 优先用"主要大范围"多边形的质心，让标签/标记落在街道正中央
+            const centroid = computeMainCentroid(boundaries);
+            const finalCenter = centroid || (center && center.lng && center.lat ? center : null);
+            if (!finalCenter) return;
+            streetCenterCache[stdName] = { lng: finalCenter.lng, lat: finalCenter.lat };
+            const colorOpt = getStreetColor(stdName);
+            const polyObjects = [];
+            if (boundaries.length > 0) {
+                boundaries.forEach(pathArr => {
+                    const path = pathArr.map(p => [p.lng, p.lat]);
+                    if (path.length < 3) return;
                     const poly = new AMap.Polygon({
-                        path: pathArr,
+                        path: path,
                         strokeColor: colorOpt.strokeColor,
-                        strokeWeight: 2,
+                        strokeWeight: 1.5,
+                        strokeOpacity: 0.7,
                         fillColor: colorOpt.fillColor,
-                        fillOpacity: 0.14,
+                        fillOpacity: 0.10,
                         zIndex: 10,
                         bubble: true
                     });
@@ -2169,16 +2975,14 @@
                                 selectStreetForAdd(poly._streetName, poly);
                             } else {
                                 const lnglat = e.lnglat;
-                                const lng = lnglat.getLng();
-                                const lat = lnglat.getLat();
-                                handleMapClickForAdd(lng, lat, poly._streetName);
+                                handleMapClickForAdd(lnglat.getLng(), lnglat.getLat(), poly._streetName);
                             }
                         } else {
                             clearCategoryFilter();
                             highlightStreet(poly._streetName);
-                            poly.setOptions({ fillOpacity: 0.3, strokeWeight: 4 });
+                            poly.setOptions({ fillOpacity: 0.25, strokeWeight: 3 });
                             setTimeout(() => {
-                                poly.setOptions({ fillOpacity: 0.14, strokeWeight: 2 });
+                                poly.setOptions({ fillOpacity: 0.10, strokeWeight: 1.5 });
                             }, 500);
                         }
                     });
@@ -2186,39 +2990,203 @@
                     polyObjects.push(poly);
                     streetPolygons.push(poly);
                 });
-                const textMarker = new AMap.Marker({
-                    position: [useLng, useLat],
-                    icon: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMSIgaGVpZ2h0PSIxIj48L3N2Zz4=",
+            }
+            // 文字标签（精简显示，去掉"街道"后缀更清爽）
+            const displayName = stdName.replace('街道', '');
+            const textMarker = new AMap.Marker({
+                position: [finalCenter.lng, finalCenter.lat],
+                icon: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMSIgaGVpZ2h0PSIxIj48L3N2Zz4=",
+                offset: new AMap.Pixel(0, 0),
+                zIndex: 25,
+                label: {
+                    content: displayName,
+                    direction: "center",
                     offset: new AMap.Pixel(0, 0),
-                    zIndex: 25,
-                    label: {
-                        content: stdName,
-                        direction: "center",
-                        offset: new AMap.Pixel(0, 0),
-                        style: {
-                            fontSize: "10px",
-                            color: "#374151",
-                            backgroundColor: "rgba(255,255,255,0.86)",
-                            padding: "1px 4px",
-                            border: "none",
-                            fontWeight: "bold"
+                    style: {
+                        fontSize: "11px",
+                        color: "#475569",
+                        backgroundColor: "rgba(255,255,255,0.72)",
+                        padding: "2px 6px",
+                        border: "none",
+                        borderRadius: "3px",
+                        fontWeight: "500",
+                        boxShadow: "0 1px 3px rgba(0,0,0,0.08)"
+                    }
+                }
+            });
+            textMarker.setMap(null);
+            streetTextMarkers.push(textMarker);
+            streetDataCache[stdName] = {
+                polygons: polyObjects,
+                textMarkers: [textMarker],
+                sites: new Set(['xian'])
+            };
+        }
+
+        // ===== 本地 GeoJSON 街道边界回退（DistrictSearch API 失败时使用） =====
+        // geojson 文件来自国家标准行政区划数据（CGCS2000 ≈ WGS84），需转换为 GCJ02
+        const GEOJSON_IS_WGS84 = true;
+        const GEOJSON_FILES = [
+            'baishulin','baqiao','beiguan','beilin','beiyuanmen','caotan','changan',
+            'changanlu','changlefang','changlexilu','changlezhonglu','changyanbao',
+            'daminggong','dayanta','dazhao','dengjiapo','dianzicheng','dizhai',
+            'dongguannanjie','doumen','ducheng','fangzhicheng','gaoqiao','guodu',
+            'hancheng','hansenzhai','hongmiaopo','hongqi','hongqing','huanchengxilu',
+            'hujiamiao','jianzhanglu','jiefangmen','lianhu','lingzhao','liucunbao',
+            'mawang','mingdu','nanyuanmen','paoli','qingnianlu','qujiang','sanqiao',
+            'shilipu','taihualu','taiyilu','tanjia','taoyuanlu','tumen','wangsi',
+            'weiqu','weiyang','weiyanggong','weiyanghu','wenyilu','xiaozhailu',
+            'xiguan','xiliu','xinhe','xinjiamiao','xinzhu','xiwang','xiyilu',
+            'xujiawan','yanta','yuhuazhai','zaoyuan','zhangbagou','zhangjiabao',
+            'zhangjiacun','zhongshanmen','ziqianglu'
+        ];
+        // 以行政区命名的文件（莲湖/碑林/雁塔/未央/灞桥/长安），其内部街道数据
+        // 与独立街道文件可能同名但边界不同，处理时降低优先级，避免混合导致质心偏移
+        const DISTRICT_FILES = new Set(['baqiao', 'beilin', 'changan', 'lianhu', 'weiyang', 'yanta']);
+        let _geojsonIndex = null;
+        let _geojsonLoading = null;
+
+        // 懒加载全部本地 geojson，建立 街道名 → {boundaries, center} 索引
+        // 兼容两种文件格式：FeatureCollection（properties.NAME）和 单个 Feature（properties.乡镇名）
+        function ensureGeojsonIndex() {
+            if (_geojsonIndex) return Promise.resolve(_geojsonIndex);
+            if (_geojsonLoading) return _geojsonLoading;
+            _geojsonLoading = (async () => {
+                _geojsonIndex = {};
+                console.log(`[GeoJSON] 开始加载 ${GEOJSON_FILES.length} 个本地geojson文件...`);
+                const results = await Promise.allSettled(
+                    GEOJSON_FILES.map(name =>
+                        fetch(`geojson/${name}.geojson`).then(r => {
+                            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                            return r.json();
+                        }).then(json => ({ file: name, json }))
+                    )
+                );
+                // 区级文件排后处理：同名街道优先采用独立街道文件的数据
+                results.sort((a, b) => {
+                    const aD = (a.status === 'fulfilled' && DISTRICT_FILES.has(a.value.file)) ? 1 : 0;
+                    const bD = (b.status === 'fulfilled' && DISTRICT_FILES.has(b.value.file)) ? 1 : 0;
+                    return aD - bD;
+                });
+                let okCount = 0, failCount = 0;
+                const failDetails = [];
+                const loadedStreets = [];
+                results.forEach(res => {
+                    if (res.status !== 'fulfilled') {
+                        failCount++;
+                        failDetails.push(`加载失败: ${res.reason?.message || res.reason}`);
+                        return;
+                    }
+                    const fileName = res.value.file;
+                    const fc = res.value.json;
+                    if (!fc) { failCount++; failDetails.push(`${fileName}: 空数据`); return; }
+                    // 兼容 FeatureCollection 与单个 Feature 两种格式
+                    let features = [];
+                    if (fc.type === 'FeatureCollection' && Array.isArray(fc.features)) {
+                        features = fc.features;
+                    } else if (fc.type === 'Feature' && fc.geometry) {
+                        features = [fc];
+                    }
+                    if (features.length === 0) { failCount++; failDetails.push(`${fileName}: 无features`); return; }
+                    okCount++;
+                    features.forEach(f => {
+                        const props = f.properties || {};
+                        // 兼容不同属性名：NAME（格式A）、乡镇名（格式B）
+                        let name = (props.NAME || props.name || props['乡镇名'] || '').trim();
+                        // 异体字归一化：砲→炮
+                        name = name.replace('砲', '炮');
+                        const geom = f.geometry;
+                        if (!name || !geom) return;
+                        let rings = [];
+                        if (geom.type === 'Polygon') rings = geom.coordinates;
+                        else if (geom.type === 'MultiPolygon') rings = geom.coordinates.flat();
+                        if (!rings || rings.length === 0) return;
+                        const boundaries = rings.map(ring =>
+                            ring.map(c => {
+                                const lng = c[0], lat = c[1];
+                                if (GEOJSON_IS_WGS84) {
+                                    const [glng, glat] = wgs84ToGcj02(lng, lat);
+                                    return { lng: glng, lat: glat };
+                                }
+                                return { lng, lat };
+                            })
+                        );
+                        if (_geojsonIndex[name]) {
+                            // 同名街道已有数据来源：仅允许同一文件内的多要素合并；
+                            // 跳过其他文件（区级文件与独立文件边界不同，混合会导致质心偏移）
+                            if (_geojsonIndex[name].sourceFile !== fileName) {
+                                console.log(`[GeoJSON] 跳过 ${fileName} 的"${name}"（优先使用 ${_geojsonIndex[name].sourceFile} 的数据）`);
+                                return;
+                            }
+                        } else {
+                            _geojsonIndex[name] = { boundaries: [], center: null, sourceFile: fileName };
+                        }
+                        _geojsonIndex[name].boundaries.push(...boundaries);
+                        loadedStreets.push(name);
+                    });
+                });
+                // 用"主要大范围"多边形的质心作为街道标注中心（比外接框中心更居中）
+                Object.keys(_geojsonIndex).forEach(name => {
+                    const entry = _geojsonIndex[name];
+                    const centroid = computeMainCentroid(entry.boundaries);
+                    if (centroid) {
+                        entry.center = centroid;
+                    } else {
+                        // 回退：整体外接框中心
+                        let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
+                        entry.boundaries.forEach(b => b.forEach(p => {
+                            if (p.lng < minLng) minLng = p.lng;
+                            if (p.lng > maxLng) maxLng = p.lng;
+                            if (p.lat < minLat) minLat = p.lat;
+                            if (p.lat > maxLat) maxLat = p.lat;
+                        }));
+                        if (minLng !== Infinity) {
+                            entry.center = { lng: (minLng + maxLng) / 2, lat: (minLat + maxLat) / 2 };
                         }
                     }
                 });
-                textMarker.setMap(null);
-                streetTextMarkers.push(textMarker);
-                if (!streetDataCache[stdName]) {
-                    streetDataCache[stdName] = { polygons: [], textMarkers: [], sites: new Set() };
+                console.log(`[GeoJSON] 索引构建完成：${okCount} 个文件成功，${failCount} 个失败，${Object.keys(_geojsonIndex).length} 个街道`);
+                console.log('[GeoJSON] 已索引街道列表:', Object.keys(_geojsonIndex).sort().join('、'));
+                if (failDetails.length > 0) {
+                    console.warn('[GeoJSON] 失败详情:', failDetails.join('; '));
+                    if (okCount === 0) {
+                        console.error('[GeoJSON] 所有文件加载失败！请确认：1) 页面通过HTTP服务器访问（非file://协议） 2) geojson目录与index.html同级');
+                    }
                 }
-                streetDataCache[stdName].polygons.push(...polyObjects);
-                streetDataCache[stdName].textMarkers.push(textMarker);
-                streetDataCache[stdName].sites.add(site);
-                return true;
+                return _geojsonIndex;
+            })();
+            return _geojsonLoading;
+        }
+
+        // 从本地 geojson 索引加载指定街道（主要数据源）
+        async function loadStreetsFromLocalGeojson(streetList, version) {
+            try {
+                const index = await ensureGeojsonIndex();
+                let loaded = 0;
+                const notFound = [];
+                streetList.forEach(name => {
+                    if (version !== loadVersion) return;
+                    if (streetDataCache[name]) return;
+                    const entry = index[name];
+                    if (!entry || !entry.center || entry.boundaries.length === 0) {
+                        notFound.push(name);
+                        return;
+                    }
+                    addStreetToCache(name, entry.boundaries, entry.center, version);
+                    loaded++;
+                });
+                console.log(`[GeoJSON] 本地加载：成功 ${loaded}/${streetList.length} 个街道`);
+                if (notFound.length > 0) {
+                    console.warn(`[GeoJSON] 未匹配到的街道（${notFound.length}个）:`, notFound.join('、'));
+                }
+                return loaded;
             } catch (err) {
-                console.error(`加载文件失败：${filename}`, err);
-                return false;
+                console.error('[GeoJSON] 本地加载失败:', err);
+                return 0;
             }
         }
+
+
 
         function updateStreetVisibility(site) {
             Object.values(streetDataCache).forEach(cache => {
@@ -2228,14 +3196,13 @@
             if (currentCity !== 'xian') return;
 
             const cityConfig = getCityConfig('xian');
-            let fileList = [];
+            let streetList = [];
             if (site === 'all') {
-                fileList = cityConfig.allStreetFiles();
+                streetList = cityConfig.allStreets();
             } else {
-                fileList = cityConfig.streetFilesBySite[site] || [];
+                streetList = cityConfig.streetsBySite[site] || [];
             }
-            fileList.forEach(f => {
-                const name = streetFileToName[f] || f.replace('.geojson', '');
+            streetList.forEach(name => {
                 const cache = streetDataCache[name];
                 if (cache) {
                     cache.polygons.forEach(p => p.setMap(map));
@@ -2264,7 +3231,7 @@
             const marker = new AMap.Marker({
                 position: [geoObj.lng, geoObj.lat],
                 content: contentDiv,
-                offset: new AMap.Pixel(-16, -16),
+                offset: new AMap.Pixel(-15, -35),
                 map: map,
                 draggable: true,
                 cursor: 'move'
@@ -2275,26 +3242,26 @@
             const updated = updatedAt ? formatTimestamp(updatedAt) : '无';
             const typeLabel = type === 'repair' ? '家修' : '家居';
             const siteLabel = SITE_CONFIG[site]?.label || site;
-            const content = `<div style="min-width:180px;">
-                <h4 style="font-size:13px;margin:3px 0;">点位信息</h4>
-                <p style="font-size:11px;margin:1px 0;">名称：${geoObj.name}</p>
-                <p style="font-size:11px;margin:1px 0;">区县：${geoObj.district||"无"}</p>
-                <p style="font-size:11px;margin:1px 0;">街道：${geoObj.street||"无"}</p>
-                <p style="font-size:11px;margin:1px 0;">品类：${category||"无"}</p>
-                <p style="font-size:11px;margin:1px 0;">类型：${typeLabel}</p>
-                <p style="font-size:11px;margin:1px 0;">站点：${siteLabel}</p>
-                <hr style="margin:3px 0;"/>
-                <p style="font-size:11px;margin:1px 0;"><b>备注：</b>${noteText || '无备注'}</p>
-                <p style="font-size:10px;color:#6b7280;margin:1px 0;">创建：${created}</p>
-                <p style="font-size:10px;color:#6b7280;margin:1px 0;">更新：${updated}</p>
-                <div style="margin-top:4px;">
-                    <button class="edit-btn" style="font-size:11px;padding:2px 8px;" onclick="openEditModal(${markerList.length})">编辑</button>
-                    <button class="edit-btn" style="font-size:11px;padding:2px 8px;margin-left:4px;" onclick="deleteMarkerItemByIndex(${markerList.length})">删除</button>
+            const content = `<div style="min-width:190px;">
+                <h4 style="font-size:13.5px;margin:3px 0 6px;color:#0f172a;">点位信息</h4>
+                <p style="font-size:12px;line-height:1.7;margin:0;">名称：${geoObj.name}</p>
+                <p style="font-size:12px;line-height:1.7;margin:0;">区县：${geoObj.district||"无"}</p>
+                <p style="font-size:12px;line-height:1.7;margin:0;">街道：${geoObj.street||"无"}</p>
+                <p style="font-size:12px;line-height:1.7;margin:0;">品类：${category||"无"}</p>
+                <p style="font-size:12px;line-height:1.7;margin:0;">类型：${typeLabel}</p>
+                <p style="font-size:12px;line-height:1.7;margin:0;">站点：${siteLabel}</p>
+                <hr style="margin:6px 0;border:none;border-top:1px solid #e6eaf0;"/>
+                <p style="font-size:12px;line-height:1.7;margin:0;"><b>备注：</b>${noteText || '无备注'}</p>
+                <p style="font-size:11px;color:#94a3b8;line-height:1.6;margin:4px 0 0;">创建：${created}</p>
+                <p style="font-size:11px;color:#94a3b8;line-height:1.6;margin:0;">更新：${updated}</p>
+                <div style="margin-top:8px;">
+                    <button class="edit-btn" style="font-size:11.5px;padding:3px 10px;" onclick="openEditModal(${markerList.length})">编辑</button>
+                    <button class="edit-btn" style="font-size:11.5px;padding:3px 10px;margin-left:6px;" onclick="deleteMarkerItemByIndex(${markerList.length})">删除</button>
                 </div>
             </div>`;
             const infoWin = new AMap.InfoWindow({
                 content: content,
-                offset: new AMap.Pixel(0, -30)
+                offset: new AMap.Pixel(0, -40)
             });
             marker.on("click", () => {
                 infoWin.open(map, marker.getPosition());
@@ -2324,6 +3291,7 @@
                                 showToast('保存位置失败，请重试或手动编辑', 'error');
                             } else {
                                 showToast('位置已更新');
+                                syncCacheFromMarkerList();
                             }
                         });
                 }
@@ -2339,21 +3307,21 @@
             const category = getCategoryFromItem(item);
             const typeLabel = item.type === 'repair' ? '家修' : '家居';
             const siteLabel = SITE_CONFIG[item.site]?.label || item.site;
-            const content = `<div style="min-width:180px;">
-                <h4 style="font-size:13px;margin:3px 0;">点位信息</h4>
-                <p style="font-size:11px;margin:1px 0;">名称：${item.geo.name}</p>
-                <p style="font-size:11px;margin:1px 0;">区县：${item.geo.district||"无"}</p>
-                <p style="font-size:11px;margin:1px 0;">街道：${item.geo.street||"无"}</p>
-                <p style="font-size:11px;margin:1px 0;">品类：${category||"无"}</p>
-                <p style="font-size:11px;margin:1px 0;">类型：${typeLabel}</p>
-                <p style="font-size:11px;margin:1px 0;">站点：${siteLabel}</p>
-                <hr style="margin:3px 0;"/>
-                <p style="font-size:11px;margin:1px 0;"><b>备注：</b>${item.note || '无备注'}</p>
-                <p style="font-size:10px;color:#6b7280;margin:1px 0;">创建：${created}</p>
-                <p style="font-size:10px;color:#6b7280;margin:1px 0;">更新：${updated}</p>
-                <div style="margin-top:4px;">
-                    <button class="edit-btn" style="font-size:11px;padding:2px 8px;" onclick="openEditModal(${index})">编辑</button>
-                    <button class="edit-btn" style="font-size:11px;padding:2px 8px;margin-left:4px;" onclick="deleteMarkerItemByIndex(${index})">删除</button>
+            const content = `<div style="min-width:190px;">
+                <h4 style="font-size:13.5px;margin:3px 0 6px;color:#0f172a;">点位信息</h4>
+                <p style="font-size:12px;line-height:1.7;margin:0;">名称：${item.geo.name}</p>
+                <p style="font-size:12px;line-height:1.7;margin:0;">区县：${item.geo.district||"无"}</p>
+                <p style="font-size:12px;line-height:1.7;margin:0;">街道：${item.geo.street||"无"}</p>
+                <p style="font-size:12px;line-height:1.7;margin:0;">品类：${category||"无"}</p>
+                <p style="font-size:12px;line-height:1.7;margin:0;">类型：${typeLabel}</p>
+                <p style="font-size:12px;line-height:1.7;margin:0;">站点：${siteLabel}</p>
+                <hr style="margin:6px 0;border:none;border-top:1px solid #e6eaf0;"/>
+                <p style="font-size:12px;line-height:1.7;margin:0;"><b>备注：</b>${item.note || '无备注'}</p>
+                <p style="font-size:11px;color:#94a3b8;line-height:1.6;margin:4px 0 0;">创建：${created}</p>
+                <p style="font-size:11px;color:#94a3b8;line-height:1.6;margin:0;">更新：${updated}</p>
+                <div style="margin-top:8px;">
+                    <button class="edit-btn" style="font-size:11.5px;padding:3px 10px;" onclick="openEditModal(${index})">编辑</button>
+                    <button class="edit-btn" style="font-size:11.5px;padding:3px 10px;margin-left:6px;" onclick="deleteMarkerItemByIndex(${index})">删除</button>
                 </div>
             </div>`;
             item.infoWin.setContent(content);
@@ -2680,6 +3648,7 @@
                 applyFilterAndRenderMap();
                 updateMarkerCountBadge();
                 updateModeMarkerCount();
+                syncCacheFromMarkerList();
             } catch (err) {
                 console.error('删除标记失败:', err);
                 showToast('删除标记失败：' + err.message, 'error');
@@ -2769,6 +3738,29 @@
             document.getElementById('identifiedStreetCount').textContent = `（${count}）`;
         }
 
+        // ===== 根据 Supabase 行数据渲染标记列表 =====
+        function renderMarkersFromRows(data) {
+            markerList.forEach(item => { item.marker.setMap(null); item.infoWin.close(); });
+            markerList = [];
+            data.forEach(doc => {
+                if (!doc.geo.category) {
+                    const parts = (doc.geo.name || '').split('｜');
+                    if (parts.length === 2) doc.geo.category = parts[1];
+                    else doc.geo.category = '';
+                }
+                const item = createMarkerItem(doc.geo, doc.note, doc.id, doc.created_at, doc.updated_at,
+                    doc.type || 'repair', doc.site || 'lianhu');
+                markerList.push(item);
+            });
+            markerList.forEach((item, idx) => {
+                refreshMarkerInfoWindow(item, idx);
+                updateMarkerIcon(item);
+            });
+            applyFilterAndRenderMap();
+            updateMarkerCountBadge();
+            updateCategoryTags();
+        }
+
         // ===== 加载数据 =====
         async function loadFromCloud() {
             if (_isMerging) {
@@ -2784,6 +3776,7 @@
                     applyFilterAndRenderMap();
                     updateMarkerCountBadge();
                     updateCategoryTags();
+                    saveMarkersToCache([]);
                     return;
                 }
                 data.forEach(doc => {
@@ -2850,31 +3843,17 @@
                 }
                 // ===== 自动合并逻辑结束 =====
 
-                markerList.forEach(item => { item.marker.setMap(null);
-                    item.infoWin.close(); });
-                markerList = [];
-                data.forEach(doc => {
-                    if (!doc.geo.category) {
-                        const parts = (doc.geo.name || '').split('｜');
-                        if (parts.length === 2) doc.geo.category = parts[1];
-                        else doc.geo.category = '';
-                    }
-                    const item = createMarkerItem(doc.geo, doc.note, doc.id, doc.created_at, doc.updated_at, doc
-                        .type || 'repair', doc.site || 'lianhu');
-                    markerList.push(item);
-                });
-                markerList.forEach((item, idx) => {
-                    refreshMarkerInfoWindow(item, idx);
-                    updateMarkerIcon(item);
-                });
-                applyFilterAndRenderMap();
-                updateMarkerCountBadge();
-                updateCategoryTags();
-                console.log(`从 Supabase 加载了 ${markerList.length} 个标记`);
-                showToast(`已加载 ${markerList.length} 个标记`);
+                renderMarkersFromRows(data);
+                saveMarkersToCache(data);
             } catch (err) {
                 console.error('加载数据失败', err);
-                showToast('加载数据失败：' + err.message, 'error');
+                const cached = loadMarkersFromCache();
+                if (cached && cached.length) {
+                    renderMarkersFromRows(cached);
+                    showToast('网络不可用，已从本地缓存加载 ' + cached.length + ' 个标记', 'warning');
+                } else {
+                    showToast('加载数据失败：' + err.message, 'error');
+                }
                 _isMerging = false;
             }
         }
@@ -2997,6 +3976,7 @@
                         closeEditModal();
                         showToast('标记添加成功');
                         updateCategoryTags();
+                        syncCacheFromMarkerList();
                     }
                 } catch (err) {
                     showToast('添加标记失败：' + err.message, 'error');
@@ -3043,6 +4023,7 @@
                 updateMarkerCountBadge();
                 showToast('标记更新成功');
                 updateCategoryTags();
+                syncCacheFromMarkerList();
             } catch (err) {
                 showToast('更新失败：' + err.message, 'error');
             }
@@ -3090,6 +4071,7 @@
                 showToast(`已清除 ${ids.length} 个标记，可在回收站中恢复`);
                 clearFilter();
                 updateCategoryTags();
+                syncCacheFromMarkerList();
             } catch (err) {
                 showToast('批量删除失败：' + err.message, 'error');
             }
@@ -3153,6 +4135,7 @@
                 streetInput.value = '';
                 if (filterStreet === streetName || filterCategory) clearFilter();
                 updateCategoryTags();
+                syncCacheFromMarkerList();
             } catch (err) {
                 showToast('批量删除失败：' + err.message, 'error');
             }
@@ -3204,7 +4187,7 @@
                             const marker = new AMap.Marker({
                                 position: context.latLng,
                                 label: {
-                                    content: `<div style="background:#4b5563;color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;box-shadow:0 2px 6px rgba(0,0,0,0.3);">${count}</div>`,
+                                    content: `<div style="background:#1d4ed8;color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;box-shadow:0 2px 6px rgba(15,23,42,0.28);">${count}</div>`,
                                     direction: 'center'
                                 }
                             });
@@ -3308,8 +4291,8 @@
                     if (lastHighlightMarker) lastHighlightMarker.setIcon(ICON_NORMAL);
                     const contentDiv = hit.item.marker.getContent();
                     if (contentDiv) {
-                        contentDiv.style.border = '3px solid #9ca3af';
-                        contentDiv.style.boxShadow = '0 0 12px rgba(156,163,175,0.8)';
+                        contentDiv.style.border = '3px solid #1d4ed8';
+                        contentDiv.style.boxShadow = '0 0 12px rgba(29,78,216,0.55)';
                     }
                     if (lastHighlightMarker && lastHighlightMarker !== hit.item.marker) {
                         const oldDiv = lastHighlightMarker.getContent();
@@ -3362,7 +4345,7 @@
             if (isAddMarkerMode) {
                 toggleBtn.className = 'primary small';
                 toggleBtn.style.flex = '1';
-                cancelBtn.style.display = 'flex';
+                cancelBtn.style.display = 'block';
                 statusEl.style.display = 'block';
                 statusEl.innerHTML = '点击街道选中 → 再次点击同一街道放置标记';
                 indicator.className = 'mode-indicator on';
@@ -3421,14 +4404,14 @@
             selectedStreetForAdd = streetName;
             highlightedPolygon = polygon;
             highlightedPolygonOrigOpts = {
-                fillOpacity: polygon.getOptions().fillOpacity || 0.14,
-                strokeWeight: polygon.getOptions().strokeWeight || 2,
+                fillOpacity: polygon.getOptions().fillOpacity || 0.10,
+                strokeWeight: polygon.getOptions().strokeWeight || 1.5,
                 strokeColor: polygon.getOptions().strokeColor || '#6b7280'
             };
             polygon.setOptions({
-                fillOpacity: 0.45,
-                strokeWeight: 5,
-                strokeColor: '#4b5563',
+                fillOpacity: 0.35,
+                strokeWeight: 3.5,
+                strokeColor: '#334155',
                 strokeStyle: 'solid'
             });
             const statusEl = document.getElementById('addModeStatus');
@@ -3438,7 +4421,7 @@
 
         function clearSelectedStreet() {
             if (highlightedPolygon) {
-                const opts = highlightedPolygonOrigOpts || { fillOpacity: 0.14, strokeWeight: 2 };
+                const opts = highlightedPolygonOrigOpts || { fillOpacity: 0.10, strokeWeight: 1.5 };
                 highlightedPolygon.setOptions({
                     fillOpacity: opts.fillOpacity,
                     strokeWeight: opts.strokeWeight,
@@ -3467,8 +4450,8 @@
             contentDiv.className = 'temp-marker';
             contentDiv.style.width = '20px';
             contentDiv.style.height = '20px';
-            contentDiv.style.background = 'rgba(160,160,160,0.4)';
-            contentDiv.style.border = '2px solid #6b7280';
+            contentDiv.style.background = 'rgba(29,78,216,0.18)';
+            contentDiv.style.border = '2px solid #1d4ed8';
             contentDiv.style.borderRadius = '50%';
             contentDiv.style.pointerEvents = 'none';
             tempClickMarker = new AMap.Marker({
@@ -3515,6 +4498,7 @@
                 applyFilterAndRenderMap();
                 updateMarkerCountBadge();
                 updateCategoryTags();
+                syncCacheFromMarkerList();
             }
         }
 
@@ -3724,7 +4708,8 @@
             summary.style.display = 'none';
             summary.textContent = '';
             document.getElementById('routeCountBadge').textContent = '0';
-            document.getElementById('routeProgress').style.display = 'none';
+            setOvValue('ovRouteCount', 0);
+            document.getElementById('routeProgress').classList.remove('show');
             if (!silent) showToast('已清除路线');
         }
 
@@ -3761,7 +4746,7 @@
             }
             const raw = document.getElementById('routeAddressInput').value.trim();
             if (!raw) {
-                showToast('请输入客户地址，每行一个', 'error');
+                showToast('请输入工程师地址，每行一个', 'error');
                 return;
             }
             const lines = raw.split('\n').map(l => l.trim()).filter(l => l.length > 0);
@@ -3780,7 +4765,7 @@
             const progressArea = document.getElementById('routeProgress');
             const progressText = document.getElementById('routeProgressText');
             const progressBar = document.getElementById('routeProgressBar');
-            progressArea.style.display = 'block';
+            progressArea.classList.add('show');
             progressBar.style.width = '0%';
             progressBar.className = 'progress-bar';
             progressText.textContent = '开始解析地址…';
@@ -3791,7 +4776,7 @@
                     const parts = line.split(/[｜|]/);
                     const address = (parts[0] || '').trim();
                     const label = (parts[1] || '').trim();
-                    return { address, label: label || `客户${i + 1}` };
+                    return { address, label: label || `工程师${i + 1}` };
                 }).filter(r => r.address);
 
                 if (rows.length < 2) throw new Error('有效地址不足 2 个');
@@ -3909,7 +4894,8 @@
                     const marker = new AMap.Marker({
                         position: [stop.lng, stop.lat],
                         content: div,
-                        offset: new AMap.Pixel(-14, -14),
+                        offset: new AMap.Pixel(index === 0 || index === orderedStops.length - 1 ? -15 : -13,
+                            index === 0 || index === orderedStops.length - 1 ? -15 : -13),
                         zIndex: 200,
                         map: map
                     });
@@ -3917,17 +4903,17 @@
                     const typeLabel = index === 0 ? '起点' :
                         (index === orderedStops.length - 1 ? '终点' : `第 ${index + 1} 站`);
                     const metaHtml = (index > 0 && stop.segDistance != null)
-                        ? `<p style="font-size:10px;color:#6b7280;margin:1px 0;">距上一站：${(stop.segDistance/1000).toFixed(2)} 公里 / 约 ${Math.max(1, Math.round(stop.segTime/60))} 分钟</p>`
+                        ? `<p style="font-size:11px;color:#94a3b8;line-height:1.6;margin:4px 0 0;">距上一站：${(stop.segDistance/1000).toFixed(2)} 公里 / 约 ${Math.max(1, Math.round(stop.segTime/60))} 分钟</p>`
                         : '';
-                    const content = `<div style="min-width:180px;">
-                        <h4 style="font-size:13px;margin:3px 0;">${typeLabel}</h4>
-                        <p style="font-size:11px;margin:1px 0;">客户：${stop.label}</p>
-                        <p style="font-size:11px;margin:1px 0;">地址：${stop.address}</p>
+                    const content = `<div style="min-width:190px;">
+                        <h4 style="font-size:13.5px;margin:3px 0 6px;color:#0f172a;">${typeLabel}</h4>
+                        <p style="font-size:12px;line-height:1.7;margin:0;">工程师：${stop.label}</p>
+                        <p style="font-size:12px;line-height:1.7;margin:0;">地址：${stop.address}</p>
                         ${metaHtml}
                     </div>`;
                     const infoWin = new AMap.InfoWindow({
                         content: content,
-                        offset: new AMap.Pixel(0, -20)
+                        offset: new AMap.Pixel(0, -32)
                     });
                     marker.on('click', () => {
                         infoWin.open(map, marker.getPosition());
@@ -3960,6 +4946,7 @@
                 renderRouteStopList(orderedStops);
 
                 document.getElementById('routeCountBadge').textContent = String(orderedStops.length);
+                setOvValue('ovRouteCount', orderedStops.length);
 
                 progressBar.style.width = '100%';
                 progressBar.className = 'progress-bar done';
@@ -4024,7 +5011,7 @@
             const data = routeStops.map((s, i) => ({
                 '序号': i + 1,
                 '站点类型': i === 0 ? '起点' : (i === routeStops.length - 1 ? '终点' : '途经'),
-                '客户名': s.label || '',
+                '工程师名': s.label || '',
                 '地址': s.address || '',
                 '经度': Number(s.lng).toFixed(6),
                 '纬度': Number(s.lat).toFixed(6),
@@ -4048,9 +5035,9 @@
             const file = e.target.files[0];
             if (!file) return;
             pendingExcelData = null;
-            document.getElementById('progressArea').style.display = 'none';
-            document.getElementById('progressBar').style.width = '0%';
+            document.getElementById('progressArea').classList.remove('show');
             document.getElementById('progressBar').className = 'progress-bar';
+            document.getElementById('progressBar').style.width = '0%';
             document.getElementById('progressText').textContent = '等待开始…';
             const reader = new FileReader();
             reader.onload = function(ev) {
@@ -4071,7 +5058,7 @@
                     document.getElementById('fileStatusRow').style.display = 'flex';
                     document.getElementById('btnStartRecognize').disabled = false;
                     document.getElementById('btnStartRecognize').textContent = '识别';
-                    document.getElementById('progressArea').style.display = 'none';
+                    document.getElementById('progressArea').classList.remove('show');
                     showToast(`已加载 ${jsonRows.length} 行数据，点击「识别」开始处理`);
                 } catch (err) {
                     showToast('解析Excel失败：' + err.message, 'error');
@@ -4086,8 +5073,7 @@
             pendingExcelData = null;
             document.getElementById('fileStatusRow').style.display = 'none';
             document.getElementById('excelFileInput').value = '';
-            document.getElementById('progressArea').style.display = 'none';
-            document.getElementById('progressBar').style.width = '0%';
+            document.getElementById('progressArea').classList.remove('show');
             document.getElementById('progressBar').className = 'progress-bar';
             document.getElementById('progressText').textContent = '已取消';
             showToast('已取消导入');
@@ -4115,7 +5101,7 @@
             btn.textContent = '处理中…';
             isProcessing = true;
             const progressArea = document.getElementById('progressArea');
-            progressArea.style.display = 'block';
+            progressArea.classList.add('show');
             const progressBar = document.getElementById('progressBar');
             progressBar.style.width = '0%';
             progressBar.className = 'progress-bar';
@@ -4410,6 +5396,7 @@
             });
             applyFilterAndRenderMap();
             updateMarkerCountBadge();
+            syncCacheFromMarkerList();
             onProgress && onProgress({
                 status: `完成`,
                 done: true,
@@ -4421,6 +5408,8 @@
 
         // ===== Realtime 订阅 =====
         let subscription = null;
+        let realtimeRetryCount = 0;
+        const REALTIME_MAX_RETRIES = 5;
 
         function setupRealtimeSubscription() {
             if (subscription) { subscription.unsubscribe();
@@ -4431,7 +5420,23 @@
                     console.log('数据库变更，重新加载数据', payload);
                     loadFromCloud();
                 })
-                .subscribe((status) => { console.log('Realtime 订阅状态:', status); });
+                .subscribe((status) => {
+                    console.log('Realtime 订阅状态:', status);
+                    if (status === 'SUBSCRIBED') {
+                        realtimeRetryCount = 0; // 连接成功，重置重试计数
+                    } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                        // 先退订以停止客户端内部的重连刷屏，再用指数退避自行重试
+                        if (subscription) { subscription.unsubscribe(); subscription = null; }
+                        if (realtimeRetryCount < REALTIME_MAX_RETRIES) {
+                            realtimeRetryCount++;
+                            const delay = Math.min(60000, 3000 * Math.pow(2, realtimeRetryCount - 1));
+                            console.warn(`Realtime 连接失败，${delay / 1000}秒后重试（第 ${realtimeRetryCount}/${REALTIME_MAX_RETRIES} 次）`);
+                            setTimeout(() => setupRealtimeSubscription(), delay);
+                        } else {
+                            console.warn('Realtime 多次重试仍失败，已停止自动重连（网络恢复后刷新页面即可）');
+                        }
+                    }
+                });
         }
 
         // ===== 快捷键 =====
@@ -4490,6 +5495,16 @@
             }
         }
 
+        // ===== 标签页切换 =====
+        function switchTab(tabId) {
+            document.querySelectorAll('.nav-tab').forEach(t => {
+                t.classList.toggle('active', t.dataset.tab === tabId);
+            });
+            document.querySelectorAll('.tab-panel').forEach(p => {
+                p.classList.toggle('active', p.id === 'panel-' + tabId);
+            });
+        }
+
         // ===== 城市输入框自动补全 & 路线输入快捷键 =====
         document.addEventListener('DOMContentLoaded', function() {
             const cityInput = document.getElementById('cityInput');
@@ -4522,7 +5537,9 @@
             map = new AMap.Map("map", {
                 zoom: 10,
                 center: [108.95, 34.27],
-                features: ['bg', 'road', 'point', 'building']
+                features: ['bg', 'road', 'point', 'building'],
+                mapStyle: 'amap://styles/whitesmoke',
+                viewMode: '2D'
             });
 
             document.getElementById("excelFileInput").addEventListener("change", handleExcelImport);
@@ -4538,12 +5555,12 @@
             document.getElementById('siteYantaBtn').className = 'outline small';
             document.getElementById('currentSiteLabel').textContent = '全部';
             document.getElementById('noSiteTip').style.display = 'none';
-            document.getElementById('siteSelectorWrapper').style.display = 'block';
+            document.getElementById('siteSelectorWrapper').style.display = 'flex';
 
-            loadFromCloud().then(() => {
-                setupRealtimeSubscription();
-                loadStreetsForCurrentSite('all', loadVersion);
-            });
+            // 标记数据与街道边界相互独立，并行加载，避免云端不可达时街道被阻塞
+            loadFromCloud().catch(err => console.error('启动加载标记异常:', err));
+            setupRealtimeSubscription();
+            loadStreetsForCurrentSite('all', loadVersion);
 
             setMode('repair');
             document.getElementById('modeIndicator').className = 'mode-indicator off';
