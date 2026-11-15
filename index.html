@@ -2098,7 +2098,7 @@
                         <span class="arrow">▶</span>
                     </div>
                     <div class="section-body">
-                        <div class="text-xs text-muted">演示模式：模拟工程师位置实时移动，用于效果展示</div>
+                        <div class="text-xs text-muted">演示模式：模拟工程师实时定位，三站点共96人（莲湖36/未央40/雁塔20），切换站点仅显示该站点工程师</div>
                         <div class="flex-row gap-1">
                             <button onclick="toggleEngTracking()" class="outline small" style="flex:1;" id="engTrackingBtn">▶ 启动追踪</button>
                             <button onclick="clearEngMarkers()" class="outline small" style="flex:1;">清除标记</button>
@@ -2633,6 +2633,7 @@
         let currentMode = 'repair';
         let currentSite = 'all';
         let currentCity = 'xian';
+        let currentTab = 'work';   // 当前激活标签页：work | location | route | data
 
         // --- 街道数据缓存 ---
         let streetDataCache = {};
@@ -2745,6 +2746,268 @@
               schedule: [] }
         ];
 
+        // ----- 站点工程师数量配置（按街道配置比例 25:28:14，每站点至少20人） -----
+        const SITE_ENGINEER_COUNT = { lianhu: 36, weiyang: 40, yanta: 20 };
+
+        // ----- 站点模拟覆盖区域（用于随机生成工程师位置） -----
+        const SITE_DEMO_AREA = {
+            lianhu:  { center: [108.878, 34.268], radius: 0.040 },
+            weiyang: { center: [108.928, 34.308], radius: 0.040 },
+            yanta:   { center: [108.948, 34.218], radius: 0.040 }
+        };
+
+        // ----- 姓氏池（用于生成工程师姓名，索引12起供生成工程师使用） -----
+        const ENG_SURNAMES = ['王','李','张','刘','陈','杨','赵','黄','周','吴','徐','孙','胡','朱','高','林','何','郭','马','罗','梁','宋','郑','谢','韩','唐','冯','于','董','萧','程','曹','袁','邓','许','傅','沈','曾','彭','吕','苏','卢','蒋','蔡','贾','丁','魏','薛','叶','阎','余','潘','杜','戴','夏','钟','汪','田','任','姜','范','方','石','姚','谭','廖','邹','熊','金','陆','郝','孔','白','崔','康','毛','邱','秦','江','史','顾','侯','邵','孟','龙','万','段','雷','钱','汤','尹','黎','易','常','武','乔','贺','赖','龚','文'];
+
+        // ----- 各站点模拟客户地址池（用于生成当日排单） -----
+        const SITE_DEMO_ADDRS = {
+            lianhu: [
+                { addr: '西关正街佳园小区', lng: 108.870, lat: 34.260 },
+                { addr: '丰庆路蓝天花园', lng: 108.875, lat: 34.265 },
+                { addr: '桃园路鑫苑', lng: 108.880, lat: 34.262 },
+                { addr: '南二环九锦台', lng: 108.882, lat: 34.258 },
+                { addr: '大庆路恒天国际', lng: 108.868, lat: 34.276 },
+                { addr: '沣镐路华尔兹', lng: 108.862, lat: 34.287 },
+                { addr: '朱宏路紫云溪', lng: 108.856, lat: 34.299 },
+                { addr: '北二环名流天地', lng: 108.850, lat: 34.312 },
+                { addr: '昆明路和平花园', lng: 108.862, lat: 34.258 },
+                { addr: '团结南路融侨城', lng: 108.868, lat: 34.260 },
+                { addr: '汉城南路宏府鲲翔', lng: 108.865, lat: 34.256 },
+                { addr: '昆明路三号院', lng: 108.852, lat: 34.255 },
+                { addr: '阿房路颐和郡', lng: 108.838, lat: 34.258 },
+                { addr: '三桥新街万象城', lng: 108.818, lat: 34.262 },
+                { addr: '枣园东路冶金小区', lng: 108.858, lat: 34.270 },
+                { addr: '环城西路玉祥门', lng: 108.888, lat: 34.270 },
+                { addr: '青年路止园小区', lng: 108.885, lat: 34.275 },
+                { addr: '北关正街凤凰村', lng: 108.890, lat: 34.282 },
+                { addr: '红庙坡白家口', lng: 108.872, lat: 34.290 },
+                { addr: '自强西路铁路小区', lng: 108.882, lat: 34.285 }
+            ],
+            weiyang: [
+                { addr: '凤城二路海璟国际', lng: 108.925, lat: 34.305 },
+                { addr: '未央路时代明丰', lng: 108.930, lat: 34.308 },
+                { addr: '凤城五路赛高街区', lng: 108.928, lat: 34.312 },
+                { addr: '凤城一路雅荷中环', lng: 108.938, lat: 34.310 },
+                { addr: '市图书馆长安大厦', lng: 108.952, lat: 34.313 },
+                { addr: '辛家庙绿地香树花城', lng: 108.966, lat: 34.316 },
+                { addr: '十里铺米家崖村', lng: 108.982, lat: 34.318 },
+                { addr: '龙首村十字', lng: 108.912, lat: 34.293 },
+                { addr: '自强路东区', lng: 108.918, lat: 34.297 },
+                { addr: '张家堡广场壹号', lng: 108.932, lat: 34.322 },
+                { addr: '草滩生态园旁', lng: 108.926, lat: 34.337 },
+                { addr: '未央湖花园', lng: 108.920, lat: 34.348 },
+                { addr: '凤城七路熙地港', lng: 108.935, lat: 34.318 },
+                { addr: '凤城九路万科城', lng: 108.940, lat: 34.325 },
+                { addr: '太华路大明宫遗址', lng: 108.945, lat: 34.295 },
+                { addr: '北二环中登大厦', lng: 108.922, lat: 34.315 },
+                { addr: '渭滨街华浮宫', lng: 108.915, lat: 34.320 },
+                { addr: '朱宏路锦宏国际', lng: 108.905, lat: 34.310 },
+                { addr: '二环北路佳家花园', lng: 108.918, lat: 34.302 },
+                { addr: '文景路白桦林居', lng: 108.928, lat: 34.330 }
+            ],
+            yanta: [
+                { addr: '科技路徐家庄', lng: 108.945, lat: 34.222 },
+                { addr: '高新路枫叶苑', lng: 108.950, lat: 34.220 },
+                { addr: '博文路丹枫国际', lng: 108.948, lat: 34.218 },
+                { addr: '科技二路水晶岛', lng: 108.952, lat: 34.215 },
+                { addr: '小寨赛格国际', lng: 108.943, lat: 34.210 },
+                { addr: '长安路启航国际', lng: 108.938, lat: 34.200 },
+                { addr: '韦曲西街兆府', lng: 108.933, lat: 34.190 },
+                { addr: '郭杜十字樱花广场', lng: 108.928, lat: 34.178 },
+                { addr: '翠华路佳园', lng: 108.932, lat: 34.207 },
+                { addr: '雁塔西路美院', lng: 108.938, lat: 34.210 },
+                { addr: '红专南路小区', lng: 108.935, lat: 34.204 },
+                { addr: '大雁塔北广场旁', lng: 108.962, lat: 34.205 },
+                { addr: '曲江池遗址公园', lng: 108.977, lat: 34.209 },
+                { addr: '等驾坡幸福南路', lng: 108.992, lat: 34.211 },
+                { addr: '太白南路广电', lng: 108.942, lat: 34.232 },
+                { addr: '科技五路橡树街区', lng: 108.948, lat: 34.230 },
+                { addr: '电子城紫薇花园', lng: 108.933, lat: 34.228 },
+                { addr: '电子四路融侨馨苑', lng: 108.922, lat: 34.230 },
+                { addr: '太白路怡丰城', lng: 108.912, lat: 34.233 },
+                { addr: '长安南路华美十字', lng: 108.940, lat: 34.195 }
+            ]
+        };
+
+        // ----- 各站点下属街道锚点（近似中心坐标，用于将工程师分散到各街道） -----
+        const SITE_STREET_ANCHORS = {
+            lianhu: [
+                { name: '北院门街道', lng: 108.894, lat: 34.267 }, { name: '环城西路街道', lng: 108.884, lat: 34.270 },
+                { name: '青年路街道', lng: 108.883, lat: 34.276 }, { name: '西关街道', lng: 108.876, lat: 34.262 },
+                { name: '桃园路街道', lng: 108.870, lat: 34.265 }, { name: '土门街道', lng: 108.864, lat: 34.259 },
+                { name: '柏树林街道', lng: 108.898, lat: 34.262 }, { name: '南院门街道', lng: 108.898, lat: 34.257 },
+                { name: '枣园街道', lng: 108.858, lat: 34.272 }, { name: '北关街道', lng: 108.886, lat: 34.283 },
+                { name: '红庙坡街道', lng: 108.872, lat: 34.290 }, { name: '张家村街道', lng: 108.896, lat: 34.252 },
+                { name: '文艺路街道', lng: 108.907, lat: 34.248 }, { name: '长安路街道', lng: 108.902, lat: 34.238 },
+                { name: '三桥街道', lng: 108.822, lat: 34.270 }, { name: '汉城街道', lng: 108.855, lat: 34.302 },
+                { name: '未央宫街道', lng: 108.868, lat: 34.296 }, { name: '鱼化寨街道', lng: 108.858, lat: 34.234 },
+                { name: '丈八沟街道', lng: 108.892, lat: 34.228 }, { name: '六村堡街道', lng: 108.838, lat: 34.306 },
+                { name: '建章路街道', lng: 108.815, lat: 34.313 }, { name: '高桥街道', lng: 108.795, lat: 34.282 },
+                { name: '斗门街道', lng: 108.785, lat: 34.253 }, { name: '王寺街道', lng: 108.806, lat: 34.243 },
+                { name: '马王街道', lng: 108.775, lat: 34.260 }
+            ],
+            weiyang: [
+                { name: '张家堡街道', lng: 108.932, lat: 34.322 }, { name: '谭家街道', lng: 108.946, lat: 34.326 },
+                { name: '徐家湾街道', lng: 108.942, lat: 34.332 }, { name: '大明宫街道', lng: 108.942, lat: 34.296 },
+                { name: '自强路街道', lng: 108.914, lat: 34.296 }, { name: '太华路街道', lng: 108.936, lat: 34.291 },
+                { name: '辛家庙街道', lng: 108.962, lat: 34.315 }, { name: '未央湖街道', lng: 108.916, lat: 34.352 },
+                { name: '草滩街道', lng: 108.918, lat: 34.368 }, { name: '十里铺街道', lng: 108.982, lat: 34.308 },
+                { name: '长乐西路街道', lng: 108.928, lat: 34.278 }, { name: '长乐中路街道', lng: 108.950, lat: 34.280 },
+                { name: '长乐坊街道', lng: 108.942, lat: 34.270 }, { name: '东关南街街道', lng: 108.937, lat: 34.265 },
+                { name: '中山门街道', lng: 108.947, lat: 34.274 }, { name: '胡家庙街道', lng: 108.962, lat: 34.285 },
+                { name: '韩森寨街道', lng: 108.972, lat: 34.275 }, { name: '解放门街道', lng: 108.902, lat: 34.285 },
+                { name: '西一路街道', lng: 108.908, lat: 34.278 }, { name: '太乙路街道', lng: 108.952, lat: 34.255 },
+                { name: '新合街道', lng: 109.032, lat: 34.282 }, { name: '新筑街道', lng: 109.022, lat: 34.342 },
+                { name: '灞桥街道', lng: 109.042, lat: 34.292 }, { name: '洪庆街道', lng: 109.062, lat: 34.302 },
+                { name: '纺织城街道', lng: 109.032, lat: 34.268 }, { name: '席王街道', lng: 109.022, lat: 34.278 },
+                { name: '红旗街道', lng: 109.052, lat: 34.258 }, { name: '狄寨街道', lng: 109.082, lat: 34.228 }
+            ],
+            yanta: [
+                { name: '小寨路街道', lng: 108.940, lat: 34.215 }, { name: '大雁塔街道', lng: 108.962, lat: 34.210 },
+                { name: '电子城街道', lng: 108.918, lat: 34.226 }, { name: '长延堡街道', lng: 108.936, lat: 34.200 },
+                { name: '曲江街道', lng: 108.978, lat: 34.206 }, { name: '等驾坡街道', lng: 108.992, lat: 34.215 },
+                { name: '杜城街道', lng: 108.908, lat: 34.208 }, { name: '韦曲街道', lng: 108.932, lat: 34.185 },
+                { name: '郭杜街道', lng: 108.898, lat: 34.163 }, { name: '细柳街道', lng: 108.878, lat: 34.178 },
+                { name: '灵沼街道', lng: 108.848, lat: 34.168 }, { name: '炮里街道', lng: 109.082, lat: 34.180 },
+                { name: '鸣犊街道', lng: 109.052, lat: 34.170 }, { name: '大兆街道', lng: 109.022, lat: 34.150 }
+            ]
+        };
+
+        // ----- 模拟小区名称素材（生成街道附近排单地址） -----
+        const ENG_COMMUNITY_A = ['阳光','盛世','锦绣','龙湖','万科','绿地','恒大','保利','中海','金辉','紫薇','天地','御景','城市','枫景','恒基','世贸','华润','融创','金地'];
+        const ENG_COMMUNITY_B = ['小区','花园','家园','公寓','华庭','雅苑','名居','府邸','新苑','世家','公馆','印象','时代','明珠','绿洲'];
+
+        // ----- 名额分配辅助：每条街道保底 minEach 人，剩余按顺序（近者优先）补齐 -----
+        function distributePool(streets, pool, minEach) {
+            const alloc = streets.map(s => ({ street: s, count: minEach }));
+            const used = minEach * streets.length;
+            if (used > pool) {
+                let over = used - pool;
+                for (let i = alloc.length - 1; i >= 0 && over > 0; i--) {
+                    const take = Math.min(alloc[i].count, over);
+                    alloc[i].count -= take; over -= take;
+                }
+            } else if (used < pool) {
+                let rem = pool - used, i = 0;
+                while (rem > 0) { alloc[i % alloc.length].count++; rem--; i++; }
+            }
+            return alloc;
+        }
+
+        // ----- 生成额外模拟工程师（按街道分散分布：核心多、周边少、相邻街道有覆盖） -----
+        function generateExtraEngineers() {
+            const result = [];
+            let seq = DEMO_ENGINEERS.length + 1; // 接续主角编号
+            Object.keys(SITE_ENGINEER_COUNT).forEach(site => {
+                const target = SITE_ENGINEER_COUNT[site];
+                const existing = DEMO_ENGINEERS.filter(e => e.site === site).length;
+                const need = target - existing;
+                if (need <= 0) return;
+                const anchors = SITE_STREET_ANCHORS[site] || [];
+                const center = SITE_DEMO_AREA[site].center;
+
+                // 无街道锚点时回退：站点中心随机分布
+                if (anchors.length === 0) {
+                    const area = SITE_DEMO_AREA[site];
+                    for (let i = 0; i < need; i++) {
+                        const id = 'eng' + String(seq).padStart(3, '0');
+                        const name = ENG_SURNAMES[(seq + 3) % ENG_SURNAMES.length] + '师傅';
+                        seq++;
+                        const r = Math.random();
+                        const status = r < 0.10 ? 'offline' : (r < 0.45 ? 'busy' : 'idle');
+                        const lng = area.center[0] + (Math.random() - 0.5) * area.radius * 2;
+                        const lat = area.center[1] + (Math.random() - 0.5) * area.radius * 2;
+                        result.push({ id: id, name: name, site: site, status: status, route: [[lng, lat]], schedule: [] });
+                    }
+                    return;
+                }
+
+                // 1) 按距站点中心距离排序，划分核心(35%)/中间(40%)/外围(25%)三档
+                const sorted = anchors.map(a => ({
+                    name: a.name, lng: a.lng, lat: a.lat,
+                    dist: Math.hypot(a.lng - center[0], a.lat - center[1])
+                })).sort((x, y) => x.dist - y.dist);
+                const n = sorted.length;
+                const nCore = Math.max(1, Math.round(n * 0.35));
+                const nMid = Math.max(1, Math.round(n * 0.40));
+                const core = sorted.slice(0, nCore);
+                const mid = sorted.slice(nCore, nCore + nMid);
+                const outer = sorted.slice(nCore + nMid);
+
+                // 2) 名额分配：核心约50%、中间约35%、外围约15%
+                let corePool = Math.round(need * 0.50);
+                let midPool = Math.round(need * 0.35);
+                let outerPool = need - corePool - midPool;
+                // 外围保底：至少每2条相邻街道1人，不足时从核心名额扣减
+                const outerMin = Math.max(1, Math.ceil(outer.length / 2));
+                if (outerPool < outerMin) {
+                    corePool = Math.max(nCore, corePool - (outerMin - outerPool));
+                    outerPool = outerMin;
+                }
+
+                // 3) 核心街道：每条保底2人，余量按距离近者优先
+                const coreAlloc = distributePool(core, corePool, 2);
+                // 4) 中间街道：每条保底1人
+                const midAlloc = distributePool(mid, midPool, 1);
+                // 5) 外围街道：按方位角排序后交错分配，保证相邻2~3条至少1人
+                const outerByAngle = outer.slice().sort((a, b) =>
+                    Math.atan2(a.lat - center[1], a.lng - center[0]) - Math.atan2(b.lat - center[1], b.lng - center[0])
+                );
+                const outerAlloc = outerByAngle.map(s => ({ street: s, count: 0 }));
+                let oi = 0;
+                for (let i = 0; i < outerAlloc.length && oi < outerPool; i += 2) { outerAlloc[i].count = 1; oi++; }
+                for (let i = 1; i < outerAlloc.length && oi < outerPool; i += 2) { outerAlloc[i].count = 1; oi++; }
+                for (let i = 0; i < outerAlloc.length && oi < outerPool; i++) { outerAlloc[i].count++; oi++; }
+
+                // 6) 按分配结果生成工程师，位置散布在所属街道锚点周边
+                const allAlloc = coreAlloc.concat(midAlloc).concat(outerAlloc);
+                allAlloc.forEach(item => {
+                    const street = item.street;
+                    for (let k = 0; k < item.count; k++) {
+                        const id = 'eng' + String(seq).padStart(3, '0');
+                        const name = ENG_SURNAMES[(seq + 3) % ENG_SURNAMES.length] + '师傅';
+                        seq++;
+                        // 状态分布：离线10%、忙碌35%、空闲55%
+                        const r = Math.random();
+                        const status = r < 0.10 ? 'offline' : (r < 0.45 ? 'busy' : 'idle');
+                        // 在街道锚点附近散开（同街道多名师傅不重叠）
+                        const spread = 0.0035 + Math.random() * 0.0035;
+                        const angle = Math.random() * 2 * Math.PI;
+                        const lng = street.lng + spread * Math.cos(angle);
+                        const lat = street.lat + spread * Math.sin(angle) * 0.85;
+                        // 当日排单：围绕本街道生成，确保位置落在所属街道
+                        const schedule = [];
+                        if (status !== 'offline') {
+                            const total = 3 + Math.floor(Math.random() * 5);
+                            const doneCount = Math.floor(Math.random() * (total + 1));
+                            const shortName = street.name.replace('街道', '');
+                            for (let s = 0; s < total; s++) {
+                                const offR = 0.002 + Math.random() * 0.004;
+                                const offA = Math.random() * 2 * Math.PI;
+                                const cName = ENG_COMMUNITY_A[Math.floor(Math.random() * ENG_COMMUNITY_A.length)] +
+                                              ENG_COMMUNITY_B[Math.floor(Math.random() * ENG_COMMUNITY_B.length)];
+                                const startHour = 9 + s;
+                                schedule.push({
+                                    addr: shortName + cName,
+                                    lng: street.lng + offR * Math.cos(offA),
+                                    lat: street.lat + offR * Math.sin(offA) * 0.85,
+                                    win: String(startHour).padStart(2, '0') + ':00-' + String(startHour + 1).padStart(2, '0') + ':00',
+                                    svc: 30 + Math.floor(Math.random() * 20),
+                                    done: s < doneCount
+                                });
+                            }
+                        }
+                        result.push({
+                            id: id, name: name, site: site, status: status,
+                            route: [[lng, lat]],
+                            schedule: schedule
+                        });
+                    }
+                });
+            });
+            return result;
+        }
+
         // 模拟器进度（每个工程师在路径上的位置索引和方向）
         let demoProgress = {};
 
@@ -2761,7 +3024,7 @@
 
         // ----- 初始化演示数据 -----
         function initDemoEngineers() {
-            engineerList = DEMO_ENGINEERS.map(e => {
+            engineerList = DEMO_ENGINEERS.concat(generateExtraEngineers()).map(e => {
                 // 工程师通常在客户家停留一段时间，位置固定在当前服务/刚完成的工单处
                 let fixedLng = e.route[0][0];
                 let fixedLat = e.route[0][1];
@@ -2806,15 +3069,18 @@
             const statusClass = eng.status === 'busy' ? 'busy' : (eng.status === 'offline' ? 'offline' : '');
             const el = document.createElement('div');
             el.className = 'engineer-marker ' + statusClass;
-            el.innerHTML = `<div class="eng-label">${eng.name}</div>`;
+            el.innerHTML = '';
             return el;
         }
 
-        // ----- 渲染所有工程师标记到地图 -----
+        // ----- 渲染所有工程师标记到地图（按当前站点筛选显示） -----
         function renderEngMarkers() {
             if (!map) return;
             engineerList.forEach(eng => {
+                // 站点筛选：选定单站点时只显示该站点工程师
+                const visible = (currentCity === 'xian' && currentSite !== 'all') ? (eng.site === currentSite) : true;
                 if (!eng.marker) {
+                    if (!visible) return; // 不可见的暂不创建标记
                     const content = createEngMarkerContent(eng);
                     eng.marker = new AMap.Marker({
                         position: [eng.lng, eng.lat],
@@ -2829,6 +3095,8 @@
                     map.add(eng.marker);
                 } else {
                     updateEngMarkerPosition(eng);
+                    if (visible) eng.marker.show();
+                    else eng.marker.hide();
                 }
             });
         }
@@ -2889,7 +3157,7 @@
                 }, LOC_UPDATE_INTERVAL);
                 btn.textContent = '⏸ 停止追踪';
                 btn.className = 'primary small';
-                showToast('演示模式已启动，工程师位置显示在客户家');
+                showToast('演示模式已启动，共96名工程师位置显示在客户家（按当前站点筛选）');
             }
         }
 
@@ -2962,6 +3230,7 @@
             if (!dispatchAddress) return;
             const nearby = engineerList
                 .filter(e => e.status !== 'offline')
+                .filter(e => (currentCity === 'xian' && currentSite !== 'all') ? (e.site === currentSite) : true)
                 .map(e => ({
                     ...e,
                     distance: haversineKm(dispatchAddress.lng, dispatchAddress.lat, e.lng, e.lat),
@@ -3671,6 +3940,15 @@
             updateModeMarkerCount();
             if (isAddMarkerMode) toggleAddMarkerMode();
             updateCategoryTags();
+            // 切换站点后刷新工程师标记显示（按新站点筛选）
+            if (engTracking && engineerList.length > 0) {
+                // 清除不属于当前站点的选中状态
+                if (selectedEngineer && site !== 'all' && selectedEngineer.site !== site) {
+                    selectedEngineer = null;
+                }
+                renderEngMarkers();
+                if (dispatchAddress) refreshNearbyDistances();
+            }
         }
 
         // ===== 加载街道 =====
@@ -5062,6 +5340,16 @@
             }
             markerList.forEach(item => item.marker.setMap(null));
 
+            // 工程师定位页：隐藏所有点位备注标记，仅保留工程师定位相关元素
+            if (currentTab === 'location') {
+                autoOpenedInfoWindows.forEach(win => win.close());
+                autoOpenedInfoWindows = [];
+                updateModeMarkerCount();
+                updateIdentifiedStreetCount();
+                updateCategoryTags();
+                return;
+            }
+
             let visibleItems = markerList.filter(item => item.type === currentMode);
             if (currentCity === 'xian' && currentSite !== 'all') {
                 visibleItems = visibleItems.filter(item => item.site === currentSite);
@@ -6416,6 +6704,9 @@
             document.querySelectorAll('.tab-panel').forEach(p => {
                 p.classList.toggle('active', p.id === 'panel-' + tabId);
             });
+            currentTab = tabId;
+            // 切换标签时刷新地图标记可见性（工程师定位页隐藏点位备注标记）
+            if (map) applyFilterAndRenderMap();
         }
 
         // ===== 城市输入框自动补全 & 路线输入快捷键 =====
