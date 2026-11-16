@@ -2098,7 +2098,7 @@
                         <span class="arrow">▶</span>
                     </div>
                     <div class="section-body">
-                        <div class="text-xs text-muted">演示模式：模拟工程师实时定位，三站点共96人（莲湖36/未央40/雁塔20），切换站点仅显示该站点工程师</div>
+                        <div class="text-xs text-muted">演示模式：模拟工程师实时定位，三站点共48人（莲湖18/未央20/雁塔10），切换站点仅显示该站点工程师</div>
                         <div class="flex-row gap-1">
                             <button onclick="toggleEngTracking()" class="outline small" style="flex:1;" id="engTrackingBtn">▶ 启动追踪</button>
                             <button onclick="clearEngMarkers()" class="outline small" style="flex:1;">清除标记</button>
@@ -2746,8 +2746,8 @@
               schedule: [] }
         ];
 
-        // ----- 站点工程师数量配置（按街道配置比例 25:28:14，每站点至少20人） -----
-        const SITE_ENGINEER_COUNT = { lianhu: 36, weiyang: 40, yanta: 20 };
+        // ----- 站点工程师数量配置（按街道配置比例 25:28:14，每站点至少10人） -----
+        const SITE_ENGINEER_COUNT = { lianhu: 18, weiyang: 20, yanta: 10 };
 
         // ----- 站点模拟覆盖区域（用于随机生成工程师位置） -----
         const SITE_DEMO_AREA = {
@@ -2922,21 +2922,21 @@
                     return;
                 }
 
-                // 1) 按距站点中心距离排序，划分核心(35%)/中间(40%)/外围(25%)三档
+                // 1) 按距站点中心距离排序，划分核心(25%)/中间(45%)/外围(30%)三档
                 const sorted = anchors.map(a => ({
                     name: a.name, lng: a.lng, lat: a.lat,
                     dist: Math.hypot(a.lng - center[0], a.lat - center[1])
                 })).sort((x, y) => x.dist - y.dist);
                 const n = sorted.length;
-                const nCore = Math.max(1, Math.round(n * 0.35));
-                const nMid = Math.max(1, Math.round(n * 0.40));
+                const nCore = Math.max(1, Math.round(n * 0.25));
+                const nMid = Math.max(1, Math.round(n * 0.45));
                 const core = sorted.slice(0, nCore);
                 const mid = sorted.slice(nCore, nCore + nMid);
                 const outer = sorted.slice(nCore + nMid);
 
-                // 2) 名额分配：核心约50%、中间约35%、外围约15%
-                let corePool = Math.round(need * 0.50);
-                let midPool = Math.round(need * 0.35);
+                // 2) 名额分配：核心约30%、中间约40%、外围约30%（避免中心过密）
+                let corePool = Math.round(need * 0.30);
+                let midPool = Math.round(need * 0.40);
                 let outerPool = need - corePool - midPool;
                 // 外围保底：至少每2条相邻街道1人，不足时从核心名额扣减
                 const outerMin = Math.max(1, Math.ceil(outer.length / 2));
@@ -2945,8 +2945,17 @@
                     outerPool = outerMin;
                 }
 
-                // 3) 核心街道：每条保底2人，余量按距离近者优先
-                const coreAlloc = distributePool(core, corePool, 2);
+                // 3) 核心街道：按方位角交错分配，相邻2~3条街道分布1人，最多2人/街道
+                const coreByAngle = core.slice().sort((a, b) =>
+                    Math.atan2(a.lat - center[1], a.lng - center[0]) - Math.atan2(b.lat - center[1], b.lng - center[0])
+                );
+                const coreAlloc = coreByAngle.map(s => ({ street: s, count: 0 }));
+                let ci = 0;
+                // 交错间隔3条街道分配，核心区域更稀疏
+                for (let i = 0; i < coreAlloc.length && ci < corePool; i += 3) { coreAlloc[i].count = 1; ci++; }
+                for (let i = 1; i < coreAlloc.length && ci < corePool; i += 3) { coreAlloc[i].count = 1; ci++; }
+                for (let i = 2; i < coreAlloc.length && ci < corePool; i += 3) { coreAlloc[i].count = 1; ci++; }
+                for (let i = 0; i < coreAlloc.length && ci < corePool; i++) { coreAlloc[i].count++; ci++; }
                 // 4) 中间街道：每条保底1人
                 const midAlloc = distributePool(mid, midPool, 1);
                 // 5) 外围街道：按方位角排序后交错分配，保证相邻2~3条至少1人
@@ -2970,8 +2979,8 @@
                         // 状态分布：离线10%、忙碌35%、空闲55%
                         const r = Math.random();
                         const status = r < 0.10 ? 'offline' : (r < 0.45 ? 'busy' : 'idle');
-                        // 在街道锚点附近散开（同街道多名师傅不重叠）
-                        const spread = 0.0035 + Math.random() * 0.0035;
+                        // 在街道锚点附近散开（同街道多名师傅不重叠，半径加大避免中心拥挤）
+                        const spread = 0.0055 + Math.random() * 0.0055;
                         const angle = Math.random() * 2 * Math.PI;
                         const lng = street.lng + spread * Math.cos(angle);
                         const lat = street.lat + spread * Math.sin(angle) * 0.85;
@@ -3157,7 +3166,7 @@
                 }, LOC_UPDATE_INTERVAL);
                 btn.textContent = '⏸ 停止追踪';
                 btn.className = 'primary small';
-                showToast('演示模式已启动，共96名工程师位置显示在客户家（按当前站点筛选）');
+                showToast(`演示模式已启动，共${engineerList.length}名工程师位置显示在客户家（按当前站点筛选）`);
             }
         }
 
